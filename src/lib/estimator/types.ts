@@ -154,7 +154,7 @@ export interface ModuleSpec {
   drawers: number;
   shelves: number;
   hasBack: boolean;
-  hangingRod?: boolean;
+  hangingRod?: boolean | undefined;
   bodyMaterialId: string;
   backMaterialId: string | null;
   doorMaterialId: string | null;
@@ -167,10 +167,10 @@ export interface ModuleSpec {
   };
   edgingId: string | null;
   /** table_top only: number of stacked layers */
-  topLayers?: number;
+  topLayers?: number | undefined;
   /** table_frame only: frame is not sheet material */
-  frameMaterial?: "besi" | "plywood" | "solid_wood" | "lainnya";
-  led?: { enabled: boolean; length_mm: number; watt_per_m: number; segments: number };
+  frameMaterial?: "besi" | "plywood" | "solid_wood" | "lainnya" | undefined;
+  led?: { enabled: boolean; length_mm: number; watt_per_m: number; segments: number } | undefined;
 }
 
 export interface Part {
@@ -285,7 +285,7 @@ export type FurnitureCategory = string;
 export interface FurnitureItem {
   id: string;
   category: FurnitureCategory;
-  customCategory?: string;
+  customCategory?: string | undefined;
   name: string;
   hasDrawing: boolean | null;
   drawings: DrawingRef[];
@@ -306,7 +306,7 @@ export interface FurnitureItem {
     shelves: number;
     doorType: DoorType;
     notes: string;
-  };
+  } | undefined;
 }
 
 export interface DrawingRef {
@@ -321,10 +321,10 @@ export interface ExtractedField {
   key: string;
   label: string;
   value: string | number | null;
-  unit?: Unit;
+  unit?: Unit | undefined;
   confidence: number; // 0..1
   ambiguous: boolean;
-  range?: [number, number];
+  range?: [number, number] | undefined;
 }
 
 export interface DrawingExtraction {
