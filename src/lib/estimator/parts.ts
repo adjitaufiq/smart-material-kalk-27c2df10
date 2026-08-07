@@ -201,7 +201,10 @@ export function generateParts(mod: ModuleSpec): Part[] {
         mod.doors > 0
           ? 180
           : (H - tpl.door_clearance_mm * (mod.drawers + 1)) / mod.drawers;
-      const frontW = W - 2 * tpl.door_clearance_mm;
+      // Pada modul yang juga berpintu, laci berada di dalam bay (bukan front
+      // selebar badan). Lebar front mengikuti lebar bay, bukan lebar total.
+      const bayWidth = mod.doors > 0 ? iw / mod.doors : W - 2 * tpl.door_clearance_mm;
+      const frontW = mod.doors > 0 ? bayWidth - 4 : bayWidth;
       parts.push(
         build(mod, {
           name: "Front Laci",
@@ -221,7 +224,7 @@ export function generateParts(mod: ModuleSpec): Part[] {
       const boxMat = findMaterial("ply12") ?? body;
       const boxSideH = Math.max(frontH - 40, 80);
       const boxDepth = Math.max(D - 50, 100);
-      const boxInner = iw - 26 - 2 * (boxMat?.ketebalan_mm ?? 12); // 13 mm rel tiap sisi
+      const boxInner = bayWidth - 26 - 2 * (boxMat?.ketebalan_mm ?? 12); // 13 mm rel tiap sisi
       if (boxMat) {
         parts.push(
           build(mod, {
@@ -238,7 +241,7 @@ export function generateParts(mod: ModuleSpec): Part[] {
             length_mm: boxInner,
             width_mm: boxSideH,
             materialId: boxMat.id,
-            derivation: `Lebar bersih ${iw} - 26 mm rel - 2 × tebal box ${boxMat.ketebalan_mm}`,
+            derivation: `Lebar bay ${Math.round(bayWidth)} - 26 mm rel - 2 × tebal box ${boxMat.ketebalan_mm}`,
           }),
         );
       }
