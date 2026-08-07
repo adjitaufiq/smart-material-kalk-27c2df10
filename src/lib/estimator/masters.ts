@@ -631,5 +631,5 @@ export function hingeCountForDoorHeight(height_mm: number): number {
   for (const rule of HINGE_RULES) {
     if (height_mm <= rule.maxHeight_mm) return rule.count;
   }
-  return HINGE_RULES[HINGE_RULES.length - 1].count;
+  return HINGE_RULES[HINGE_RULES.length - 1]?.count ?? 2;
 }
