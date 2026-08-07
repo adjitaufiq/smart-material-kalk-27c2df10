@@ -158,14 +158,19 @@ export function generateParts(mod: ModuleSpec): Part[] {
     }
 
     if (mod.hasBack && back) {
+      // Back panel dipecah menjadi lembar bila melebihi lebar sheet.
+      const strips = Math.max(1, Math.ceil(H / 1200));
       parts.push(
         build(mod, {
           name: "Back Panel",
-          qty: 1,
+          qty: strips,
           length_mm: W,
-          width_mm: H,
+          width_mm: H / strips,
           materialId: back.id,
-          derivation: `Back panel penuh ${W} × ${H} mm, material ${back.nama_material}`,
+          derivation:
+            strips === 1
+              ? `Back panel penuh ${W} × ${H} mm, material ${back.nama_material}`
+              : `Back panel ${W} × ${H} mm dibagi ${strips} lembar setinggi ${Math.round(H / strips)} mm (batas lebar sheet), material ${back.nama_material}`,
         }),
       );
     }
