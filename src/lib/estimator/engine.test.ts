@@ -238,6 +238,7 @@ describe("10. ambiguous extraction blocks a purchase-ready BOM", () => {
         warnings: [],
         confirmed_by_user: true,
         confirmed_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
       },
     });
     const result = calculateItem(item);
@@ -258,6 +259,7 @@ describe("10. ambiguous extraction blocks a purchase-ready BOM", () => {
           warnings: [],
           confirmed_by_user: false,
           confirmed_at: null,
+          created_at: new Date().toISOString(),
         },
       }),
     );
@@ -422,6 +424,7 @@ describe("mock drawing flow 2400 × 2600 × 600, 4 doors, 3 drawers", () => {
           warnings: [],
           confirmed_by_user: true,
           confirmed_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
         },
       },
     );
