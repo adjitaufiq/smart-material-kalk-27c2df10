@@ -121,13 +121,17 @@ export function composeModules(category: string, brief: Brief): ModuleSpec[] {
         }),
       ];
     }
-    case "Lemari Baju":
-      return [
+    case "Lemari Baju": {
+      // Side panel tidak boleh melebihi panjang lembar. Bila tinggi > 2100 mm,
+      // lemari dipecah menjadi badan utama + loft cabinet (praktik workshop).
+      const mainHeight = H > 2100 ? 2100 : H;
+      const loftHeight = H - mainHeight;
+      const mods = [
         makeModule({
           kind: "wardrobe",
-          name: "Lemari Baju",
+          name: "Badan Lemari",
           width_mm: W,
-          height_mm: H,
+          height_mm: mainHeight,
           depth_mm: D || 600,
           doors: brief.doors,
           doorType: brief.doorType,
@@ -136,6 +140,22 @@ export function composeModules(category: string, brief: Brief): ModuleSpec[] {
           hangingRod: true,
         }),
       ];
+      if (loftHeight >= 200) {
+        mods.push(
+          makeModule({
+            kind: "tall_cabinet",
+            name: "Loft Cabinet",
+            width_mm: W,
+            height_mm: loftHeight,
+            depth_mm: D || 600,
+            doors: Math.max(brief.doors, 2),
+            doorType: brief.doorType,
+            shelves: 0,
+          }),
+        );
+      }
+      return mods;
+    }
     case "Meja":
     case "Meja Kerja":
     case "Meja Makan":
