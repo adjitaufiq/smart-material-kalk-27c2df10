@@ -49,10 +49,10 @@ function MasterPage() {
                 <span className="min-w-0">
                   <span className="block truncate">{m.nama_material}</span>
                   <span className="num block text-xs text-muted-foreground">
-                    {m.panjang_mm} × {m.lebar_mm} × {m.tebal_mm} mm · grain {m.grain_direction}
+                    {m.panjang_mm} × {m.lebar_mm} × {m.ketebalan_mm} mm · grain {m.grain_direction}
                   </span>
                 </span>
-                <span className="num shrink-0 text-xs">{rupiah(m.harga_per_lembar)}</span>
+                <span className="num shrink-0 text-xs">{rupiah(m.harga)} / {m.satuan}</span>
               </li>
             ))}
           </ul>
@@ -70,7 +70,7 @@ function MasterPage() {
                     {h.panjang_mm} × {h.lebar_mm} mm
                   </span>
                 </span>
-                <span className="num shrink-0 text-xs">{rupiah(h.harga_per_lembar)}</span>
+                <span className="num shrink-0 text-xs">{rupiah(h.harga)}</span>
               </li>
             ))}
           </ul>
@@ -96,7 +96,7 @@ function MasterPage() {
                   <span className="block text-xs text-muted-foreground">{h.kategori}</span>
                 </span>
                 <span className="num shrink-0 text-xs">
-                  {rupiah(h.harga_satuan)} / {h.satuan}
+                  {rupiah(h.harga)} / {h.unit}
                 </span>
               </li>
             ))}
@@ -114,7 +114,7 @@ function MasterPage() {
                   {t.nama} <span className="text-xs text-muted-foreground">({t.kode})</span>
                 </p>
                 <p className="num text-xs text-muted-foreground">
-                  {t.default_height_mm} H × {t.default_depth_mm} D · gap pintu {t.door_gap_mm} mm ·
+                  {t.default_height_mm} H × {t.default_depth_mm} D · clearance pintu {t.door_clearance_mm} mm ·
                   hubungan panel: {t.panel_relationship}
                 </p>
               </li>
