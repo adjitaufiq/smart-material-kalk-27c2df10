@@ -1,6 +1,7 @@
 @import "tailwindcss" source(none);
-@source "../src";
 @import "tw-animate-css";
+
+@source "../src";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -64,8 +65,8 @@
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
   --color-surface: var(--surface);
-  --font-display: var(--font-display);
-  --font-sans: var(--font-body);
+  --font-display: var(--type-display);
+  --font-sans: var(--type-body);
 }
 
 :root {
@@ -94,8 +95,8 @@
   --warning: oklch(0.72 0.15 75);
   --warning-foreground: oklch(0.26 0.05 70);
   --surface: oklch(0.955 0.012 85);
-  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
-  --font-body: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --type-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --type-body: "DM Sans", ui-sans-serif, system-ui, sans-serif;
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -159,7 +160,7 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
-    font-family: var(--font-body);
+    font-family: var(--type-body);
     -webkit-font-smoothing: antialiased;
   }
 
@@ -167,8 +168,8 @@
   h2,
   h3,
   .font-display {
-    font-family: var(--font-display);
-    letter-spacing: -0.015em;
+    font-family: var(--type-display);
+    letter-spacing: 0;
   }
 }
 
