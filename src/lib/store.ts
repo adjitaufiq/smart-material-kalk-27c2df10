@@ -18,9 +18,38 @@ export function loadProjects(): Project[] {
   }
 }
 
+/**
+ * Gambar kerja disimpan sebagai data URL base64 — ukurannya bisa MB dan
+ * membuat localStorage melebihi kuota. Data URL hanya hidup di memori;
+ * yang dipersist cuma metadata-nya.
+ */
+function stripHeavyFields(projects: Project[]): Project[] {
+  return projects.map((p) => ({
+    ...p,
+    items: p.items.map((it) => ({
+      ...it,
+      drawings: it.drawings.map((d) => ({ ...d, dataUrl: "" })),
+    })),
+    revisions: p.revisions.map((r) => ({
+      ...r,
+      snapshot: {
+        items: r.snapshot.items.map((it) => ({
+          ...it,
+          drawings: it.drawings.map((d) => ({ ...d, dataUrl: "" })),
+        })),
+      },
+    })),
+  }));
+}
+
 export function saveProjects(projects: Project[]) {
   if (!isBrowser()) return;
-  window.localStorage.setItem(KEY, JSON.stringify(projects));
+  try {
+    window.localStorage.setItem(KEY, JSON.stringify(stripHeavyFields(projects)));
+  } catch (err) {
+    // Kuota penuh: jangan sampai blank screen — data tetap ada di memori.
+    console.error("Gagal menyimpan project ke penyimpanan lokal:", err);
+  }
   window.dispatchEvent(new Event("sme:projects"));
 }
 
