@@ -90,7 +90,7 @@ function flatten(strict: StrictExtractionResult): ExtractedField[] {
 
 export const drawingExtractionService: DrawingExtractionService = {
   available: true,
-  providerName: "Lovable AI Gateway (Gemini Vision)",
+  providerName: "AI Vision",
   async extract(drawing: DrawingRef, category = ""): Promise<DrawingExtraction> {
     const strict = (await readDrawing({
       data: {

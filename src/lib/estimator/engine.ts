@@ -8,7 +8,6 @@ import {
   findTemplate,
   hingeCountForDoor,
   hingeCountForDoorHeight,
-
   LED_DRIVER_SAFETY_MARGIN,
 } from "./masters";
 import { generatePartsForModules, resetPartIds } from "./parts";
@@ -59,13 +58,7 @@ export function calculateHpl(parts: Part[]): { results: SheetResult[]; issues: I
   for (const [hplId, faceParts] of hplFaceParts(parts)) {
     const hpl = findHpl(hplId);
     if (!hpl) continue;
-    const { layouts, unplaced } = nestParts(
-      faceParts,
-      hpl.panjang_mm,
-      hpl.lebar_mm,
-      3,
-      hplId,
-    );
+    const { layouts, unplaced } = nestParts(faceParts, hpl.panjang_mm, hpl.lebar_mm, 3, hplId);
     for (const name of new Set(unplaced)) {
       issues.push({
         severity: "error",
@@ -219,9 +212,15 @@ export function calculateHardware(
       addHw(map, "hanger-rod", factor, `${mod.name}: 1 hanger rod per hanging section`);
     }
     if (
-      ["base_cabinet", "wall_cabinet", "tall_cabinet", "wardrobe", "floating_cabinet", "shelf_unit", "drawer_module"].includes(
-        mod.kind,
-      )
+      [
+        "base_cabinet",
+        "wall_cabinet",
+        "tall_cabinet",
+        "wardrobe",
+        "floating_cabinet",
+        "shelf_unit",
+        "drawer_module",
+      ].includes(mod.kind)
     ) {
       const joints = 2 + mod.shelves;
       addHw(
@@ -363,11 +362,7 @@ export function validateItem(item: FurnitureItem): Issue[] {
         moduleId: mod.id,
       });
     }
-    if (
-      mod.doors > 0 &&
-      !mod.finish.doorFaceA.hplId &&
-      !mod.finish.doorFaceB.hplId
-    ) {
+    if (mod.doors > 0 && !mod.finish.doorFaceA.hplId && !mod.finish.doorFaceB.hplId) {
       issues.push({
         severity: "warning",
         code: "HPL_FACE_NOT_SELECTED",
@@ -422,7 +417,6 @@ export function validateItem(item: FurnitureItem): Issue[] {
     });
   }
   return issues;
-
 }
 
 /* ------------------------------------------------------------------ */
@@ -535,12 +529,12 @@ export function collectAssumptions(item: FurnitureItem): Assumption[] {
   out.push({
     key: "mode",
     label: "Mode perhitungan lembar",
-    value: item.sheetMode === "potong" ? "Estimasi Potong (nesting)" : "Estimasi Cepat (area-based)",
+    value:
+      item.sheetMode === "potong" ? "Estimasi Potong (nesting)" : "Estimasi Cepat (area-based)",
     isDefault: item.sheetMode === "cepat",
   });
   return out;
 }
-
 
 /* ------------------------------------------------------------------ */
 /* MAIN ENGINE                                                         */
@@ -631,11 +625,11 @@ export function calculateItem(item: FurnitureItem): CalculationResult {
 function traceForSheets(s: SheetResult, parts: Part[]): string[] {
   const names = new Set(s.layouts.flatMap((l) => l.placed.map((p) => p.partId)));
   const related = parts.filter(
-    (p) => p.material_id === s.materialId || names.has(p.id) || names.has(`${p.id}-hpl-${s.materialId}`),
+    (p) =>
+      p.material_id === s.materialId || names.has(p.id) || names.has(`${p.id}-hpl-${s.materialId}`),
   );
   const lines = related.map(
-    (p) =>
-      `${p.module_name} — ${p.part_name}: ${p.qty} pcs @ ${p.length_mm} × ${p.width_mm} mm`,
+    (p) => `${p.module_name} — ${p.part_name}: ${p.qty} pcs @ ${p.length_mm} × ${p.width_mm} mm`,
   );
   if (s.layouts.length > 0) {
     lines.push(

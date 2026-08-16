@@ -103,13 +103,15 @@ describe("sumber ringkas", () => {
   it("tidak menampilkan hal. 1 pada gambar satu halaman", () => {
     const s = strict([m({ page: 1, view: "TAMPAK ATAS (TOP VIEW)", source_text: "1600" })]);
     expect(isMultiPage(s)).toBe(false);
-    expect(formatSource(s.sections[0]!.measurements[0]!, false)).toBe('Tampak Atas · “1600”');
+    expect(formatSource(s.sections[0]!.measurements[0]!, false)).toBe("Tampak Atas · “1600”");
   });
 
   it("menampilkan halaman pada gambar multi-halaman", () => {
     const s = strict([m({ page: 3, view: "DETAIL KABINET", source_text: "550" })]);
     expect(isMultiPage(s)).toBe(true);
-    expect(formatSource(s.sections[0]!.measurements[0]!, true)).toBe('Hal. 3 · Detail Kabinet · “550”');
+    expect(formatSource(s.sections[0]!.measurements[0]!, true)).toBe(
+      "Hal. 3 · Detail Kabinet · “550”",
+    );
   });
 });
 

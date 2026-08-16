@@ -1,3 +1,4 @@
+import { routeExtraction } from "./ai-router";
 import type {
   ExtractedCount,
   ExtractedMeasurement,
@@ -8,8 +9,7 @@ import type {
   StrictExtractionResult,
 } from "./types";
 
-const MODEL = "google/gemini-3-flash-preview";
-const ENDPOINT = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const MODEL = "internal";
 
 /**
  * STRICT DRAWING READING MODE.
@@ -197,7 +197,7 @@ export function normalizeStrictResult(parsed: unknown): StrictExtractionResult {
   }
 
   return {
-    provider: "Lovable AI Gateway",
+    provider: "AI Vision",
     model: MODEL,
     sections,
     needs_confirmation: Array.from(new Set([...strArray(root["needs_confirmation"]), ...auto])),
@@ -222,61 +222,18 @@ function statusLabel(s: ExtractionStatus): string {
   }
 }
 
-function contentBlock(mime: string, dataUrl: string, name: string) {
-  const isPdf =
-    mime === "application/pdf" ||
-    dataUrl.startsWith("data:application/pdf") ||
-    name.toLowerCase().endsWith(".pdf");
-  if (isPdf) {
-    // Provider menolak MIME yang salah; pastikan data URL menyatakan PDF.
-    const normalized = dataUrl.startsWith("data:application/pdf")
-      ? dataUrl
-      : `data:application/pdf;base64,${dataUrl.split(",")[1] ?? ""}`;
-    return { type: "file", file: { filename: name, file_data: normalized } };
-  }
-  return { type: "image_url", image_url: { url: dataUrl } };
-}
-
-
 export async function readDrawingStrict(input: {
   name: string;
   mime: string;
   dataUrl: string;
   category: string;
 }): Promise<StrictExtractionResult> {
-  const apiKey = process.env["LOVABLE_API_KEY"];
-  if (!apiKey) throw new Error("AI belum tersambung (LOVABLE_API_KEY tidak tersedia).");
-
-  const res = await fetch(ENDPOINT, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
-    body: JSON.stringify({
-      model: MODEL,
-      temperature: 0,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: `Baca gambar kerja berikut. Konteks kategori dari user (JANGAN dipakai untuk mengisi ukuran, hanya konteks): "${input.category}". Kembalikan JSON sesuai skema.`,
-            },
-            contentBlock(input.mime, input.dataUrl, input.name),
-          ],
-        },
-      ],
-    }),
+  const text = await routeExtraction({
+    systemPrompt: SYSTEM_PROMPT,
+    userText: `Baca gambar kerja berikut. Konteks kategori dari user (JANGAN dipakai untuk mengisi ukuran, hanya konteks): "${input.category}". Kembalikan JSON sesuai skema.`,
+    file: { name: input.name, mime: input.mime, dataUrl: input.dataUrl },
   });
 
-  if (res.status === 429) throw new Error("Batas penggunaan AI tercapai. Coba lagi nanti.");
-  if (res.status === 402) throw new Error("Kredit AI habis. Tambahkan kredit untuk melanjutkan.");
-  if (!res.ok) throw new Error(`AI Vision gagal membaca gambar (${res.status}).`);
-
-  const json = (await res.json()) as {
-    choices?: { message?: { content?: string } }[];
-  };
-  const text = json.choices?.[0]?.message?.content ?? "";
   const cleaned = text
     .replace(/^\s*```(?:json)?/i, "")
     .replace(/```\s*$/i, "")

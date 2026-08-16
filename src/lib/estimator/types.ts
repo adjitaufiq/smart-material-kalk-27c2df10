@@ -177,7 +177,6 @@ export interface ModuleSpec {
   led?: { enabled: boolean; length_mm: number; watt_per_m: number; segments: number } | undefined;
 }
 
-
 export interface Part {
   id: string;
   part_name: string;
@@ -321,7 +320,6 @@ export interface Briefing {
   notes: string;
 }
 
-
 export interface DrawingRef {
   id: string;
   name: string;
@@ -385,7 +383,6 @@ export interface GeneratedDesignOption {
   /** perbedaan terhadap input user — wajib disetujui sebelum dipakai */
   requirement_changes: RequirementChange[];
 }
-
 
 export interface ProjectRevision {
   id: string;
