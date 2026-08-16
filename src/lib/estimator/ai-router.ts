@@ -87,7 +87,19 @@ export async function routeExtraction(
   const pool = deps.pool ?? globalPool;
   const log = deps.log ?? ((entry) => console.info("[extraction-router]", entry));
 
-  const model = env["GEMINI_MODEL"]?.trim() || DEFAULT_GEMINI_MODEL;
+  const fileCheck = checkFile(req.file);
+  if (!fileCheck.ok) {
+    log({ outcome: "invalid_file", reason: fileCheck.reason, mime: req.file.mime });
+    throw new ExtractionServiceError(MSG_REQUEST);
+  }
+  const { mime, bytes } = fileCheck.payload;
+
+  const models = [
+    env["GEMINI_MODEL"]?.trim() || DEFAULT_GEMINI_MODEL,
+    ...GEMINI_MODEL_FALLBACKS,
+  ].filter((m, i, arr) => arr.indexOf(m) === i);
+  let modelIdx = 0;
+
   const keys = new Map<number, string>();
   GEMINI_KEY_NAMES.forEach((name, i) => {
     const value = env[name]?.trim();
@@ -96,36 +108,69 @@ export async function routeExtraction(
 
   let attempts = 0;
   let sawQuota = false;
+  let sawInternal = false;
 
   for (const key of availableOrder(pool, now())) {
     const apiKey = keys.get(key.index);
     if (!apiKey) continue;
-    attempts += 1;
-    const result = await callGemini({ apiKey, model, req, fetchImpl: deps.fetchImpl });
-    if (result.ok) {
-      markSuccess(pool, key, now());
+
+    // satu key boleh mencoba beberapa model bila model tidak tersedia (404)
+    let cls: ReturnType<typeof classifyFailure> = "unknown";
+    let status: number | null = null;
+    let handled = false;
+
+    while (modelIdx < models.length) {
+      const model = models[modelIdx]!;
+      attempts += 1;
+      const result = await callGemini({ apiKey, model, req, fetchImpl: deps.fetchImpl });
+      if (result.ok) {
+        markSuccess(pool, key, now());
+        log({
+          provider: "gemini",
+          keyIndex: key.index,
+          model,
+          attempts,
+          mime,
+          bytes,
+          outcome: "success",
+          fallback: false,
+        });
+        return result.text;
+      }
+      cls = classifyFailure(result.status, result.body);
+      status = result.status;
       log({
         provider: "gemini",
         keyIndex: key.index,
+        model,
         attempts,
-        outcome: "success",
-        fallback: false,
+        mime,
+        bytes,
+        status,
+        reason: cls,
+        outcome: "failed",
       });
-      return result.text;
+      if (cls === "model" && modelIdx < models.length - 1) {
+        modelIdx += 1;
+        continue;
+      }
+      handled = true;
+      break;
     }
+    if (!handled) break;
 
-    const cls = classifyFailure(result.status, result.body);
-    if (cls === "request") {
-      log({ provider: "gemini", keyIndex: key.index, attempts, outcome: "request_error" });
-      throw new ExtractionServiceError(MSG_REQUEST);
+    if (cls === "file") throw new ExtractionServiceError(MSG_REQUEST);
+    if (cls === "request" || cls === "model") {
+      sawInternal = true;
+      break;
     }
     if (cls === "quota") sawQuota = true;
-    markFailure(key, cls, `${result.status ?? "network"}`, now());
+    markFailure(key, cls, `${status ?? "network"}`, now());
     log({
       provider: "gemini",
       keyIndex: key.index,
       attempts,
-      outcome: "failed",
+      outcome: "cooldown",
       reason: cls,
       cooldownUntil: key.cooldownUntil,
     });
@@ -142,14 +187,27 @@ export async function routeExtraction(
       fetchImpl: deps.fetchImpl,
     });
     if (result.ok) {
-      log({ provider: "lovable", attempts, outcome: "success", fallback: true });
+      log({ provider: "lovable", attempts, mime, bytes, outcome: "success", fallback: true });
       return result.text;
     }
     const cls = classifyFailure(result.status, result.body);
-    log({ provider: "lovable", attempts, outcome: "failed", reason: cls, fallback: true });
-    if (cls === "request") throw new ExtractionServiceError(MSG_REQUEST);
+    log({
+      provider: "lovable",
+      attempts,
+      status: result.status,
+      mime,
+      bytes,
+      outcome: "failed",
+      reason: cls,
+      fallback: true,
+    });
+    if (cls === "file") throw new ExtractionServiceError(MSG_REQUEST);
+    if (cls === "request" || cls === "model") throw new ExtractionServiceError(MSG_INTERNAL);
     throw new ExtractionServiceError(MSG_FINAL);
   }
+
+  if (sawInternal) throw new ExtractionServiceError(MSG_INTERNAL);
+
 
   log({ attempts, outcome: "exhausted", fallback: false, sawQuota });
   if (attempts === 0 && keys.size === 0) throw new ExtractionServiceError(MSG_FINAL);
