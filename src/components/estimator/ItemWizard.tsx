@@ -515,36 +515,52 @@ function DrawingStep({
   const [busy, setBusy] = useState(false);
 
   const onUpload = async (files: FileList | null) => {
-    if (!files) return;
-    const drawings: DrawingRef[] = [];
+    if (!files || files.length === 0) return;
+    const existing = item.drawings.filter((d) => d.dataUrl);
+    const added: DrawingRef[] = [];
+    let duplicates = 0;
     for (const file of Array.from(files)) {
+      const meta = { name: file.name, size: file.size, lastModified: file.lastModified };
+      if (isDuplicateDrawing([...existing, ...added], meta)) {
+        duplicates += 1;
+        continue;
+      }
       const dataUrl = await new Promise<string>((resolve) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result));
         reader.readAsDataURL(file);
       });
-      drawings.push({
+      added.push({
         id: uid("dwg"),
         name: file.name,
         mime: resolveMime(file.name, file.type, dataUrl),
         dataUrl,
         uploadedAt: new Date().toISOString(),
+        size: file.size,
+        lastModified: file.lastModified,
       });
     }
-    // Nama file lama yang isinya hilang diganti oleh upload baru.
-    const kept = item.drawings.filter((d) => d.dataUrl);
-    patch({ drawings: [...kept, ...drawings] });
+    if (duplicates > 0) toast.error("File ini sudah ada di daftar gambar kerja.");
+    if (added.length === 0) return;
+    // File baru DITAMBAHKAN; file lama yang isinya hilang tidak dipertahankan.
+    patch({ drawings: [...existing, ...added] });
+  };
+
+  const onDeleteDrawing = (drawing: DrawingRef) => {
+    void deleteDrawingBlob(drawing.id);
+    patch({ drawings: item.drawings.filter((d) => d.id !== drawing.id) });
+    toast.success(`File ${drawing.name} dihapus.`);
   };
 
   const runExtraction = async () => {
-    const first = item.drawings.find((d) => d.dataUrl);
-    if (!first) {
+    const files = activeDrawings(item.drawings);
+    if (files.length === 0) {
       toast.error("Isi file gambar tidak tersedia. Silakan upload ulang gambar kerjanya.");
       return;
     }
     setBusy(true);
     try {
-      const extraction = await drawingExtractionService.extract(first, item.category);
+      const extraction = await drawingExtractionService.extract(files, item.category);
       patch({ extraction });
     } catch (error) {
       const message =
@@ -561,41 +577,35 @@ function DrawingStep({
 
   const hasFileContent = item.drawings.some((d) => d.dataUrl);
 
-
   const extraction = item.extraction;
+  const stale = isExtractionStale(extraction, item.drawings);
 
   return (
     <SectionCard
       title="Gambar Kerja"
-      description="Upload foto/screenshot/PDF gambar kerja. Spesifikasi pada gambar menjadi prioritas."
+      description="Upload foto/screenshot/PDF gambar kerja. Semua file dibaca sebagai satu drawing set."
     >
       <div className="space-y-3">
         <label className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border border-dashed p-6 text-center">
           <Upload className="size-5 text-muted-foreground" />
           <span className="text-sm">Pilih file gambar / PDF</span>
+          <span className="text-xs text-muted-foreground">
+            Bisa pilih beberapa file sekaligus (JPG, PNG, WEBP, PDF)
+          </span>
           <input
             type="file"
             multiple
-            accept="image/*,application/pdf"
+            aria-label="Pilih file gambar kerja"
+            accept="image/jpeg,image/png,image/webp,image/*,application/pdf"
             className="hidden"
-            onChange={(e) => void onUpload(e.target.files)}
+            onChange={(e) => {
+              void onUpload(e.target.files);
+              e.target.value = "";
+            }}
           />
         </label>
 
-        {item.drawings.length > 0 ? (
-          <ul className="space-y-1 text-xs">
-            {item.drawings.map((d) => (
-              <li key={d.id} className="flex justify-between rounded border bg-surface px-2 py-1.5">
-                <span className="truncate">{d.name}</span>
-                <span className={d.dataUrl ? "text-muted-foreground" : "text-destructive"}>
-                  {d.dataUrl
-                    ? new Date(d.uploadedAt).toLocaleDateString("id-ID")
-                    : "Perlu di-upload ulang"}
-                </span>
-              </li>
-            ))}
-          </ul>
-        ) : null}
+        <DrawingFileList drawings={item.drawings} onDelete={onDeleteDrawing} />
 
         {item.drawings.length > 0 && !hasFileContent ? (
           <p className="text-xs text-destructive">
@@ -603,6 +613,13 @@ function DrawingStep({
             menjalankan pembacaan.
           </p>
         ) : null}
+
+        {stale ? (
+          <p className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs">
+            Daftar gambar kerja berubah. Jalankan Baca Gambar Kerja ulang.
+          </p>
+        ) : null}
+
 
 
         <div className="rounded-lg border bg-surface p-3">
