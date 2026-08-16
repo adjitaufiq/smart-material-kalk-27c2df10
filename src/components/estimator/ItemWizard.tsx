@@ -6,7 +6,6 @@ import { ResultTabs } from "@/components/estimator/ResultTabs";
 import {
   ConfidenceDot,
   CountInput,
-
   DimensionInput,
   IssueList,
   SectionCard,
@@ -27,7 +26,17 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ExtractionReview } from "@/components/estimator/ExtractionReview";
-import { AiUnavailableError, designGenerationService, drawingExtractionService } from "@/lib/estimator/ai";
+import { DrawingMaterialEditor, DrawingModelView } from "@/components/estimator/DrawingComponents";
+import {
+  buildConfirmedSnapshot,
+  materialStateFromModel,
+  modelFromSnapshot,
+} from "@/lib/estimator/drawing-model";
+import {
+  AiUnavailableError,
+  designGenerationService,
+  drawingExtractionService,
+} from "@/lib/estimator/ai";
 import { calculateItem } from "@/lib/estimator/engine";
 import { missingCriticalDimensions } from "@/lib/estimator/extraction-review";
 import { materialLabel } from "@/lib/estimator/terminology";
@@ -106,7 +115,6 @@ export function ItemWizard({
     notes: "",
   };
   const setBrief = (p: Partial<Briefing>) => patch({ briefing: { ...brief, ...p } });
-
 
   return (
     <div className="space-y-4">
@@ -189,9 +197,24 @@ export function ItemWizard({
               />
             </div>
             <div className="mt-3 grid gap-3 sm:grid-cols-4">
-              <CountInput label="Jumlah pintu" value={brief.doors} onChange={(v) => setBrief({ doors: v })} placeholder="contoh: 4" />
-              <CountInput label="Jumlah laci" value={brief.drawers} onChange={(v) => setBrief({ drawers: v })} placeholder="contoh: 2" />
-              <CountInput label="Jumlah shelf" value={brief.shelves} onChange={(v) => setBrief({ shelves: v })} placeholder="contoh: 3" />
+              <CountInput
+                label="Jumlah pintu"
+                value={brief.doors}
+                onChange={(v) => setBrief({ doors: v })}
+                placeholder="contoh: 4"
+              />
+              <CountInput
+                label="Jumlah laci"
+                value={brief.drawers}
+                onChange={(v) => setBrief({ drawers: v })}
+                placeholder="contoh: 2"
+              />
+              <CountInput
+                label="Jumlah shelf"
+                value={brief.shelves}
+                onChange={(v) => setBrief({ shelves: v })}
+                placeholder="contoh: 3"
+              />
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">Tipe pintu</Label>
                 <Select
@@ -229,28 +252,31 @@ export function ItemWizard({
       ) : null}
 
       {step === 2 ? (
-        <ModelStep
-          item={item}
-          brief={brief}
-          patch={patch}
-          onNext={() => setStep(3)}
-        />
+        <ModelStep item={item} brief={brief} patch={patch} onNext={() => setStep(3)} />
       ) : null}
 
       {step === 3 ? (
         <SectionCard
           title="Material & Konstruksi"
-          description="Spesifikasi gambar kerja selalu menang atas default template."
+          description={
+            item.drawingComponents && item.drawingComponents.length > 0
+              ? "Mengikuti Gambar Kerja. Field yang tidak tercantum pada gambar tetap kosong sampai Anda mengisinya."
+              : "Spesifikasi gambar kerja selalu menang atas default template."
+          }
         >
           <div className="space-y-4">
+            {item.drawingComponents && item.drawingComponents.length > 0 ? (
+              <DrawingMaterialEditor
+                components={item.drawingComponents}
+                onChange={(next) => patch({ drawingComponents: next })}
+              />
+            ) : null}
             {item.modules.map((mod) => (
               <ModuleEditor
                 key={mod.id}
                 mod={mod}
                 onChange={(p) => patchModule(mod.id, p)}
-                onRemove={() =>
-                  patch({ modules: item.modules.filter((m) => m.id !== mod.id) })
-                }
+                onRemove={() => patch({ modules: item.modules.filter((m) => m.id !== mod.id) })}
               />
             ))}
             <AddModule
@@ -333,9 +359,7 @@ export function ItemWizard({
                 checked={item.confirmedDimensions}
                 onCheckedChange={(v) => patch({ confirmedDimensions: Boolean(v) })}
               />
-              <span>
-                Saya mengonfirmasi seluruh ukuran di atas sudah benar.
-              </span>
+              <span>Saya mengonfirmasi seluruh ukuran di atas sudah benar.</span>
             </label>
             <label className="flex items-start gap-2 rounded-lg border p-3 text-sm">
               <Checkbox
@@ -447,9 +471,7 @@ function DrawingStep({
       patch({ extraction });
     } catch (error) {
       toast.error(
-        error instanceof AiUnavailableError
-          ? error.message
-          : "Ekstraksi gambar gagal dijalankan.",
+        error instanceof AiUnavailableError ? error.message : "Ekstraksi gambar gagal dijalankan.",
       );
     } finally {
       setBusy(false);
@@ -491,7 +513,9 @@ function DrawingStep({
 
         <div className="rounded-lg border bg-surface p-3">
           <div className="flex items-center gap-2">
-            <ConfidenceDot level={extraction ? (extraction.confirmed_by_user ? "green" : "yellow") : "red"} />
+            <ConfidenceDot
+              level={extraction ? (extraction.confirmed_by_user ? "green" : "yellow") : "red"}
+            />
             <p className="text-sm font-medium">Hasil Pembacaan Gambar Kerja</p>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
@@ -511,11 +535,7 @@ function DrawingStep({
           {extraction ? (
             <div className="mt-3 space-y-3">
               {extraction.strict ? (
-                <ExtractionReview
-                  strict={extraction.strict}
-                  brief={brief}
-                  setBrief={setBrief}
-                />
+                <ExtractionReview strict={extraction.strict} brief={brief} setBrief={setBrief} />
               ) : (
                 <ul className="space-y-1 text-xs">
                   {extraction.normalized.map((f) => (
@@ -534,21 +554,33 @@ function DrawingStep({
                 onClick={() => {
                   const missing = missingCriticalDimensions(brief);
                   if (missing.length > 0) {
-                    toast.error(
-                      `Masih ada ukuran yang perlu dilengkapi: ${missing.join(", ")}.`,
-                    );
+                    toast.error(`Masih ada ukuran yang perlu dilengkapi: ${missing.join(", ")}.`);
                     document
                       .getElementById("perlu-dikonfirmasi")
                       ?.scrollIntoView({ behavior: "smooth", block: "center" });
                     return;
                   }
+                  const snapshot = extraction.strict
+                    ? buildConfirmedSnapshot(extraction.strict)
+                    : null;
                   patch({
                     extraction: {
                       ...extraction,
                       confirmed_by_user: true,
                       confirmed_at: new Date().toISOString(),
                     },
+                    ...(snapshot
+                      ? {
+                          drawingSnapshot: snapshot,
+                          drawingComponents: materialStateFromModel(modelFromSnapshot(snapshot)),
+                        }
+                      : {}),
                   });
+                  toast.success(
+                    snapshot
+                      ? "Hasil gambar dikunci sebagai sumber data Model & Material."
+                      : "Hasil ekstraksi dikonfirmasi.",
+                  );
                 }}
               >
                 {extraction.confirmed_by_user
@@ -558,7 +590,6 @@ function DrawingStep({
             </div>
           ) : null}
         </div>
-
 
         <Button className="w-full" onClick={onNext}>
           Lanjut ke Model
@@ -582,12 +613,24 @@ function ModelStep({
   const options = item.designOptions;
   const [approved, setApproved] = useState<Record<string, boolean>>({});
 
-
   return (
     <div className="space-y-4">
+      {item.drawingSnapshot ? (
+        <SectionCard
+          title="Struktur dari Gambar Kerja"
+          description="Cerminan 1:1 hasil pembacaan gambar yang Anda konfirmasi. Tidak ada komponen yang digabung, dipecah, atau ditambahkan."
+        >
+          <DrawingModelView snapshot={item.drawingSnapshot} />
+        </SectionCard>
+      ) : null}
+
       <SectionCard
-        title="Struktur Furniture"
-        description="Modul dibuat dari ukuran terstruktur, bukan dari menebak gambar."
+        title={item.drawingSnapshot ? "Modul Kalkulasi (opsional)" : "Struktur Furniture"}
+        description={
+          item.drawingSnapshot
+            ? "Hanya dipakai bila Anda memilih melengkapi data dengan default konstruksi. Tidak dijalankan otomatis."
+            : "Modul dibuat dari ukuran terstruktur, bukan dari menebak gambar."
+        }
       >
         <div className="flex flex-wrap gap-2">
           <Button
@@ -599,7 +642,7 @@ function ModelStep({
             }
             disabled={!brief.width_mm}
           >
-            Susun Modul dari Ukuran
+            {item.drawingSnapshot ? "Gunakan Default Konstruksi" : "Susun Modul dari Ukuran"}
           </Button>
           {!item.hasDrawing ? (
             <Button
@@ -699,9 +742,7 @@ function ModelStep({
                     </div>
                     <Button
                       size="sm"
-                      disabled={
-                        opt.requirement_changes.length > 0 && !(approved[opt.id] ?? false)
-                      }
+                      disabled={opt.requirement_changes.length > 0 && !(approved[opt.id] ?? false)}
                       onClick={() => {
                         const res = applyDesignOption(item, opt, approved[opt.id] ?? false);
                         if (res.blocked) return;
@@ -715,7 +756,6 @@ function ModelStep({
                       Gunakan Model Ini
                     </Button>
                   </div>
-
                 </div>
               );
             })}
@@ -723,7 +763,11 @@ function ModelStep({
         </SectionCard>
       ) : null}
 
-      <Button className="w-full" disabled={item.modules.length === 0} onClick={onNext}>
+      <Button
+        className="w-full"
+        disabled={item.modules.length === 0 && !item.drawingSnapshot}
+        onClick={onNext}
+      >
         Lanjut ke Material
       </Button>
     </div>
@@ -753,9 +797,21 @@ function ModuleEditor({
       </div>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-3">
-        <DimensionInput label="Width" value_mm={mod.width_mm} onChange={(v) => onChange({ width_mm: v ?? 0 })} />
-        <DimensionInput label="Height" value_mm={mod.height_mm} onChange={(v) => onChange({ height_mm: v ?? 0 })} />
-        <DimensionInput label="Depth" value_mm={mod.depth_mm} onChange={(v) => onChange({ depth_mm: v ?? 0 })} />
+        <DimensionInput
+          label="Width"
+          value_mm={mod.width_mm}
+          onChange={(v) => onChange({ width_mm: v ?? 0 })}
+        />
+        <DimensionInput
+          label="Height"
+          value_mm={mod.height_mm}
+          onChange={(v) => onChange({ height_mm: v ?? 0 })}
+        />
+        <DimensionInput
+          label="Depth"
+          value_mm={mod.depth_mm}
+          onChange={(v) => onChange({ depth_mm: v ?? 0 })}
+        />
       </div>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-4">
@@ -784,7 +840,10 @@ function ModuleEditor({
           label="Construction template"
           value={mod.templateId}
           onChange={(v) => onChange({ templateId: v })}
-          options={CONSTRUCTION_TEMPLATES.map((t) => ({ value: t.id, label: `${t.nama} — ${t.kode}` }))}
+          options={CONSTRUCTION_TEMPLATES.map((t) => ({
+            value: t.id,
+            label: `${t.nama} — ${t.kode}`,
+          }))}
         />
         <Pick
           label="Tipe pintu"
@@ -802,12 +861,17 @@ function ModuleEditor({
           label="Material body"
           value={mod.bodyMaterialId}
           onChange={(v) => onChange({ bodyMaterialId: v })}
-          options={MATERIAL_MASTER.map((m) => ({ value: m.id, label: materialLabel(m.nama_material) }))}
+          options={MATERIAL_MASTER.map((m) => ({
+            value: m.id,
+            label: materialLabel(m.nama_material),
+          }))}
         />
         <Pick
           label="Material back panel"
           value={mod.backMaterialId ?? "none"}
-          onChange={(v) => onChange({ backMaterialId: v === "none" ? null : v, hasBack: v !== "none" })}
+          onChange={(v) =>
+            onChange({ backMaterialId: v === "none" ? null : v, hasBack: v !== "none" })
+          }
           options={[
             { value: "none", label: "Tanpa back panel" },
             ...MATERIAL_MASTER.map((m) => ({ value: m.id, label: materialLabel(m.nama_material) })),
