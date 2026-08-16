@@ -249,9 +249,19 @@ export function ItemWizard({
       {step === 3 ? (
         <SectionCard
           title="Material & Konstruksi"
-          description="Spesifikasi gambar kerja selalu menang atas default template."
+          description={
+            item.drawingComponents && item.drawingComponents.length > 0
+              ? "Mengikuti Gambar Kerja. Field yang tidak tercantum pada gambar tetap kosong sampai Anda mengisinya."
+              : "Spesifikasi gambar kerja selalu menang atas default template."
+          }
         >
           <div className="space-y-4">
+            {item.drawingComponents && item.drawingComponents.length > 0 ? (
+              <DrawingMaterialEditor
+                components={item.drawingComponents}
+                onChange={(next) => patch({ drawingComponents: next })}
+              />
+            ) : null}
             {item.modules.map((mod) => (
               <ModuleEditor
                 key={mod.id}
@@ -610,9 +620,22 @@ function ModelStep({
 
   return (
     <div className="space-y-4">
+      {item.drawingSnapshot ? (
+        <SectionCard
+          title="Struktur dari Gambar Kerja"
+          description="Cerminan 1:1 hasil pembacaan gambar yang Anda konfirmasi. Tidak ada komponen yang digabung, dipecah, atau ditambahkan."
+        >
+          <DrawingModelView snapshot={item.drawingSnapshot} />
+        </SectionCard>
+      ) : null}
+
       <SectionCard
-        title="Struktur Furniture"
-        description="Modul dibuat dari ukuran terstruktur, bukan dari menebak gambar."
+        title={item.drawingSnapshot ? "Modul Kalkulasi (opsional)" : "Struktur Furniture"}
+        description={
+          item.drawingSnapshot
+            ? "Hanya dipakai bila Anda memilih melengkapi data dengan default konstruksi. Tidak dijalankan otomatis."
+            : "Modul dibuat dari ukuran terstruktur, bukan dari menebak gambar."
+        }
       >
         <div className="flex flex-wrap gap-2">
           <Button
@@ -624,7 +647,7 @@ function ModelStep({
             }
             disabled={!brief.width_mm}
           >
-            Susun Modul dari Ukuran
+            {item.drawingSnapshot ? "Gunakan Default Konstruksi" : "Susun Modul dari Ukuran"}
           </Button>
           {!item.hasDrawing ? (
             <Button
@@ -748,7 +771,11 @@ function ModelStep({
         </SectionCard>
       ) : null}
 
-      <Button className="w-full" disabled={item.modules.length === 0} onClick={onNext}>
+      <Button
+        className="w-full"
+        disabled={item.modules.length === 0 && !item.drawingSnapshot}
+        onClick={onNext}
+      >
         Lanjut ke Material
       </Button>
     </div>
