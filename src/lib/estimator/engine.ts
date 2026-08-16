@@ -438,14 +438,14 @@ export function collectAssumptions(item: FurnitureItem): Assumption[] {
     out.push({
       key: `${mod.id}-body`,
       label: `${mod.name} — Body`,
-      value: materialLabel(body?.nama_material) ?? "belum dipilih",
+      value: body ? materialLabel(body.nama_material) : "belum dipilih",
       isDefault: body?.id === tpl?.body_material_id,
     });
     if (mod.hasBack) {
       out.push({
         key: `${mod.id}-back`,
         label: `${mod.name} — Back panel`,
-        value: materialLabel(back?.nama_material) ?? "belum dipilih",
+        value: back ? materialLabel(back.nama_material) : "belum dipilih",
         isDefault: back?.id === tpl?.back_material_id,
       });
     }
@@ -493,7 +493,7 @@ export function collectAssumptions(item: FurnitureItem): Assumption[] {
       out.push({
         key: `${mod.id}-drawer`,
         label: `${mod.name} — Konstruksi laci`,
-        value: `Box plywood 12 mm, dasar plywood 4 mm, clearance rel 13 mm/sisi${rel ? `, rel ${rel.brand} ${rel.nama}` : ""}`,
+        value: `Box triplek 12 mm, dasar triplek 4 mm, clearance rel 13 mm/sisi${rel ? `, rel ${rel.brand} ${rel.nama}` : ""}`,
         isDefault: true,
       });
     }

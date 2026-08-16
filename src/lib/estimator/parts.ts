@@ -294,7 +294,7 @@ export function generateParts(mod: ModuleSpec): Part[] {
         length_mm: H,
         width_mm: D,
         materialId: mod.bodyMaterialId,
-        derivation: `Kaki panel plywood ${H} × ${D} mm`,
+        derivation: `Kaki panel triplek ${H} × ${D} mm`,
       }),
       build(mod, {
         name: "Apron / Pengaku",
