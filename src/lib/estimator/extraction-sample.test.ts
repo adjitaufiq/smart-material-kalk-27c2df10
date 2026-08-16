@@ -116,8 +116,10 @@ describe("sample ground truth — meja kantor", () => {
 
     const names = snapshot.components.map((c) => c.name.toLowerCase());
     expect(names.some((n) => n.includes("top"))).toBe(true);
-    expect(names.filter((n) => n.includes("kaki"))).toHaveLength(2);
+    expect(names.filter((n) => n.includes("kiri"))).toHaveLength(1);
+    expect(names.filter((n) => n.includes("kanan"))).toHaveLength(1);
     expect(names.some((n) => n.includes("modesty"))).toBe(true);
+
 
     // tidak ada hardware / edging yang dikarang
     for (const comp of snapshot.components) {
