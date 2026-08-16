@@ -440,7 +440,7 @@ function DrawingStep({
     if (!first) return;
     setBusy(true);
     try {
-      const extraction = await drawingExtractionService.extract(first);
+      const extraction = await drawingExtractionService.extract(first, item.category);
       patch({ extraction });
     } catch (error) {
       toast.error(
