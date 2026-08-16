@@ -122,8 +122,9 @@ describe("sample ground truth — meja kantor", () => {
     // tidak ada hardware / edging yang dikarang
     for (const comp of snapshot.components) {
       expect(comp.edging.value).toBeNull();
-      expect(comp.doors.value).toBeNull();
-      expect(comp.drawers.value).toBeNull();
+      expect(comp.hplBrand.value).toBeNull();
+      expect(comp.hplCode.value).toBeNull();
+
       expect(comp.hardware.value).toBeNull();
     }
   });
