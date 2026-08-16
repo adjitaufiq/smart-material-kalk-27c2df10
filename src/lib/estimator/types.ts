@@ -326,6 +326,10 @@ export interface DrawingRef {
   mime: string;
   dataUrl: string;
   uploadedAt: string;
+  /** ukuran file asli (byte), untuk deteksi duplikat & tampilan list */
+  size?: number | undefined;
+  /** lastModified file asli, untuk deteksi duplikat */
+  lastModified?: number | undefined;
 }
 
 export interface ExtractedField {
@@ -351,6 +355,8 @@ export interface DrawingExtraction {
   created_at: string;
   /** hasil pembacaan gambar mode ketat (source-bound) */
   strict?: StrictExtractionResult | null | undefined;
+  /** seluruh file gambar kerja yang ikut dibaca sebagai satu drawing set */
+  drawingIds?: string[] | undefined;
 }
 
 export interface RequirementChange {
@@ -443,6 +449,9 @@ export interface ExtractedMeasurement {
   source_text: string | null;
   view: string | null;
   page: number | null;
+  /** file sumber pada drawing set (bila terdeteksi) */
+  source_file_id?: string | null | undefined;
+  source_file_name?: string | null | undefined;
   status: ExtractionStatus;
   confidence: number;
   /** untuk AMBIGUOUS/CONFLICT: kandidat nilai yang terbaca */
