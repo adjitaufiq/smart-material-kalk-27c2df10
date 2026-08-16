@@ -9,7 +9,7 @@ import type {
   StrictExtractionResult,
 } from "./types";
 
-const MODEL = "gemini/lovable-router";
+const MODEL = "internal";
 
 /**
  * STRICT DRAWING READING MODE.
@@ -197,7 +197,7 @@ export function normalizeStrictResult(parsed: unknown): StrictExtractionResult {
   }
 
   return {
-    provider: "Lovable AI Gateway",
+    provider: "AI Vision",
     model: MODEL,
     sections,
     needs_confirmation: Array.from(new Set([...strArray(root["needs_confirmation"]), ...auto])),
