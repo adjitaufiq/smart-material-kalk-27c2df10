@@ -9,7 +9,9 @@ export type FailureClass =
   | "quota" // 429 / RESOURCE_EXHAUSTED / QUOTA_EXCEEDED
   | "transient" // 5xx / timeout / network
   | "auth" // 401 / 403 / invalid key
-  | "request" // 400 / payload salah -> JANGAN rotate
+  | "request" // 400 / payload salah -> JANGAN rotate key
+  | "file" // file benar-benar tidak valid -> minta upload ulang
+  | "model" // model tidak tersedia / 404 -> coba model lain, JANGAN bakar key
   | "unknown";
 
 export interface KeyState {
@@ -21,7 +23,9 @@ export interface KeyState {
   lastSuccessAt: number | null;
 }
 
-export const COOLDOWN_MS: Record<Exclude<FailureClass, "request">, number> = {
+export type CooldownClass = Exclude<FailureClass, "request" | "file" | "model">;
+
+export const COOLDOWN_MS: Record<CooldownClass, number> = {
   quota: 5 * 60_000,
   auth: 30 * 60_000,
   transient: 60_000,
@@ -82,7 +86,7 @@ export function markSuccess(pool: ProviderPool, key: KeyState, now: number): voi
 
 export function markFailure(
   key: KeyState,
-  cls: Exclude<FailureClass, "request">,
+  cls: CooldownClass,
   reason: string,
   now: number,
 ): void {
@@ -98,6 +102,15 @@ export function markFailure(
 /** Klasifikasi error provider berdasarkan status HTTP dan pesan. */
 export function classifyFailure(status: number | null, body: string): FailureClass {
   const text = body.toLowerCase();
+  if (status === 0 || text.startsWith("invalid_file:")) return "file";
+  if (
+    status === 404 ||
+    text.includes("no longer available") ||
+    text.includes("is not found for api version") ||
+    (text.includes("not_found") && text.includes("model"))
+  ) {
+    return "model";
+  }
   if (
     status === 429 ||
     text.includes("resource_exhausted") ||
@@ -117,6 +130,6 @@ export function classifyFailure(status: number | null, body: string): FailureCla
   }
   if (status !== null && status >= 500) return "transient";
   if (status === null) return "transient"; // network/timeout
-  if (status === 400 || status === 404 || status === 422) return "request";
+  if (status === 400 || status === 422) return "request";
   return "unknown";
 }
