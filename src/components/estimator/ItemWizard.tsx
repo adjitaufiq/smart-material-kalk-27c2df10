@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { ExtractionReview } from "@/components/estimator/ExtractionReview";
 import { AiUnavailableError, designGenerationService, drawingExtractionService } from "@/lib/estimator/ai";
 import { calculateItem } from "@/lib/estimator/engine";
 import { dualDim } from "@/lib/estimator/units";
