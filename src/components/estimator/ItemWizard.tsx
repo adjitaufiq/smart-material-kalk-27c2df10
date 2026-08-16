@@ -427,6 +427,20 @@ function NumField({
   );
 }
 
+/** Sebagian browser mengirim tipe file kosong; deteksi ulang dari ekstensi/data URL. */
+function resolveMime(name: string, type: string, dataUrl: string): string {
+  if (type && type !== "application/octet-stream") return type;
+  const fromDataUrl = /^data:([^;,]+)[;,]/.exec(dataUrl)?.[1];
+  if (fromDataUrl && fromDataUrl !== "application/octet-stream") return fromDataUrl;
+  const ext = name.split(".").pop()?.toLowerCase() ?? "";
+  if (ext === "pdf") return "application/pdf";
+  if (ext === "png") return "image/png";
+  if (ext === "webp") return "image/webp";
+  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+  return type || "application/octet-stream";
+}
+
+
 function DrawingStep({
   item,
   patch,
@@ -454,29 +468,41 @@ function DrawingStep({
       drawings.push({
         id: uid("dwg"),
         name: file.name,
-        mime: file.type,
+        mime: resolveMime(file.name, file.type, dataUrl),
         dataUrl,
         uploadedAt: new Date().toISOString(),
       });
     }
-    patch({ drawings: [...item.drawings, ...drawings] });
+    // Nama file lama yang isinya hilang diganti oleh upload baru.
+    const kept = item.drawings.filter((d) => d.dataUrl);
+    patch({ drawings: [...kept, ...drawings] });
   };
 
   const runExtraction = async () => {
-    const first = item.drawings[0];
-    if (!first) return;
+    const first = item.drawings.find((d) => d.dataUrl);
+    if (!first) {
+      toast.error("Isi file gambar tidak tersedia. Silakan upload ulang gambar kerjanya.");
+      return;
+    }
     setBusy(true);
     try {
       const extraction = await drawingExtractionService.extract(first, item.category);
       patch({ extraction });
     } catch (error) {
-      toast.error(
-        error instanceof AiUnavailableError ? error.message : "Ekstraksi gambar gagal dijalankan.",
-      );
+      const message =
+        error instanceof AiUnavailableError
+          ? error.message
+          : error instanceof Error && error.message
+            ? error.message
+            : "Ekstraksi gambar gagal dijalankan.";
+      toast.error(message);
     } finally {
       setBusy(false);
     }
   };
+
+  const hasFileContent = item.drawings.some((d) => d.dataUrl);
+
 
   const extraction = item.extraction;
 
@@ -503,13 +529,23 @@ function DrawingStep({
             {item.drawings.map((d) => (
               <li key={d.id} className="flex justify-between rounded border bg-surface px-2 py-1.5">
                 <span className="truncate">{d.name}</span>
-                <span className="text-muted-foreground">
-                  {new Date(d.uploadedAt).toLocaleDateString("id-ID")}
+                <span className={d.dataUrl ? "text-muted-foreground" : "text-destructive"}>
+                  {d.dataUrl
+                    ? new Date(d.uploadedAt).toLocaleDateString("id-ID")
+                    : "Perlu di-upload ulang"}
                 </span>
               </li>
             ))}
           </ul>
         ) : null}
+
+        {item.drawings.length > 0 && !hasFileContent ? (
+          <p className="text-xs text-destructive">
+            Isi file gambar tidak tersedia lagi di perangkat ini. Upload ulang gambar kerjanya untuk
+            menjalankan pembacaan.
+          </p>
+        ) : null}
+
 
         <div className="rounded-lg border bg-surface p-3">
           <div className="flex items-center gap-2">
@@ -526,7 +562,7 @@ function DrawingStep({
             size="sm"
             variant="outline"
             className="mt-2"
-            disabled={busy || item.drawings.length === 0}
+            disabled={busy || !hasFileContent}
             onClick={() => void runExtraction()}
           >
             <Sparkles /> {busy ? "Membaca gambar…" : "Baca Gambar Kerja"}

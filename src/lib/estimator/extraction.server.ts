@@ -223,11 +223,20 @@ function statusLabel(s: ExtractionStatus): string {
 }
 
 function contentBlock(mime: string, dataUrl: string, name: string) {
-  if (mime === "application/pdf" || dataUrl.startsWith("data:application/pdf")) {
-    return { type: "file", file: { filename: name, file_data: dataUrl } };
+  const isPdf =
+    mime === "application/pdf" ||
+    dataUrl.startsWith("data:application/pdf") ||
+    name.toLowerCase().endsWith(".pdf");
+  if (isPdf) {
+    // Provider menolak MIME yang salah; pastikan data URL menyatakan PDF.
+    const normalized = dataUrl.startsWith("data:application/pdf")
+      ? dataUrl
+      : `data:application/pdf;base64,${dataUrl.split(",")[1] ?? ""}`;
+    return { type: "file", file: { filename: name, file_data: normalized } };
   }
   return { type: "image_url", image_url: { url: dataUrl } };
 }
+
 
 export async function readDrawingStrict(input: {
   name: string;

@@ -12,7 +12,9 @@ import { newFurnitureItem } from "@/lib/estimator/factory";
 import { FURNITURE_CATEGORIES } from "@/lib/estimator/masters";
 import type { FurnitureItem, Project } from "@/lib/estimator/types";
 import { rupiah } from "@/lib/estimator/units";
+import { hydrateProjectDrawings } from "@/lib/drawing-blobs";
 import { getProject, snapshotRevision, upsertProject } from "@/lib/store";
+
 import {
   Select,
   SelectContent,
@@ -46,8 +48,22 @@ function ProjectPage() {
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
 
   useEffect(() => {
-    setProject(getProject(id));
+    let cancelled = false;
+    const stored = getProject(id);
+    if (!stored) {
+      setProject(null);
+      return;
+    }
+    setProject(stored);
+    // Isi file gambar kerja disimpan di IndexedDB, bukan localStorage.
+    void hydrateProjectDrawings(stored).then((hydrated) => {
+      if (!cancelled) setProject(hydrated);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
+
 
   const save = (next: Project) => {
     setProject(next);
