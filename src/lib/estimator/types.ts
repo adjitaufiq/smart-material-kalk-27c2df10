@@ -345,6 +345,8 @@ export interface DrawingExtraction {
   confirmed_by_user: boolean;
   confirmed_at: string | null;
   created_at: string;
+  /** hasil pembacaan gambar mode ketat (source-bound) */
+  strict?: StrictExtractionResult | null | undefined;
 }
 
 export interface RequirementChange {
@@ -399,4 +401,94 @@ export interface Project {
   created_at: string;
   items: FurnitureItem[];
   revisions: ProjectRevision[];
+}
+
+// ===================== STRICT DRAWING READING MODE =====================
+// AI hanya boleh MEMBACA gambar. Tidak boleh mengarang ukuran, material,
+// jumlah pintu/laci/rak, atau memakai construction template.
+
+export type ExtractionStatus =
+  /** angka tertulis jelas pada gambar */
+  | "CONFIRMED_FROM_DRAWING"
+  /** ada indikasi tapi tidak pasti (buram, terpotong, dobel) */
+  | "AMBIGUOUS"
+  /** dua nilai berbeda untuk komponen yang sama */
+  | "CONFLICT"
+  /** tidak ada anotasi sama sekali */
+  | "NOT_FOUND";
+
+/** Dari mana nilai ini dibaca. Wajib ada, tidak boleh dikarang. */
+export type ExtractionSourceKind =
+  | "dimension_annotation"
+  | "dimension_line"
+  | "text_note"
+  | "spec_table"
+  | "title_block"
+  | "callout"
+  | "not_available";
+
+export interface ExtractedMeasurement {
+  field: string;
+  label: string;
+  /** persis seperti tertulis pada gambar, contoh "1200" atau "1,2 m" */
+  raw_value: string | null;
+  raw_unit: string | null;
+  /** hasil konversi ke mm; null bila tidak terbaca */
+  value_mm: number | null;
+  source: ExtractionSourceKind;
+  /** kutipan teks/anotasi yang dibaca */
+  source_text: string | null;
+  view: string | null;
+  page: number | null;
+  status: ExtractionStatus;
+  confidence: number;
+  /** untuk AMBIGUOUS/CONFLICT: kandidat nilai yang terbaca */
+  candidates_mm?: number[] | undefined;
+  note?: string | undefined;
+}
+
+export interface ExtractedCount {
+  label: string;
+  /** null = tidak terlihat / tidak dianotasi */
+  value: number | null;
+  source: ExtractionSourceKind;
+  source_text: string | null;
+  status: ExtractionStatus;
+  confidence: number;
+}
+
+export interface ExtractedSpec {
+  field: string;
+  label: string;
+  /** persis seperti tertulis; null bila tidak tertulis */
+  value: string | null;
+  source: ExtractionSourceKind;
+  source_text: string | null;
+  status: ExtractionStatus;
+  confidence: number;
+}
+
+export interface ExtractedSection {
+  id: string;
+  name: string;
+  /** jenis furniture yang dikenali, "TIDAK_DIKETAHUI" bila tidak yakin */
+  furniture_type: string;
+  furniture_type_confidence: number;
+  measurements: ExtractedMeasurement[];
+  counts: ExtractedCount[];
+  specs: ExtractedSpec[];
+  relations: string[];
+  notes: string[];
+}
+
+export interface StrictExtractionResult {
+  provider: string;
+  model: string;
+  sections: ExtractedSection[];
+  /** hal yang WAJIB dikonfirmasi user sebelum perhitungan */
+  needs_confirmation: string[];
+  /** konflik ukuran antar view */
+  conflicts: string[];
+  unreadable_pages: number[];
+  drawing_scale_note: string | null;
 }
