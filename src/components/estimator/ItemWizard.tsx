@@ -548,7 +548,7 @@ function DrawingStep({
             size="sm"
             variant="outline"
             className="mt-2"
-            disabled={busy || item.drawings.length === 0}
+            disabled={busy || !hasFileContent}
             onClick={() => void runExtraction()}
           >
             <Sparkles /> {busy ? "Membaca gambar…" : "Baca Gambar Kerja"}
