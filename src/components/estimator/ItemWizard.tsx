@@ -497,7 +497,12 @@ function DrawingStep({
               Alur ekstraksi sudah tersedia, tetapi tidak ada hasil AI yang dibuat-buat. Isi ukuran
               dari gambar secara manual pada langkah Material.
             </p>
-          ) : null}
+          ) : (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Mode pembacaan ketat: AI hanya membaca angka yang tertulis pada gambar. Ukuran yang
+              tidak ada tetap kosong — tidak ditebak, tidak memakai standar furniture.
+            </p>
+          )}
           <Button
             size="sm"
             variant="outline"
@@ -505,25 +510,29 @@ function DrawingStep({
             disabled={busy || item.drawings.length === 0}
             onClick={() => void runExtraction()}
           >
-            <Sparkles /> Jalankan AI Extraction
+            <Sparkles /> {busy ? "Membaca gambar…" : "Jalankan AI Extraction"}
           </Button>
 
           {extraction ? (
             <div className="mt-3 space-y-2">
-              <ul className="space-y-1 text-xs">
-                {extraction.normalized.map((f) => (
-                  <li key={f.key} className="flex justify-between gap-2 border-b pb-1">
-                    <span>{f.label}</span>
-                    <span className={f.ambiguous ? "text-destructive" : ""}>
-                      {f.ambiguous
-                        ? f.range
-                          ? `Perlu dikonfirmasi (${f.range[0]}–${f.range[1]} mm)`
-                          : "Tidak terbaca jelas"
-                        : `${f.value ?? "—"} ${f.unit ?? ""}`}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              {extraction.strict ? (
+                <ExtractionReview
+                  strict={extraction.strict}
+                  brief={brief}
+                  setBrief={setBrief}
+                />
+              ) : (
+                <ul className="space-y-1 text-xs">
+                  {extraction.normalized.map((f) => (
+                    <li key={f.key} className="flex justify-between gap-2 border-b pb-1">
+                      <span>{f.label}</span>
+                      <span className={f.ambiguous ? "text-destructive" : ""}>
+                        {f.ambiguous ? "Tidak terbaca jelas" : `${f.value ?? "—"} ${f.unit ?? ""}`}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
               <p className="text-[11px] text-muted-foreground">
                 Confidence AI {(extraction.confidence * 100).toFixed(0)}% — confidence bukan
                 pengganti konfirmasi user.
