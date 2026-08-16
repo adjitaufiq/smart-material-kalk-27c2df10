@@ -4,7 +4,9 @@ import {
   DEFAULT_GEMINI_MODEL,
   MSG_BUSY,
   MSG_FINAL,
+  MSG_INTERNAL,
   MSG_REQUEST,
+  GEMINI_MODEL_FALLBACKS,
   routeExtraction,
 } from "./ai-router";
 import { createPool } from "./provider-state";
@@ -46,16 +48,21 @@ function err(status: number, body = "") {
   return new Response(body, { status });
 }
 
-/** fetch palsu: rute berdasarkan key yang ada di URL. */
-function makeFetch(handler: (keyIndex: number | null, url: string) => Response) {
+/** fetch palsu: rute berdasarkan key pada header x-goog-api-key (bukan URL). */
+function makeFetch(handler: (keyIndex: number | null, url: string, init: RequestInit) => Response) {
   const calls: (number | null)[] = [];
-  const fetchImpl = async (url: string) => {
-    const m = /key=k(\d)/.exec(url);
+  const urls: string[] = [];
+  const inits: RequestInit[] = [];
+  const fetchImpl = async (url: string, init: RequestInit) => {
+    const headers = (init.headers ?? {}) as Record<string, string>;
+    const m = /^k(\d)$/.exec(headers["x-goog-api-key"] ?? "");
     const idx = m ? Number(m[1]) : null;
     calls.push(idx);
-    return handler(idx, url);
+    urls.push(url);
+    inits.push(init);
+    return handler(idx, url, init);
   };
-  return { fetchImpl: fetchImpl as never, calls };
+  return { fetchImpl: fetchImpl as never, calls, urls, inits };
 }
 
 describe("ai-router rotation", () => {
@@ -116,12 +123,84 @@ describe("ai-router rotation", () => {
     ).rejects.toThrow(MSG_FINAL);
   });
 
-  it("6. error 400 tidak memicu rotasi liar", async () => {
-    const { fetchImpl, calls } = makeFetch(() => err(400, "invalid image payload"));
+  it("6. error 400 tidak memicu rotasi liar & bukan pesan upload ulang", async () => {
+    const { fetchImpl, calls } = makeFetch(() => err(400, "invalid argument"));
     await expect(
-      routeExtraction(req, { env: envAll, fetchImpl, pool: createPool(5) }),
-    ).rejects.toThrow(MSG_REQUEST);
+      routeExtraction(req, {
+        env: { ...envAll, LOVABLE_AI_FALLBACK_ENABLED: "false" },
+        fetchImpl,
+        pool: createPool(5),
+      }),
+    ).rejects.toThrow(MSG_INTERNAL);
     expect(calls).toEqual([1]);
+  });
+
+  it("6b. file benar-benar invalid -> pesan upload ulang, tanpa call provider", async () => {
+    const { fetchImpl, calls } = makeFetch(() => geminiOk());
+    await expect(
+      routeExtraction(
+        { ...req, file: { name: "a.txt", mime: "text/plain", dataUrl: "data:text/plain;base64,QQ==" } },
+        { env: envAll, fetchImpl, pool: createPool(5) },
+      ),
+    ).rejects.toThrow(MSG_REQUEST);
+    expect(calls).toEqual([]);
+  });
+
+  it("6c. model 404 -> coba model cadangan pada key yang sama", async () => {
+    let seen = 0;
+    const { fetchImpl, calls, urls } = makeFetch((_i, url) => {
+      seen += 1;
+      return url.includes(DEFAULT_GEMINI_MODEL) ? err(404, "no longer available") : geminiOk();
+    });
+    const text = await routeExtraction(req, { env: envAll, fetchImpl, pool: createPool(5) });
+    expect(text).toBe(PAYLOAD);
+    expect(seen).toBe(2);
+    expect(calls).toEqual([1, 1]);
+    expect(urls[1]).toContain(GEMINI_MODEL_FALLBACKS[0]);
+  });
+
+  it("A. API key tidak pernah ada di URL, dikirim via header", async () => {
+    const { fetchImpl, urls, inits } = makeFetch(() => geminiOk());
+    await routeExtraction(req, { env: envAll, fetchImpl, pool: createPool(5) });
+    expect(urls[0]).not.toContain("k1");
+    expect(urls[0]).not.toContain("key=");
+    const headers = inits[0]!.headers as Record<string, string>;
+    expect(headers["x-goog-api-key"]).toBe("k1");
+    expect(headers["content-type"]).toBe("application/json");
+  });
+
+  it("B. payload PNG/JPEG/PDF valid & prefix data URL dibuang", async () => {
+    for (const f of [
+      { name: "a.png", mime: "image/png", dataUrl: "data:image/png;base64,QUJD" },
+      { name: "b.jpg", mime: "image/jpg", dataUrl: "data:image/jpeg;base64,QUJD" },
+      { name: "c.pdf", mime: "application/octet-stream", dataUrl: "data:application/pdf;base64,QUJD" },
+    ]) {
+      const { fetchImpl, inits } = makeFetch(() => geminiOk());
+      await routeExtraction({ ...req, file: f }, { env: envAll, fetchImpl, pool: createPool(5) });
+      const body = JSON.parse(String(inits[0]!.body)) as {
+        contents: { parts: { inline_data?: { mime_type: string; data: string } }[] }[];
+      };
+      const inline = body.contents[0]!.parts[1]!.inline_data!;
+      expect(inline.data).toBe("QUJD");
+      expect(inline.mime_type).toBe(f.name.endsWith(".pdf") ? "application/pdf" : f.name.endsWith(".png") ? "image/png" : "image/jpeg");
+    }
+  });
+
+  it("D. log diagnostik aman: index key, model, status, mime, bytes; tanpa secret", async () => {
+    const entries: Record<string, unknown>[] = [];
+    const { fetchImpl } = makeFetch((i) => (i === 1 ? err(429, "quota") : geminiOk()));
+    await routeExtraction(req, {
+      env: envAll,
+      fetchImpl,
+      pool: createPool(5),
+      log: (e) => entries.push(e),
+    });
+    const dump = JSON.stringify(entries);
+    expect(dump).not.toContain("k1");
+    expect(dump).not.toContain("AAAA");
+    expect(entries.some((e) => e["keyIndex"] === 1 && e["mime"] === "image/png")).toBe(true);
+    expect(entries.some((e) => e["status"] === 429)).toBe(true);
+    expect(entries.some((e) => typeof e["bytes"] === "number")).toBe(true);
   });
 
   it("7. invalid auth membuat key disabled dan diskip", async () => {
