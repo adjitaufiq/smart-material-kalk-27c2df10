@@ -99,11 +99,21 @@ const norm = (s: string) =>
 type DimRole = "width" | "height" | "depth" | "thickness" | "other";
 
 const DIM_ROLES: { re: RegExp; role: DimRole; key: string; label: string }[] = [
-  { re: /\b(tebal|ketebalan|thickness|thk)\b/, role: "thickness", key: "thickness", label: "Tebal" },
+  {
+    re: /\b(tebal|ketebalan|thickness|thk)\b/,
+    role: "thickness",
+    key: "thickness",
+    label: "Tebal",
+  },
   { re: /\b(depth|kedalaman|dalam)\b/, role: "depth", key: "depth", label: "Depth" },
   { re: /\b(tinggi|height)\b/, role: "height", key: "height", label: "Tinggi" },
   { re: /\b(panjang|lebar|width|length)\b/, role: "width", key: "width", label: "Panjang / Lebar" },
-  { re: /\b(inset|jarak|offset|overhang|gap)\b/, role: "other", key: "other", label: "Ukuran lain" },
+  {
+    re: /\b(inset|jarak|offset|overhang|gap)\b/,
+    role: "other",
+    key: "other",
+    label: "Ukuran lain",
+  },
 ];
 
 const OVERALL_RE = /\b(overall|keseluruhan|total|global|furniture|unit)\b/;
@@ -262,7 +272,11 @@ export function buildConfirmedSnapshot(
     for (const c of sec.counts as ExtractedCount[]) {
       if (!isConfirmed(c) || c.value === null) continue;
       const sk = specKeyOf(c.label);
-      const compName = componentNameFrom(c.label, c.label, sk ? sk.re : /\b(jumlah|qty|quantity)\b/);
+      const compName = componentNameFrom(
+        c.label,
+        c.label,
+        sk ? sk.re : /\b(jumlah|qty|quantity)\b/,
+      );
       if (compName === "" || OVERALL_RE.test(compName)) continue;
       const comp = getComponent(compName);
       if (sk?.key === "layers") {

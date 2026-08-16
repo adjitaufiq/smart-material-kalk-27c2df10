@@ -8,11 +8,7 @@ import {
   modelFromSnapshot,
   updateComponentField,
 } from "./drawing-model";
-import type {
-  ExtractedMeasurement,
-  ExtractedSpec,
-  StrictExtractionResult,
-} from "./types";
+import type { ExtractedMeasurement, ExtractedSpec, StrictExtractionResult } from "./types";
 
 const m = (field: string, label: string, value_mm: number): ExtractedMeasurement => ({
   field,
@@ -102,9 +98,9 @@ describe("confirmed extraction snapshot — Meja Kantor", () => {
 
   it("ukuran keseluruhan mirror apa adanya", () => {
     const s = snap();
-    expect([s.overall.width_mm.value, s.overall.depth_mm.value, s.overall.height_mm.value]).toEqual([
-      1600, 700, 750,
-    ]);
+    expect([s.overall.width_mm.value, s.overall.depth_mm.value, s.overall.height_mm.value]).toEqual(
+      [1600, 700, 750],
+    );
   });
 
   it("dimensi komponen tidak berubah", () => {
