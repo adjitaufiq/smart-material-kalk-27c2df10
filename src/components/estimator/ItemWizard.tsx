@@ -667,6 +667,12 @@ function DrawingStep({
                       ? {
                           drawingSnapshot: snapshot,
                           drawingComponents: materialStateFromModel(modelFromSnapshot(snapshot)),
+                          // Jalur legacy dibersihkan supaya data gambar tidak dikalahkan default lama.
+                          modules: [],
+                          designOptions: [],
+                          selectedOptionId: null,
+                          confirmedConstruction: false,
+                          confirmedDimensions: false,
                         }
                       : {}),
                   });
