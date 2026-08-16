@@ -729,6 +729,20 @@ function ModuleEditor({
         <NumField label="Shelf" value={mod.shelves} onChange={(v) => onChange({ shelves: v })} />
       </div>
 
+      {mod.doors > 0 && mod.doorType !== "none" && mod.doorType !== "sliding" ? (
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <CountInput
+            label="Engsel per pintu (override)"
+            value={mod.hingeOverride ?? null}
+            onChange={(v) => onChange({ hingeOverride: v })}
+            placeholder="kosong = aturan default"
+          />
+          <p className="self-end text-[11px] text-muted-foreground">
+            Default dihitung dari tinggi, lebar, dan berat estimasi daun pintu.
+          </p>
+        </div>
+      ) : null}
+
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <Pick
           label="Construction template"
