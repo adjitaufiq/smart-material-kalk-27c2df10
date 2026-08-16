@@ -27,6 +27,15 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ExtractionReview } from "@/components/estimator/ExtractionReview";
+import {
+  DrawingMaterialEditor,
+  DrawingModelView,
+} from "@/components/estimator/DrawingComponents";
+import {
+  buildConfirmedSnapshot,
+  materialStateFromModel,
+  modelFromSnapshot,
+} from "@/lib/estimator/drawing-model";
 import { AiUnavailableError, designGenerationService, drawingExtractionService } from "@/lib/estimator/ai";
 import { calculateItem } from "@/lib/estimator/engine";
 import { missingCriticalDimensions } from "@/lib/estimator/extraction-review";
@@ -542,13 +551,29 @@ function DrawingStep({
                       ?.scrollIntoView({ behavior: "smooth", block: "center" });
                     return;
                   }
+                  const snapshot = extraction.strict
+                    ? buildConfirmedSnapshot(extraction.strict)
+                    : null;
                   patch({
                     extraction: {
                       ...extraction,
                       confirmed_by_user: true,
                       confirmed_at: new Date().toISOString(),
                     },
+                    ...(snapshot
+                      ? {
+                          drawingSnapshot: snapshot,
+                          drawingComponents: materialStateFromModel(
+                            modelFromSnapshot(snapshot),
+                          ),
+                        }
+                      : {}),
                   });
+                  toast.success(
+                    snapshot
+                      ? "Hasil gambar dikunci sebagai sumber data Model & Material."
+                      : "Hasil ekstraksi dikonfirmasi.",
+                  );
                 }}
               >
                 {extraction.confirmed_by_user
