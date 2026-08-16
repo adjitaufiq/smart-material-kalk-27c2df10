@@ -359,7 +359,7 @@ export function buildDesignOptions(category: string, brief: Brief): GeneratedDes
       brief: {
         ...brief,
         doorType: "swing",
-        doors: Math.max(brief.doors, 4),
+        doors: Math.max(brief.doors + 2, 4),
         drawers: Math.max(brief.drawers, 4),
         shelves: Math.max(brief.shelves, 7),
       },
