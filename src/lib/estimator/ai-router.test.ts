@@ -187,7 +187,7 @@ describe("ai-router rotation", () => {
       const body = JSON.parse(String(inits[0]!.body)) as {
         contents: { parts: { inline_data?: { mime_type: string; data: string } }[] }[];
       };
-      const inline = body.contents[0]!.parts[1]!.inline_data!;
+      const inline = body.contents[0]!.parts[2]!.inline_data!;
       expect(inline.data).toBe("QUJD");
       expect(inline.mime_type).toBe(
         f.name.endsWith(".pdf")
