@@ -26,6 +26,13 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ExtractionReview } from "@/components/estimator/ExtractionReview";
+import { DrawingFileList } from "@/components/estimator/DrawingFileList";
+import { deleteDrawingBlob } from "@/lib/drawing-blobs";
+import {
+  activeDrawings,
+  isDuplicateDrawing,
+  isExtractionStale,
+} from "@/lib/estimator/drawing-set";
 import { DrawingMaterialEditor, DrawingModelView } from "@/components/estimator/DrawingComponents";
 import {
   buildConfirmedSnapshot,
