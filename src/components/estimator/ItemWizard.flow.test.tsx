@@ -138,6 +138,9 @@ function Harness({ initial, onItem }: { initial: FurnitureItem; onItem?: (i: Fur
   );
 }
 
+const goTo = async (user: ReturnType<typeof userEvent.setup>, label: string) =>
+  user.click(screen.getByRole("button", { name: new RegExp(`^\\d+\\s*${label}$`, "i") }));
+
 function itemWithDrawing(): FurnitureItem {
   return {
     ...newFurnitureItem("Meja Kantor", "Meja kantor"),
@@ -184,7 +187,7 @@ describe("alur gambar kerja: extract -> pakai semua -> konfirmasi -> model -> ma
     let latest: FurnitureItem = itemWithDrawing();
     render(<Harness initial={latest} onItem={(i) => (latest = i)} />);
 
-    await user.click(screen.getByRole("button", { name: /gambar\/ukuran/i }));
+    await goTo(user, "Gambar/Ukuran");
     await user.click(screen.getByRole("button", { name: /baca gambar kerja/i }));
     await screen.findByRole("button", { name: /pakai semua data terbaca/i });
 
@@ -197,11 +200,11 @@ describe("alur gambar kerja: extract -> pakai semua -> konfirmasi -> model -> ma
     expect(latest.selectedOptionId).toBeNull();
 
     // Step Model
-    await user.click(screen.getByRole("button", { name: /^model$/i }));
+    await goTo(user, "Model");
     expect(await screen.findByText(/struktur dari gambar kerja/i)).toBeTruthy();
 
     // Step Material
-    await user.click(screen.getByRole("button", { name: /^material$/i }));
+    await goTo(user, "Material");
     const section = (await screen.findByText(/material & konstruksi/i)).closest("div")!
       .parentElement!;
 
@@ -226,7 +229,7 @@ describe("alur gambar kerja: extract -> pakai semua -> konfirmasi -> model -> ma
     let latest: FurnitureItem = itemWithDrawing();
     const { unmount } = render(<Harness initial={latest} onItem={(i) => (latest = i)} />);
 
-    await user.click(screen.getByRole("button", { name: /gambar\/ukuran/i }));
+    await goTo(user, "Gambar/Ukuran");
     await user.click(screen.getByRole("button", { name: /baca gambar kerja/i }));
     await screen.findByRole("button", { name: /pakai semua data terbaca/i });
     await user.click(screen.getByRole("button", { name: /pakai semua data terbaca/i }));
@@ -236,7 +239,7 @@ describe("alur gambar kerja: extract -> pakai semua -> konfirmasi -> model -> ma
     // Simulasi item lama: material state hilang, snapshot masih ada.
     const stale: FurnitureItem = { ...latest, drawingComponents: null };
     render(<Harness initial={stale} onItem={(i) => (latest = i)} />);
-    await user.click(screen.getByRole("button", { name: /^material$/i }));
+    await goTo(user, "Material");
 
     await waitFor(() => {
       expect(screen.getAllByText("Modesty Panel").length).toBeGreaterThan(0);
@@ -266,11 +269,11 @@ describe("regresi jalur manual / tanpa gambar kerja", () => {
     let latest = initial;
     render(<Harness initial={initial} onItem={(i) => (latest = i)} />);
 
-    await user.click(screen.getByRole("button", { name: /^model$/i }));
+    await goTo(user, "Model");
     await user.click(screen.getByRole("button", { name: /susun modul dari ukuran/i }));
     expect(latest.modules.length).toBeGreaterThan(0);
 
-    await user.click(screen.getByRole("button", { name: /^material$/i }));
+    await goTo(user, "Material");
     expect(await screen.findByText(/construction template/i)).toBeTruthy();
     expect(screen.getAllByText(/tambah modul/i).length).toBeGreaterThan(0);
   });
