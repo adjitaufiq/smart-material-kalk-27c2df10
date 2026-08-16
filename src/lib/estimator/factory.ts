@@ -134,6 +134,75 @@ export function planBays(width_mm: number, doors: number): number[] {
   return splitEvenly(Math.round(width_mm), n);
 }
 
+/**
+ * MODULE COMPOSER deterministik. Nilai user (dimensi, pintu, laci, shelf)
+ * adalah SOURCE OF TRUTH dan tidak boleh diubah diam-diam.
+ */
+export function composeModules(category: string, briefInput: Brief): ModuleSpec[] {
+  const brief = briefInput;
+  const { width_mm: W, height_mm: H, depth_mm: D } = brief;
+  switch (normalizeCategory(category)) {
+    case "Kitchen Set": {
+      const bays = planBays(W, brief.doors > 0 ? Math.ceil(brief.doors / 2) : 0);
+      const doorsPer = splitEvenly(brief.doors, bays.length);
+      const drawersPer = splitEvenly(brief.drawers, bays.length);
+      const shelvesPer = splitEvenly(brief.shelves, bays.length);
+      return bays.map((w, i) =>
+        makeModule({
+          kind: "base_cabinet",
+          name: `Kabinet Bawah ${i + 1}`,
+          width_mm: w,
+          height_mm: H || 720,
+          depth_mm: D || 550,
+          doors: doorsPer[i] ?? 0,
+          doorType: brief.doorType,
+          drawers: drawersPer[i] ?? 0,
+          shelves: shelvesPer[i] ?? 0,
+        }),
+      );
+    }
+    case "Lemari Baju": {
+      // Side panel tidak boleh melebihi panjang lembar: badan utama + loft bila perlu.
+      const mainHeight = H > 2100 ? 2100 : H;
+      const loftHeight = H - mainHeight;
+      const bays = planBays(W, brief.doors);
+      const doorsPer = splitEvenly(brief.doors, bays.length);
+      const drawersPer = splitEvenly(brief.drawers, bays.length);
+      const shelvesPer = splitEvenly(brief.shelves, bays.length);
+      const mods = bays.map((w, i) =>
+        makeModule({
+          kind: "wardrobe",
+          name: `Bay Lemari ${i + 1}`,
+          width_mm: w,
+          height_mm: mainHeight,
+          depth_mm: D || 600,
+          doors: doorsPer[i] ?? 0,
+          doorType: brief.doorType,
+          drawers: drawersPer[i] ?? 0,
+          shelves: shelvesPer[i] ?? 0,
+          hangingRod: (shelvesPer[i] ?? 0) === 0 || i === 0,
+        }),
+      );
+      if (loftHeight >= 200) {
+        bays.forEach((w, i) =>
+          mods.push(
+            makeModule({
+              kind: "tall_cabinet",
+              name: `Loft Cabinet ${i + 1}`,
+              width_mm: w,
+              height_mm: loftHeight,
+              depth_mm: D || 600,
+              // Tidak menambah pintu/laci/shelf tanpa persetujuan user.
+              doors: 0,
+              doorType: "none",
+              shelves: 0,
+            }),
+          ),
+        );
+      }
+      return mods;
+    }
+
     case "Meja":
     case "Meja Kerja":
     case "Meja Makan":
