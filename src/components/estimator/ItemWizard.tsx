@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, Sparkles, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 
@@ -98,11 +98,26 @@ export function ItemWizard({
   onSaveRevision: () => void;
 }) {
   const [step, setStep] = useState(0);
+  const [showLegacyModules, setShowLegacyModules] = useState(false);
   const result = useMemo(() => calculateItem(item), [item]);
 
   const patch = (partial: Partial<FurnitureItem>) => onChange({ ...item, ...partial });
   const patchModule = (id: string, partial: Partial<ModuleSpec>) =>
     patch({ modules: item.modules.map((m) => (m.id === id ? { ...m, ...partial } : m)) });
+
+  /** Gambar kerja yang sudah dikonfirmasi = satu-satunya sumber data Model & Material. */
+  const snapshot = item.drawingSnapshot ?? null;
+  const drawingMode = Boolean(snapshot);
+  const drawingComponents = item.drawingComponents ?? [];
+  const needsDerive =
+    snapshot !== null && drawingComponents.length === 0 && snapshot.components.length > 0;
+
+  // Self-heal: snapshot ada tetapi material state hilang (item lama / gagal simpan).
+  useEffect(() => {
+    if (!needsDerive || !snapshot) return;
+    patch({ drawingComponents: materialStateFromModel(modelFromSnapshot(snapshot)) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needsDerive, snapshot?.id]);
 
   const brief: Briefing = item.briefing ?? {
     width_mm: null,
@@ -259,40 +274,83 @@ export function ItemWizard({
         <SectionCard
           title="Material & Konstruksi"
           description={
-            item.drawingComponents && item.drawingComponents.length > 0
+            drawingMode
               ? "Mengikuti Gambar Kerja. Field yang tidak tercantum pada gambar tetap kosong sampai Anda mengisinya."
               : "Spesifikasi gambar kerja selalu menang atas default template."
           }
         >
           <div className="space-y-4">
-            {item.drawingComponents && item.drawingComponents.length > 0 ? (
-              <DrawingMaterialEditor
-                components={item.drawingComponents}
-                onChange={(next) => patch({ drawingComponents: next })}
-              />
-            ) : null}
-            {item.modules.map((mod) => (
-              <ModuleEditor
-                key={mod.id}
-                mod={mod}
-                onChange={(p) => patchModule(mod.id, p)}
-                onRemove={() => patch({ modules: item.modules.filter((m) => m.id !== mod.id) })}
-              />
-            ))}
-            <AddModule
-              onAdd={(kind) =>
-                patch({
-                  modules: [
-                    ...item.modules,
-                    makeModule({
-                      kind,
-                      name: MODULE_KINDS.find((k) => k.kind === kind)?.label ?? kind,
-                      width_mm: brief.width_mm ?? 600,
-                    }),
-                  ],
-                })
-              }
-            />
+            {drawingMode ? (
+              <>
+                {drawingComponents.length > 0 ? (
+                  <DrawingMaterialEditor
+                    components={drawingComponents}
+                    onChange={(next) => patch({ drawingComponents: next })}
+                  />
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Gambar kerja terkonfirmasi tidak memuat komponen yang bisa dibaca. Tidak ada
+                    material default yang diisikan otomatis.
+                  </p>
+                )}
+                {item.modules.length > 0 ? (
+                  <div className="rounded-lg border border-dashed p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs text-muted-foreground">
+                        Modul default konstruksi (opsional) — {item.modules.length} modul, di luar
+                        data gambar kerja.
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setShowLegacyModules((v) => !v)}
+                      >
+                        {showLegacyModules ? "Sembunyikan" : "Tampilkan"}
+                      </Button>
+                    </div>
+                    {showLegacyModules ? (
+                      <div className="mt-3 space-y-4">
+                        {item.modules.map((mod) => (
+                          <ModuleEditor
+                            key={mod.id}
+                            mod={mod}
+                            onChange={(p) => patchModule(mod.id, p)}
+                            onRemove={() =>
+                              patch({ modules: item.modules.filter((m) => m.id !== mod.id) })
+                            }
+                          />
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <>
+                {item.modules.map((mod) => (
+                  <ModuleEditor
+                    key={mod.id}
+                    mod={mod}
+                    onChange={(p) => patchModule(mod.id, p)}
+                    onRemove={() => patch({ modules: item.modules.filter((m) => m.id !== mod.id) })}
+                  />
+                ))}
+                <AddModule
+                  onAdd={(kind) =>
+                    patch({
+                      modules: [
+                        ...item.modules,
+                        makeModule({
+                          kind,
+                          name: MODULE_KINDS.find((k) => k.kind === kind)?.label ?? kind,
+                          width_mm: brief.width_mm ?? 600,
+                        }),
+                      ],
+                    })
+                  }
+                />
+              </>
+            )}
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">Mode perhitungan lembar</Label>
@@ -609,6 +667,12 @@ function DrawingStep({
                       ? {
                           drawingSnapshot: snapshot,
                           drawingComponents: materialStateFromModel(modelFromSnapshot(snapshot)),
+                          // Jalur legacy dibersihkan supaya data gambar tidak dikalahkan default lama.
+                          modules: [],
+                          designOptions: [],
+                          selectedOptionId: null,
+                          confirmedConstruction: false,
+                          confirmedDimensions: false,
                         }
                       : {}),
                   });
@@ -648,6 +712,8 @@ function ModelStep({
 }) {
   const options = item.designOptions;
   const [approved, setApproved] = useState<Record<string, boolean>>({});
+  const [confirmDefault, setConfirmDefault] = useState(false);
+  const drawingMode = Boolean(item.drawingSnapshot);
 
   return (
     <div className="space-y-4">
@@ -671,15 +737,29 @@ function ModelStep({
         <div className="flex flex-wrap gap-2">
           <Button
             size="sm"
-            onClick={() =>
-              patch({
-                modules: composeModules(item.category, resolveBrief(brief)),
-              })
-            }
+            variant={drawingMode && confirmDefault ? "destructive" : "default"}
+            onClick={() => {
+              if (drawingMode && !confirmDefault) {
+                setConfirmDefault(true);
+                return;
+              }
+              setConfirmDefault(false);
+              patch({ modules: composeModules(item.category, resolveBrief(brief)) });
+            }}
             disabled={!brief.width_mm}
           >
-            {item.drawingSnapshot ? "Gunakan Default Konstruksi" : "Susun Modul dari Ukuran"}
+            {drawingMode
+              ? confirmDefault
+                ? "Ya, tambahkan default konstruksi"
+                : "Gunakan Default Konstruksi"
+              : "Susun Modul dari Ukuran"}
           </Button>
+          {drawingMode && confirmDefault ? (
+            <p className="basis-full text-xs text-warning-foreground">
+              Default konstruksi bukan bagian dari gambar kerja. Data gambar tetap tersimpan, tetapi
+              modul default akan ditambahkan sebagai data terpisah.
+            </p>
+          ) : null}
           {!item.hasDrawing ? (
             <Button
               size="sm"

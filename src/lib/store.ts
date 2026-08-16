@@ -44,15 +44,43 @@ function stripHeavyFields(projects: Project[]): Project[] {
   }));
 }
 
+/**
+ * Fallback saat kuota localStorage penuh: buang salinan audit `strict` di dalam
+ * drawingSnapshot (masih tersedia lewat item.extraction.strict) agar snapshot
+ * hasil gambar kerja TIDAK hilang diam-diam.
+ */
+function stripSnapshotAudit(projects: Project[]): Project[] {
+  return projects.map((p) => ({
+    ...p,
+    items: p.items.map((it) =>
+      it.drawingSnapshot
+        ? {
+            ...it,
+            drawingSnapshot: {
+              ...it.drawingSnapshot,
+              strict: { ...it.drawingSnapshot.strict, sections: [] },
+            },
+          }
+        : it,
+    ),
+  }));
+}
+
 export function saveProjects(projects: Project[]) {
   if (!isBrowser()) return;
   // Isi file gambar disimpan permanen di IndexedDB sebelum di-strip.
   for (const p of projects) void persistProjectDrawings(p);
+  const light = stripHeavyFields(projects);
   try {
-    window.localStorage.setItem(KEY, JSON.stringify(stripHeavyFields(projects)));
+    window.localStorage.setItem(KEY, JSON.stringify(light));
   } catch (err) {
-    // Kuota penuh: jangan sampai blank screen — data tetap ada di memori.
-    console.error("Gagal menyimpan project ke penyimpanan lokal:", err);
+    try {
+      window.localStorage.setItem(KEY, JSON.stringify(stripSnapshotAudit(light)));
+    } catch (err2) {
+      // Kuota tetap penuh: jangan sampai blank screen, tapi jangan pula senyap.
+      console.error("Gagal menyimpan project ke penyimpanan lokal:", err, err2);
+      window.dispatchEvent(new Event("sme:save-failed"));
+    }
   }
   window.dispatchEvent(new Event("sme:projects"));
 }
