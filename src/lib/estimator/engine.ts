@@ -456,13 +456,62 @@ export function collectAssumptions(item: FurnitureItem): Assumption[] {
     });
     if (mod.doors > 0 && mod.doorType !== "sliding" && mod.doorType !== "none") {
       const clearance = tpl?.door_clearance_mm ?? 3;
+      const doorMat = findMaterial(mod.doorMaterialId) ?? findMaterial(mod.bodyMaterialId);
+      const rule = hingeCountForDoor({
+        height_mm: mod.height_mm - 2 * clearance,
+        width_mm: (mod.width_mm - clearance * (mod.doors + 1)) / mod.doors,
+        thickness_mm: doorMat?.ketebalan_mm ?? 18,
+      });
       out.push({
         key: `${mod.id}-hinge`,
         label: `${mod.name} — Engsel`,
-        value: `${hingeCountForDoorHeight(mod.height_mm - 2 * clearance)} per pintu (aturan tinggi daun)`,
+        value:
+          mod.hingeOverride != null
+            ? `${mod.hingeOverride} per pintu (override user)`
+            : `${rule.count} per pintu — ${rule.reason}`,
+        isDefault: mod.hingeOverride == null,
+      });
+      out.push({
+        key: `${mod.id}-clearance`,
+        label: `${mod.name} — Clearance pintu`,
+        value: `${clearance} mm per sisi`,
         isDefault: true,
       });
     }
+    if (mod.drawers > 0) {
+      const rel = findHardware("rel-laci");
+      out.push({
+        key: `${mod.id}-drawer`,
+        label: `${mod.name} — Konstruksi laci`,
+        value: `Box plywood 12 mm, dasar plywood 4 mm, clearance rel 13 mm/sisi${rel ? `, rel ${rel.brand} ${rel.nama}` : ""}`,
+        isDefault: true,
+      });
+    }
+    if (mod.shelves > 0) {
+      out.push({
+        key: `${mod.id}-shelf`,
+        label: `${mod.name} — Setback shelf`,
+        value: `${tpl?.shelf_setback_mm ?? 20} mm dari muka`,
+        isDefault: true,
+      });
+    }
+    const bodyMat = findMaterial(mod.bodyMaterialId);
+    if (bodyMat) {
+      out.push({
+        key: `${mod.id}-kerf`,
+        label: `${mod.name} — Kerf mata potong`,
+        value: `${bodyMat.kerf_mm} mm`,
+        isDefault: true,
+      });
+    }
+  }
+  for (const hw of calculateHardware(item.modules)) {
+    out.push({
+      key: `hw-${hw.id}`,
+      label: `Hardware default — ${hw.name}`,
+      value: `${hw.qty} ${hw.unit} — ${hw.explanation}`,
+      isDefault: true,
+    });
   }
   out.push({
     key: "waste",
@@ -481,6 +530,7 @@ export function collectAssumptions(item: FurnitureItem): Assumption[] {
   });
   return out;
 }
+
 
 /* ------------------------------------------------------------------ */
 /* MAIN ENGINE                                                         */
