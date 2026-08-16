@@ -216,6 +216,12 @@ export function buildConfirmedSnapshot(
       // spesifikasi hanya membentuk komponen bila subjeknya tunggal & jelas
       if (keys.length === 1 && keys[0]) remember(keys[0]);
     }
+    for (const c of sec.counts as ExtractedCount[]) {
+      if (!isConfirmed(c) || c.value === null) continue;
+      if (OVERALL_RE.test(normText(c.label))) continue;
+      const keys = componentKeysOf(c.label);
+      if (keys.length === 1 && keys[0]) remember(keys[0]);
+    }
   }
 
   const known = order.filter((k) => !(k === "LEG" && (order.includes("LEG_LEFT") || order.includes("LEG_RIGHT"))));
@@ -224,6 +230,9 @@ export function buildConfirmedSnapshot(
   );
   const byKey = new Map<ComponentKey, DrawingComponent>();
   known.forEach((key, i) => byKey.set(key, components[i]!));
+
+  /** tebal yang ditulis sebagai TOTAL (mis. "tebal total 36 mm") */
+  const totalThickness = new Map<DrawingComponent, number>();
 
   const targetsFor = (text: string): DrawingComponent[] =>
     expandTargets(componentKeysOf(text), known)
@@ -254,6 +263,7 @@ export function buildConfirmedSnapshot(
       }
       for (const comp of targets) {
         if (attr === "thickness") {
+          if (/\btotal\b/.test(t)) totalThickness.set(comp, m.value_mm);
           if (comp.thickness_mm.value === null) comp.thickness_mm = drawingField(m.value_mm);
           continue;
         }
@@ -307,6 +317,14 @@ export function buildConfirmedSnapshot(
     }
   }
 
+
+  // tebal total dengan multi layer -> tebal per lembar, agar total tetap konsisten
+  for (const [comp, total] of totalThickness) {
+    const layers = comp.layers.value;
+    if (layers && layers >= 2 && comp.thickness_mm.value === total && total % layers === 0) {
+      comp.thickness_mm = drawingField(total / layers);
+    }
+  }
 
   return {
     id: opts.id ?? `snap_${Date.now().toString(36)}`,
