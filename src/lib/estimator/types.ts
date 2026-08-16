@@ -301,6 +301,10 @@ export interface FurnitureItem {
   wasteFactor: number; // 0.05 | 0.10 | 0.15 | custom
   sheetMode: "cepat" | "potong";
   briefing?: Briefing | undefined;
+  /** snapshot hasil pembacaan gambar yang sudah dikonfirmasi user (source of truth) */
+  drawingSnapshot?: ConfirmedExtractionSnapshot | null | undefined;
+  /** mirror 1:1 snapshot -> model/material, dengan provenance per field */
+  drawingComponents?: DrawingComponent[] | null | undefined;
 }
 
 /** Input user. null = BELUM DIISI (bukan 0). */
