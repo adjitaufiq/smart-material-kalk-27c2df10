@@ -18,7 +18,9 @@ export const GEMINI_KEY_NAMES = [
   "GEMINI_API_KEY_5",
 ] as const;
 
-export const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+export const DEFAULT_GEMINI_MODEL = "gemini-flash-latest";
+/** Kandidat model cadangan bila model utama tidak tersedia (404 / retired). */
+export const GEMINI_MODEL_FALLBACKS = ["gemini-3.5-flash", "gemini-2.5-flash"] as const;
 export const DEFAULT_LOVABLE_MODEL = "google/gemini-3-flash-preview";
 
 export const MSG_BUSY =
@@ -27,6 +29,9 @@ export const MSG_FINAL =
   "Pembacaan gambar belum dapat dijalankan saat ini. Silakan coba lagi nanti atau upload ulang file.";
 export const MSG_REQUEST =
   "File gambar belum dapat dibaca. Silakan upload ulang dengan file gambar atau PDF yang jelas.";
+export const MSG_INTERNAL =
+  "Pembacaan gambar gagal karena kendala teknis pada sistem, bukan pada file Anda. Silakan coba lagi.";
+
 
 export class ExtractionServiceError extends Error {
   constructor(message: string) {
