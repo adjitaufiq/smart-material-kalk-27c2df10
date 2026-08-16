@@ -5,7 +5,9 @@ import type {
   GeneratedDesignOption,
   ModuleKind,
   ModuleSpec,
+  RequirementChange,
 } from "./types";
+
 
 let seq = 0;
 export function uid(prefix = "id"): string {
