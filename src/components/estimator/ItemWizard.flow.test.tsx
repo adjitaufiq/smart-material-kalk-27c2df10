@@ -205,16 +205,15 @@ describe("alur gambar kerja: extract -> pakai semua -> konfirmasi -> model -> ma
 
     // Step Material
     await goTo(user, "Material");
-    const section = (await screen.findByText(/material & konstruksi/i)).closest("div")!
-      .parentElement!;
+    await screen.findByText(/mengikuti gambar kerja/i);
+    const text = document.body.textContent ?? "";
 
     for (const name of ["Top Meja", "Kaki Panel Kiri", "Kaki Panel Kanan", "Modesty Panel"]) {
-      expect(within(section).getAllByText(name).length).toBeGreaterThan(0);
+      expect(text).toContain(name);
     }
-    const text = section.textContent ?? "";
-    expect(text).toContain("1600 × 700 × 36 mm");
-    expect(text).toContain("714 × 650 × 18 mm");
-    expect(text).toContain("1500 × 400 × 18 mm");
+    expect(text).toContain("1600 \u00d7 700 \u00d7 36 mm");
+    expect(text).toContain("714 \u00d7 650 \u00d7 18 mm");
+    expect(text).toContain("1500 \u00d7 400 \u00d7 18 mm");
     expect(text).toContain("HPL permukaan atas");
     expect((text.match(/Tanpa HPL/g) ?? []).length).toBe(3);
     expect((text.match(/Triplek 18 mm/g) ?? []).length).toBeGreaterThanOrEqual(4);
@@ -274,7 +273,10 @@ describe("regresi jalur manual / tanpa gambar kerja", () => {
     expect(latest.modules.length).toBeGreaterThan(0);
 
     await goTo(user, "Material");
-    expect(await screen.findByText(/construction template/i)).toBeTruthy();
-    expect(screen.getAllByText(/tambah modul/i).length).toBeGreaterThan(0);
+    await screen.findByText(/material & konstruksi/i);
+    const text = document.body.textContent ?? "";
+    expect(text).toContain("Construction template");
+    expect(text).toContain("Qty modul");
+    expect(text).toMatch(/Tambah modul/i);
   });
 });
