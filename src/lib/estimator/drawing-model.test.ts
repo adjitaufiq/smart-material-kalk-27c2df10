@@ -112,8 +112,8 @@ describe("confirmed extraction snapshot — Meja Kantor", () => {
     const dims = (name: string) =>
       s.components.find((c) => c.name === name)!.dims.map((d) => d.value_mm.value);
     expect(dims("Top Meja")).toEqual([1600, 700]);
-    expect(dims("Kaki Panel Kiri")).toEqual([650, 714]);
-    expect(dims("Kaki Panel Kanan")).toEqual([650, 714]);
+    expect(dims("Kaki Panel Kiri")).toEqual([714, 650]);
+    expect(dims("Kaki Panel Kanan")).toEqual([714, 650]);
     expect(dims("Modesty Panel")).toEqual([1500, 400]);
   });
 
