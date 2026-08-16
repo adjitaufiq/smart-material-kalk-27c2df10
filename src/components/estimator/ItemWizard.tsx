@@ -454,29 +454,41 @@ function DrawingStep({
       drawings.push({
         id: uid("dwg"),
         name: file.name,
-        mime: file.type,
+        mime: resolveMime(file.name, file.type, dataUrl),
         dataUrl,
         uploadedAt: new Date().toISOString(),
       });
     }
-    patch({ drawings: [...item.drawings, ...drawings] });
+    // Nama file lama yang isinya hilang diganti oleh upload baru.
+    const kept = item.drawings.filter((d) => d.dataUrl);
+    patch({ drawings: [...kept, ...drawings] });
   };
 
   const runExtraction = async () => {
-    const first = item.drawings[0];
-    if (!first) return;
+    const first = item.drawings.find((d) => d.dataUrl);
+    if (!first) {
+      toast.error("Isi file gambar tidak tersedia. Silakan upload ulang gambar kerjanya.");
+      return;
+    }
     setBusy(true);
     try {
       const extraction = await drawingExtractionService.extract(first, item.category);
       patch({ extraction });
     } catch (error) {
-      toast.error(
-        error instanceof AiUnavailableError ? error.message : "Ekstraksi gambar gagal dijalankan.",
-      );
+      const message =
+        error instanceof AiUnavailableError
+          ? error.message
+          : error instanceof Error && error.message
+            ? error.message
+            : "Ekstraksi gambar gagal dijalankan.";
+      toast.error(message);
     } finally {
       setBusy(false);
     }
   };
+
+  const hasFileContent = item.drawings.some((d) => d.dataUrl);
+
 
   const extraction = item.extraction;
 
