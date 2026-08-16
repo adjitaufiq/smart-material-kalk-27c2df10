@@ -310,7 +310,7 @@ function applySpec(comp: DrawingComponent, key: SpecKey, raw: string) {
     }
     case "thickness": {
       const n = /(\d+(?:[.,]\d+)?)/.exec(value);
-      if (n && comp.thickness_mm.value === null) {
+      if (n?.[1] && comp.thickness_mm.value === null) {
         comp.thickness_mm = drawingField(Number(n[1].replace(",", ".")));
       }
       break;
@@ -392,14 +392,14 @@ export function updateComponentField(
   if (NUMERIC_KEYS.includes(key)) {
     const field = next[key] as Field<number>;
     const num = value === null || value === "" ? null : Number(value);
-    (next as Record<string, unknown>)[key] = editField(
+    (next as unknown as Record<string, unknown>)[key] = editField(
       field,
       num === null || Number.isNaN(num) ? null : num,
     );
   } else {
     const field = next[key] as Field<string>;
     const str = value === null || value === "" ? null : String(value);
-    (next as Record<string, unknown>)[key] = editField(field, str);
+    (next as unknown as Record<string, unknown>)[key] = editField(field, str);
   }
   return next;
 }
