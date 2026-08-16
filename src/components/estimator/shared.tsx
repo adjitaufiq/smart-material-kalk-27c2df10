@@ -1,5 +1,5 @@
 import { AlertTriangle, CheckCircle2, CircleAlert } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { STATUS_LABEL } from "@/lib/estimator/engine";
 import type { CalculationStatus, Issue, Unit } from "@/lib/estimator/types";
-import { toMm } from "@/lib/estimator/units";
+import { DEFAULT_INPUT_UNIT, displayIn, toMm } from "@/lib/estimator/units";
+
 
 export function StatusBadge({ status }: { status: CalculationStatus }) {
   const map: Record<CalculationStatus, { cls: string; icon: ReactNode }> = {
