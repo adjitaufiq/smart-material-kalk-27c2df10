@@ -438,18 +438,12 @@ describe("mock drawing flow 2400 × 2600 × 600, 4 doors, 3 drawers", () => {
 });
 
 describe("AI services are abstractions only", () => {
-  it("reports unavailable instead of fabricating results", async () => {
-    expect(drawingExtractionService.available).toBe(false);
+  it("drawing reading is available, design generation stays unavailable", async () => {
+    expect(drawingExtractionService.available).toBe(true);
     expect(designGenerationService.available).toBe(false);
-    await expect(
-      drawingExtractionService.extract({
-        id: "d",
-        name: "x",
-        mime: "image/png",
-        dataUrl: "",
-        uploadedAt: "",
-      }),
-    ).rejects.toThrow(/belum tersambung/);
+    await expect(designGenerationService.renderConcept([], "")).rejects.toThrow(
+      /belum tersambung/,
+    );
   });
 });
 
