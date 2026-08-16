@@ -19,7 +19,7 @@ function contentBlock(req: ExtractionRequest) {
 
 /** Fallback terakhir: Lovable AI Gateway. */
 export async function callLovable(
-  args: { apiKey: string; model: string; req: ExtractionRequest; fetchImpl?: FetchLike },
+  args: { apiKey: string; model: string; req: ExtractionRequest; fetchImpl?: FetchLike | undefined },
 ): Promise<ProviderResult> {
   const fetchImpl = args.fetchImpl ?? (fetch as unknown as FetchLike);
   try {

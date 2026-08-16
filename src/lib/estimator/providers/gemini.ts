@@ -8,7 +8,7 @@ function base64Of(dataUrl: string): string {
 
 /** Panggilan langsung ke Google AI Studio / Gemini API dengan satu API key. */
 export async function callGemini(
-  args: { apiKey: string; model: string; req: ExtractionRequest; fetchImpl?: FetchLike },
+  args: { apiKey: string; model: string; req: ExtractionRequest; fetchImpl?: FetchLike | undefined },
 ): Promise<ProviderResult> {
   const fetchImpl = args.fetchImpl ?? (fetch as unknown as FetchLike);
   const { req } = args;
