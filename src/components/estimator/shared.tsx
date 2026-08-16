@@ -73,54 +73,100 @@ export function SectionCard({
   );
 }
 
+/**
+ * Input ukuran user-facing. Default unit = cm (natural untuk tukang),
+ * nilai selalu DISIMPAN dalam mm. Kosong = belum diisi (bukan 0).
+ */
 export function DimensionInput({
   label,
   value_mm,
   onChange,
   hint,
+  placeholder_cm,
 }: {
   label: string;
-  value_mm: number;
-  onChange: (mm: number) => void;
+  value_mm: number | null;
+  onChange: (mm: number | null) => void;
   hint?: string;
+  placeholder_cm?: number;
 }) {
+  const [unit, setUnit] = useState<Unit>(DEFAULT_INPUT_UNIT);
+  const [draft, setDraft] = useState<string | null>(null);
+  const shown = draft ?? displayIn(value_mm, unit);
+
   return (
     <div className="space-y-1.5">
       <Label className="text-xs font-medium text-muted-foreground">{label}</Label>
       <div className="flex gap-2">
         <Input
           type="number"
-          inputMode="numeric"
+          inputMode="decimal"
           className="num"
-          value={Number.isFinite(value_mm) ? value_mm : 0}
-          onChange={(e) => onChange(Number(e.target.value))}
+          placeholder={placeholder_cm ? `contoh: ${placeholder_cm}` : "contoh: 240"}
+          value={shown}
+          onChange={(e) => {
+            const raw = e.target.value;
+            setDraft(raw);
+            if (raw.trim() === "") onChange(null);
+            else if (Number.isFinite(Number(raw))) onChange(toMm(Number(raw), unit));
+          }}
+          onBlur={() => setDraft(null)}
         />
-        <UnitConverter onPick={onChange} />
+        <Select
+          value={unit}
+          onValueChange={(v) => {
+            setDraft(null);
+            setUnit(v as Unit);
+          }}
+        >
+          <SelectTrigger className="w-[76px] shrink-0 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="cm">cm</SelectItem>
+            <SelectItem value="mm">mm</SelectItem>
+            <SelectItem value="m">m</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
-      <p className="text-[11px] text-muted-foreground">{hint ?? "Nilai disimpan dalam mm."}</p>
+      <p className="text-[11px] text-muted-foreground">
+        {hint ?? (value_mm === null ? "Belum diisi." : `Internal: ${Math.round(value_mm)} mm.`)}
+      </p>
     </div>
   );
 }
 
-function UnitConverter({ onPick }: { onPick: (mm: number) => void }) {
+/** Input angka biasa (pintu/laci/shelf). Kosong = belum diisi, BUKAN 0. */
+export function CountInput({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: number | null;
+  onChange: (v: number | null) => void;
+  placeholder?: string;
+}) {
   return (
-    <Select
-      onValueChange={(v) => {
-        const [raw, unit] = v.split("|");
-        if (raw && unit) onPick(toMm(Number(raw), unit as Unit));
-      }}
-    >
-      <SelectTrigger className="w-[76px] shrink-0 text-xs">
-        <SelectValue placeholder="mm" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="0|mm">mm</SelectItem>
-        <SelectItem value="0|cm">cm</SelectItem>
-        <SelectItem value="0|m">m</SelectItem>
-      </SelectContent>
-    </Select>
+    <div className="space-y-1.5">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Input
+        type="number"
+        inputMode="numeric"
+        min={0}
+        className="num"
+        placeholder={placeholder ?? "contoh: 4"}
+        value={value === null || !Number.isFinite(value) ? "" : String(value)}
+        onChange={(e) => {
+          const raw = e.target.value;
+          onChange(raw.trim() === "" ? null : Number(raw));
+        }}
+      />
+    </div>
   );
 }
+
 
 export function IssueList({ issues }: { issues: Issue[] }) {
   if (issues.length === 0) {
