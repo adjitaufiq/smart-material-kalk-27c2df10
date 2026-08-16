@@ -5,7 +5,9 @@ import {
   findHpl,
   findMaterial,
   findTemplate,
+  hingeCountForDoor,
   hingeCountForDoorHeight,
+
   LED_DRIVER_SAFETY_MARGIN,
 } from "./masters";
 import { generatePartsForModules, resetPartIds } from "./parts";
