@@ -31,7 +31,8 @@ export class AiUnavailableError extends Error {
 export interface DrawingExtractionService {
   readonly available: boolean;
   readonly providerName: string;
-  extract(drawing: DrawingRef, category?: string): Promise<DrawingExtraction>;
+  /** Semua file aktif dibaca sebagai satu drawing set. */
+  extract(drawings: DrawingRef | DrawingRef[], category?: string): Promise<DrawingExtraction>;
 }
 
 export interface DesignGenerationService {
@@ -91,12 +92,12 @@ function flatten(strict: StrictExtractionResult): ExtractedField[] {
 export const drawingExtractionService: DrawingExtractionService = {
   available: true,
   providerName: "AI Vision",
-  async extract(drawing: DrawingRef, category = ""): Promise<DrawingExtraction> {
+  async extract(drawings: DrawingRef | DrawingRef[], category = ""): Promise<DrawingExtraction> {
+    const list = (Array.isArray(drawings) ? drawings : [drawings]).filter((d) => d.dataUrl);
+    if (list.length === 0) throw new Error("Isi file gambar tidak tersedia.");
     const strict = (await readDrawing({
       data: {
-        name: drawing.name,
-        mime: drawing.mime,
-        dataUrl: drawing.dataUrl,
+        files: list.map((d) => ({ name: d.name, mime: d.mime, dataUrl: d.dataUrl })),
         category,
       },
     })) as StrictExtractionResult;
@@ -104,7 +105,8 @@ export const drawingExtractionService: DrawingExtractionService = {
     const confident = normalized.filter((f) => f.value !== null);
     return {
       id: `ext_${Date.now().toString(36)}`,
-      drawingId: drawing.id,
+      drawingId: list[0]!.id,
+      drawingIds: list.map((d) => d.id),
       provider: strict.provider,
       raw: strict,
       normalized,
