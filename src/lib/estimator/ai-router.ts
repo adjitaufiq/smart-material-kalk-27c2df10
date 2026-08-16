@@ -6,6 +6,7 @@ import {
   markSuccess,
   type ProviderPool,
 } from "./provider-state";
+import { checkFile } from "./providers/file";
 import { callGemini } from "./providers/gemini";
 import { callLovable } from "./providers/lovable";
 import type { ExtractionRequest, FetchLike } from "./providers/types";
