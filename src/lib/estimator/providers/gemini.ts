@@ -40,10 +40,7 @@ export async function callGemini(args: {
         contents: [
           {
             role: "user",
-            parts: [
-              { text: req.userText },
-              ...files.flatMap((_f, i) => [labels[i]!, parts[i]!]),
-            ],
+            parts: [{ text: req.userText }, ...files.flatMap((_f, i) => [labels[i]!, parts[i]!])],
           },
         ],
       }),

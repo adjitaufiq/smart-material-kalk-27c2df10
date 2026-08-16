@@ -28,11 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ExtractionReview } from "@/components/estimator/ExtractionReview";
 import { DrawingFileList } from "@/components/estimator/DrawingFileList";
 import { deleteDrawingBlob } from "@/lib/drawing-blobs";
-import {
-  activeDrawings,
-  isDuplicateDrawing,
-  isExtractionStale,
-} from "@/lib/estimator/drawing-set";
+import { activeDrawings, isDuplicateDrawing, isExtractionStale } from "@/lib/estimator/drawing-set";
 import { DrawingMaterialEditor, DrawingModelView } from "@/components/estimator/DrawingComponents";
 import {
   buildConfirmedSnapshot,
@@ -505,7 +501,6 @@ function resolveMime(name: string, type: string, dataUrl: string): string {
   return type || "application/octet-stream";
 }
 
-
 function DrawingStep({
   item,
   patch,
@@ -626,8 +621,6 @@ function DrawingStep({
             Daftar gambar kerja berubah. Jalankan Baca Gambar Kerja ulang.
           </p>
         ) : null}
-
-
 
         <div className="rounded-lg border bg-surface p-3">
           <div className="flex items-center gap-2">

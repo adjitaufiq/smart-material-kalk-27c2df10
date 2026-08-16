@@ -128,7 +128,11 @@ describe("UX upload gambar kerja (drawing set)", () => {
     const user = userEvent.setup();
     render(<Harness initial={baseItem()} />);
     await openStep(user);
-    await user.upload(fileInput(), [png("A.png", 100, 1), png("B.png", 200, 2), png("C.png", 300, 3)]);
+    await user.upload(fileInput(), [
+      png("A.png", 100, 1),
+      png("B.png", 200, 2),
+      png("C.png", 300, 3),
+    ]);
     await waitFor(() => expect(rows()).toHaveLength(3));
 
     await user.upload(fileInput(), pdf("Detail.pdf"));
@@ -142,7 +146,11 @@ describe("UX upload gambar kerja (drawing set)", () => {
     const user = userEvent.setup();
     render(<Harness initial={baseItem()} />);
     await openStep(user);
-    await user.upload(fileInput(), [png("A.png", 100, 1), png("B.png", 200, 2), png("C.png", 300, 3)]);
+    await user.upload(fileInput(), [
+      png("A.png", 100, 1),
+      png("B.png", 200, 2),
+      png("C.png", 300, 3),
+    ]);
     await waitFor(() => expect(rows()).toHaveLength(3));
 
     // Batal
@@ -187,9 +195,11 @@ describe("UX upload gambar kerja (drawing set)", () => {
     await waitFor(() => expect((readBtn() as HTMLButtonElement).disabled).toBe(false));
 
     await user.click(screen.getByRole("button", { name: "Hapus file A.png" }));
-    await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", {
-      name: /hapus file/i,
-    }));
+    await user.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", {
+        name: /hapus file/i,
+      }),
+    );
     await waitFor(() => expect((readBtn() as HTMLButtonElement).disabled).toBe(true));
   });
 
@@ -197,13 +207,19 @@ describe("UX upload gambar kerja (drawing set)", () => {
     const user = userEvent.setup();
     render(<Harness initial={baseItem()} />);
     await openStep(user);
-    await user.upload(fileInput(), [png("Depan.png", 100, 1), png("Samping.png", 200, 2), pdf("Detail.pdf")]);
+    await user.upload(fileInput(), [
+      png("Depan.png", 100, 1),
+      png("Samping.png", 200, 2),
+      pdf("Detail.pdf"),
+    ]);
     await waitFor(() => expect(rows()).toHaveLength(3));
 
     await user.click(screen.getByRole("button", { name: "Hapus file Detail.pdf" }));
-    await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", {
-      name: /hapus file/i,
-    }));
+    await user.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", {
+        name: /hapus file/i,
+      }),
+    );
     await waitFor(() => expect(rows()).toHaveLength(2));
 
     await user.click(screen.getByRole("button", { name: /baca gambar kerja/i }));
