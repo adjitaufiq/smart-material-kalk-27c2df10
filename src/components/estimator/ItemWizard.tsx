@@ -403,10 +403,14 @@ function NumField({
 function DrawingStep({
   item,
   patch,
+  brief,
+  setBrief,
   onNext,
 }: {
   item: FurnitureItem;
   patch: (p: Partial<FurnitureItem>) => void;
+  brief: Briefing;
+  setBrief: (p: Partial<Briefing>) => void;
   onNext: () => void;
 }) {
   const [busy, setBusy] = useState(false);
