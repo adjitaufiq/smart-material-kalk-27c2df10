@@ -515,13 +515,23 @@ function DrawingStep({
             {item.drawings.map((d) => (
               <li key={d.id} className="flex justify-between rounded border bg-surface px-2 py-1.5">
                 <span className="truncate">{d.name}</span>
-                <span className="text-muted-foreground">
-                  {new Date(d.uploadedAt).toLocaleDateString("id-ID")}
+                <span className={d.dataUrl ? "text-muted-foreground" : "text-destructive"}>
+                  {d.dataUrl
+                    ? new Date(d.uploadedAt).toLocaleDateString("id-ID")
+                    : "Perlu di-upload ulang"}
                 </span>
               </li>
             ))}
           </ul>
         ) : null}
+
+        {item.drawings.length > 0 && !hasFileContent ? (
+          <p className="text-xs text-destructive">
+            Isi file gambar tidak tersedia lagi di perangkat ini. Upload ulang gambar kerjanya untuk
+            menjalankan pembacaan.
+          </p>
+        ) : null}
+
 
         <div className="rounded-lg border bg-surface p-3">
           <div className="flex items-center gap-2">
