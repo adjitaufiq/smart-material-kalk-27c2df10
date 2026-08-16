@@ -31,7 +31,7 @@ export class AiUnavailableError extends Error {
 export interface DrawingExtractionService {
   readonly available: boolean;
   readonly providerName: string;
-  extract(drawing: DrawingRef): Promise<DrawingExtraction>;
+  extract(drawing: DrawingRef, category?: string): Promise<DrawingExtraction>;
 }
 
 export interface DesignGenerationService {
