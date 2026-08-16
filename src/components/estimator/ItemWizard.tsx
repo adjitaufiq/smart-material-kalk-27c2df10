@@ -156,7 +156,13 @@ export function ItemWizard({
 
       {step === 1 ? (
         item.hasDrawing ? (
-          <DrawingStep item={item} patch={patch} onNext={() => setStep(2)} />
+          <DrawingStep
+            item={item}
+            patch={patch}
+            brief={brief}
+            setBrief={setBrief}
+            onNext={() => setStep(2)}
+          />
         ) : (
           <SectionCard
             title="Ukuran Dasar"
