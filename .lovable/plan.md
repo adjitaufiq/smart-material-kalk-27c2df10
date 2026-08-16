@@ -1,73 +1,82 @@
-# Perbaikan Integrasi: Confirmed Drawing Snapshot Harus Menang di Step Material
+# Step Model — Semantic Component Grouping dari Confirmed Snapshot
 
-## Root cause paling mungkin (berdasarkan source yang diinspeksi)
+## Root cause (dari source yang diinspeksi)
 
-Pipeline data-nya sendiri sehat. `buildConfirmedSnapshot` pada fixture Meja Kantor sudah menghasilkan 4 komponen tanpa hardware/edging karangan (`src/lib/estimator/extraction-sample.test.ts:100-130`). Masalahnya murni di wiring state UI:
+`buildConfirmedSnapshot` (`src/lib/estimator/drawing-model.ts`) membuat identity komponen dengan cara **string-stripping per field**: `componentNameFrom(label, field, role.re)` menghapus kata peran ("tinggi", "lebar", "material", ...) lalu sisa teks dipakai apa adanya sebagai nama komponen, dan `getComponent(norm(nama))` membuat komponen baru untuk setiap varian string.
 
-1. **Tidak ada branch DRAWING_CONFIRMED di step Material.** `src/components/estimator/ItemWizard.tsx:267-295` merender `DrawingMaterialEditor` **dan** seluruh `item.modules` (`ModuleEditor`) **dan** tombol `AddModule` sekaligus, tanpa kondisi. Jadi kalau `drawingComponents` kosong sementara `item.modules` berisi satu modul legacy, yang tampil hanya card legacy — persis gejala yang dilaporkan (Kabinet Bawah / Swing / Triplek 18 & 9 mm / Edging PVC / Pintu-Laci-Shelf 0).
+Akibatnya, satu komponen fisik pecah jadi banyak card:
 
-2. **Mirror snapshot -> material hanya terjadi sekali, di detik klik Konfirmasi.** `ItemWizard.tsx:599-614` adalah satu-satunya tempat `drawingComponents` diisi. Tidak ada derivasi ulang di step Material. Konsekuensinya:
-   - item yang snapshot-nya sudah ada tapi `drawingComponents` hilang/kosong (hasil sesi lama, atau `extraction.strict` null pada extraction versi lama) selamanya jatuh ke jalur legacy;
-   - urutan aksi user (susun modul dulu, konfirmasi belakangan) tidak pernah membatalkan modul lama.
+- "Lebar/Kedalaman Kaki Panel" → strip `lebar|width|panjang` → sisa `"kedalaman kaki panel"`/`"/ kaki panel"` → komponen baru "Lebar / Kaki Panel".
+- "Panjang/Tinggi Modesty Panel" → sisa `"/panjang modesty panel"` → komponen baru.
+- Spec "Material Utama: Plywood 18 mm" → strip `material` → sisa `"utama"` → komponen "Utama".
+- Spec finishing "Kaki dan panel belakang tanpa HPL" → sisa `"kaki & panel belakang"` → komponen baru.
+- Label dengan dua kata peran (mis. "Lebar/Kedalaman") hanya di-strip satu regex pertama yang cocok, jadi kata peran sisa ikut jadi bagian nama.
 
-3. **Konfirmasi tidak membersihkan state legacy.** Patch di `ItemWizard.tsx:602-614` hanya menambahkan `drawingSnapshot` + `drawingComponents`; `item.modules`, `designOptions`, `selectedOptionId` dibiarkan. Modul legacy 160×75×0 itu bentuknya persis output `composeModules(item.category, resolveBrief(brief))` (`ItemWizard.tsx:674-682`, `factory.ts:142` + branch `default` di `factory.ts:283-300`): width/height dari brief, depth 0 karena `resolveBrief` mengubah `depth_mm: null` jadi `0` (`factory.ts:92-94`), nama modul = nama kategori, `base_cabinet` + `swing` + material default dari `makeModule`. Tombol pembuatnya tetap aktif walau snapshot sudah ada.
+Selain itu `DrawingModelView` menampilkan overall sebagai `width × height × depth` (`DrawingComponents.tsx`), sehingga tampil 1600 × 750 × 700, bukan L × D × T.
 
-4. **Persistensi bisa menghapus snapshot secara diam-diam.** `saveProjects` (`src/lib/store.ts:46-58`) menelan error kuota localStorage hanya dengan `console.error`. `drawingSnapshot` menyimpan salinan penuh `strict` sehingga payload membengkak. Bila penulisan gagal, state di memori terlihat benar, tetapi setelah refresh/navigasi `getProject` mengembalikan versi lama: modul legacy ada, snapshot tidak. `hydrateProjectDrawings` sendiri aman (hanya menyentuh `drawings`).
+Kesimpulan: identity komponen tidak boleh diturunkan dari sisa string; harus lewat lapisan semantik field → component key.
 
-Kesimpulan: bug integrasi, bukan bug ekstraksi. Sumber kebenaran sudah dibuat tetapi tidak pernah menjadi branch utama, tidak pernah diturunkan ulang, dan bisa hilang saat persist.
+## Perubahan minimal
 
-## Perubahan minimal yang diusulkan
+### A. Modul baru `src/lib/estimator/component-semantics.ts`
 
-**A. `src/components/estimator/ItemWizard.tsx` — branch eksplisit di step Material**
-- Hitung `drawingMode = Boolean(item.drawingSnapshot)`.
-- Bila `drawingMode`: render **hanya** `DrawingMaterialEditor`. `ModuleEditor` + `AddModule` dipindahkan ke blok tertutup "Modul default konstruksi (opsional)" yang hanya muncul kalau user memang punya modul default dan menekan toggle untuk membukanya.
-- Bila tidak `drawingMode`: perilaku sekarang persis tidak berubah.
+Lapisan generik (bukan hardcode Meja Kantor):
 
-**B. `src/components/estimator/ItemWizard.tsx` — derivasi ulang yang self-healing**
-- Di step Material, kalau `drawingSnapshot` ada tapi `drawingComponents` null/kosong, turunkan lagi lewat `materialStateFromModel(modelFromSnapshot(snapshot))` dan simpan sekali via `patch`. Menyelamatkan item lama tanpa perlu ekstraksi ulang.
+1. `stripRoleWords(label)` — buang **semua** kata peran (dimensi, spec, qty, satuan, separator `/`, `&`, `dan`), bukan hanya regex pertama.
+2. `componentKeyOf(text)` → key kanonik + label tampilan, dari kamus generik:
+   - `TOP` (top, tabletop, meja atas, daun atas), `BOTTOM`, `SHELF`, `BACK_PANEL`, `MODESTY`,
+   - `LEG` + sisi: `LEG_LEFT`/`LEG_RIGHT` (kiri/left, kanan/right), `LEG` bila tanpa sisi,
+   - `CARCASS_LEFT`/`CARCASS_RIGHT`, `DOOR_n`, `DRAWER_FRONT`/`DRAWER_SIDE`/`DRAWER_BOTTOM`.
+   - Tidak cocok → `null` (tidak membuat komponen).
+3. `attributeOf(text)` → `width | depth | height | thickness | layers | qty | material | finishing | edging | hardware | hplBrand | hplCode`. Untuk label ambigu "lebar/kedalaman" dipakai prioritas semantik (depth menang bila kata depth/kedalaman hadir), dan untuk komponen vertikal (LEG, MODESTY, DOOR) "panjang/tinggi" dipetakan ke `height`.
+4. `expandTargets(text, knownKeys)` — satu field boleh menyasar beberapa komponen:
+   - key generik `LEG` sementara snapshot punya `LEG_LEFT` + `LEG_RIGHT` → nilai ditempel ke keduanya;
+   - finishing rule multi-subjek ("kaki dan panel belakang tanpa HPL") → target `LEG_LEFT`, `LEG_RIGHT`, `MODESTY`/`BACK_PANEL` sesuai subjek yang dikenali;
+   - spec global ("material utama") → target semua komponen yang belum punya material.
 
-**C. `src/components/estimator/ItemWizard.tsx` — konfirmasi membersihkan jalur legacy**
-- Saat snapshot berhasil dibuat, patch juga `modules: []`, `designOptions: []`, `selectedOptionId: null`, dan reset `confirmedConstruction/confirmedDimensions` ke false. Tanpa snapshot, tidak ada yang dibersihkan.
+### B. `src/lib/estimator/drawing-model.ts` — grouping dua fase
 
-**D. `src/components/estimator/ItemWizard.tsx` — tombol default konstruksi di step Model**
-- Bila `drawingSnapshot` ada, tombol "Gunakan Default Konstruksi" butuh konfirmasi dua langkah (klik pertama menampilkan peringatan bahwa data gambar tidak lagi jadi satu-satunya sumber). Tidak menghapus fiturnya.
+Ganti loop tunggal menjadi:
 
-**E. `src/lib/store.ts` — kegagalan simpan tidak boleh senyap**
-- Pada `catch` kuota: tampilkan pesan error ke user (toast/state) alih-alih hanya `console.error`, dan coba simpan ulang tanpa salinan `strict` di dalam `drawingSnapshot` (audit strict tetap tersedia lewat `item.extraction.strict`).
+- **Fase 1 (identity)**: kumpulkan semua measurement/spec/count CONFIRMED, resolve `componentKeyOf`; buat komponen HANYA untuk key yang muncul sebagai subjek dimensi/spesifik. Nama tampilan diambil dari label terbersih yang mengarah ke key itu (mis. "Kaki Panel Kiri"), bukan sisa strip.
+- **Fase 2 (atribut)**: tempelkan tiap field ke komponen sesuai `attributeOf` + `expandTargets`. Dimensi masuk `dims` (`width`/`depth`/`height`), tebal ke `thickness_mm`, layer ke `layers`, qty ke `qty`, spec ke field spec.
+- **Overall**: dipetakan semantik (`width_mm`/`depth_mm`/`height_mm`), tidak bergantung urutan array.
+- **Fallback**: field CONFIRMED yang tidak punya component key dan bukan overall/relation → masuk field baru `snapshot.ungrouped: { label, value }[]` (section "Data belum terkelompok"), BUKAN komponen. `otherMeasurements` (inset/overhang/gap) tetap seperti sekarang.
+- Tidak menambah default, tidak menebak, tidak memakai kategori untuk generate komponen standar.
+- `ConfirmedExtractionSnapshot` bertambah satu field opsional `ungrouped`, sehingga snapshot lama tetap terbaca.
 
-Tidak ada perubahan pada engine ekstraksi, provider, `drawing-model.ts`, maupun BOM/Review.
+### C. `src/components/estimator/DrawingComponents.tsx` — rendering Model
 
-## Acceptance criteria (runtime, bukan helper)
+- Ukuran keseluruhan: `L × D × T` (width × depth × height) dengan label unit eksplisit.
+- Kartu komponen: `dimsLabel` diurutkan width → depth → height, tebal total = `thickness × layers`, baris "Konstruksi: Double layer" bila `layers >= 2` (tetap satu kartu, tidak dipecah per layer), `Qty n`, `Finishing`.
+- Section baru "Data belum terkelompok" bila `snapshot.ungrouped` tidak kosong.
+- Relationship & ukuran lain tetap section terpisah seperti sekarang.
+- Tidak ada perubahan pada `DrawingMaterialEditor` selain mengikuti urutan dims yang sama.
 
-Alur: buka item -> "Ada Gambar Kerja" -> upload fixture -> Baca Gambar Kerja (fetch di-mock ke fixture Meja Kantor) -> "Pakai Semua" -> "Konfirmasi Hasil Ekstraksi" -> Model -> Material.
+### D. Test
 
-Di step Material harus:
-1. Tampil tepat 4 komponen: Top Meja (1600×700, tebal 18 mm × 2 layer = 36 mm), Kaki Panel Kiri (714×650), Kaki Panel Kanan (714×650), Modesty Panel (1500×400).
-2. Kaki kiri dan kanan tetap 2 card terpisah (tidak digabung jadi frame).
-3. TIDAK mengandung teks: "Kabinet Bawah"/BASE_CABINET, "Swing", "Triplek 9 mm", "Edging PVC", dan tidak ada field Pintu/Laci/Shelf.
-4. Field yang tidak ada di gambar tampil "Belum ditentukan"/"Tidak tercantum pada gambar", bukan default master.
-5. HPL hanya pada Top Meja; kaki dan modesty tanpa HPL.
-6. Setelah unmount + remount komponen dengan item hasil round-trip `upsertProject` -> `getProject`, hasil 1–5 tetap sama (tidak jatuh ke legacy).
-7. Regresi jalur manual: item tanpa gambar kerja tetap bisa "Susun Modul dari Ukuran" dan tetap melihat `ModuleEditor` seperti sekarang.
+`src/lib/estimator/drawing-model.test.ts` + fixture yang sudah ada di `src/lib/estimator/extraction-sample.test.ts`:
 
-## Test yang akan ditambah
+- overall: width 1600, depth 700, height 750;
+- `components.length === 4` dengan nama persis: Top Meja, Kaki Panel Kiri, Kaki Panel Kanan, Modesty Panel;
+- Top: 1600 × 700, thickness 18, layers 2, total 36, material Triplek 18 mm, finishing HPL permukaan atas;
+- Kaki kiri & kanan: 714 × 650, Triplek 18 mm, tanpa HPL;
+- Modesty: 1500 × 400, Triplek 18 mm, tanpa HPL;
+- assertion negatif: tidak ada komponen bernama mengandung "Lebar", "/panjang", "Utama", "Kaki & Panel Belakang";
+- regresi mirror: `modelFromSnapshot` / `materialStateFromModel` tetap 1:1 dan Material step tetap 4 komponen (test flow yang ada tidak boleh berubah hasilnya).
 
-- Dev dependency baru: `@testing-library/react`, `@testing-library/user-event`, `jsdom` (+ `test.environment: "jsdom"`), karena saat ini belum ada test render sama sekali.
-- `src/components/estimator/ItemWizard.flow.test.tsx`
-  - `alur gambar kerja: extract -> pakai semua -> konfirmasi -> material menampilkan 4 komponen drawing` (assert kriteria 1–5, termasuk assertion negatif atas string legacy).
-  - `state hasil konfirmasi bertahan setelah reload dari store` (kriteria 6, localStorage mock).
-  - `item tanpa gambar kerja tetap memakai modul legacy` (kriteria 7).
-- `src/lib/estimator/drawing-model.test.ts`: tambah kasus snapshot ada tapi `drawingComponents` kosong -> derivasi ulang menghasilkan mirror 1:1 (menopang perubahan B).
+## Yang tidak disentuh
 
-## Risiko regresi
+Upload/multi-file, delete file, provider Gemini, AI router, strict extraction prompt, sanitizer, Material step logic, Review, Cut List, BOM, costing.
 
-- **Jalur manual/no-drawing**: risiko utama. Dimitigasi karena semua perubahan dijaga oleh `Boolean(item.drawingSnapshot)`; tanpa snapshot tidak ada perubahan perilaku, dan ditutup oleh test kriteria 7.
-- **Item lama yang sengaja mencampur snapshot + modul default**: modul tetap ada di data, hanya pindah ke blok opsional; perubahan C hanya berjalan pada aksi konfirmasi baru, bukan retroaktif.
-- **Engine/BOM**: `calculateItem` masih membaca `item.modules`, jadi item mode gambar bisa berakhir tanpa modul terhitung. Itu di luar cakupan perbaikan ini (BOM/Review dibahas terpisah) dan tidak diubah sekarang.
+## File yang berubah
 
-## File yang kemungkinan berubah
+- `src/lib/estimator/component-semantics.ts` (baru)
+- `src/lib/estimator/drawing-model.ts`
+- `src/components/estimator/DrawingComponents.tsx`
+- `src/lib/estimator/drawing-model.test.ts` (+ assert di `extraction-sample.test.ts`)
 
-- `src/components/estimator/ItemWizard.tsx` (utama)
-- `src/lib/store.ts` (kegagalan simpan tidak senyap)
-- `src/components/estimator/ItemWizard.flow.test.tsx` (baru), `src/lib/estimator/drawing-model.test.ts`
-- `package.json` + config vitest (environment jsdom)
+## Risiko
+
+- Label di luar kamus semantik akan jatuh ke "Data belum terkelompok" (lebih aman daripada membuat komponen palsu); kamus mudah diperluas.
+- Snapshot lama yang sudah tersimpan tetap dirender dengan komponen lamanya; grouping baru berlaku saat konfirmasi ekstraksi berikutnya. Bila diinginkan re-derive dari `snapshot.strict`, itu tambahan kecil di self-heal dan bisa dimasukkan pada eksekusi.
