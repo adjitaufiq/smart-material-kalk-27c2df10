@@ -418,7 +418,7 @@ export const CONSTRUCTION_TEMPLATES: ConstructionTemplate[] = [
     door_clearance_mm: 3,
     shelf_setback_mm: 20,
     back_inset_mm: 0,
-    notes: "Box laci plywood 12 mm, dasar 4 mm.",
+    notes: "Box laci triplek 12 mm, dasar 4 mm.",
     aktif: true,
   },
   {
@@ -527,7 +527,7 @@ export const CONSTRUCTION_TEMPLATES: ConstructionTemplate[] = [
     door_clearance_mm: 0,
     shelf_setback_mm: 0,
     back_inset_mm: 0,
-    notes: "Bidang backdrop = panel tipis di atas rangka. Bukan plywood 18 mm penuh.",
+    notes: "Bidang backdrop = panel tipis di atas rangka. Bukan triplek 18 mm penuh.",
     aktif: true,
   },
   {

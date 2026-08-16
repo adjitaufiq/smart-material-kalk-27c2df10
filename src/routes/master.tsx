@@ -1,3 +1,4 @@
+import { materialLabel } from "@/lib/estimator/terminology";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 
@@ -47,7 +48,7 @@ function MasterPage() {
             {MATERIAL_MASTER.map((m) => (
               <li key={m.id} className="flex justify-between gap-3 py-2">
                 <span className="min-w-0">
-                  <span className="block truncate">{m.nama_material}</span>
+                  <span className="block truncate">{materialLabel(m.nama_material)}</span>
                   <span className="num block text-xs text-muted-foreground">
                     {m.panjang_mm} × {m.lebar_mm} × {m.ketebalan_mm} mm · grain {m.grain_direction}
                   </span>

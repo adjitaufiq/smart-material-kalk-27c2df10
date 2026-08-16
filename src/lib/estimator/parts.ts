@@ -1,3 +1,4 @@
+import { materialLabel } from "./terminology";
 import { findMaterial, findTemplate, templateForKind } from "./masters";
 import type { EdgeSpec, ModuleSpec, Part } from "./types";
 
@@ -169,8 +170,8 @@ export function generateParts(mod: ModuleSpec): Part[] {
           materialId: back.id,
           derivation:
             strips === 1
-              ? `Back panel penuh ${W} × ${H} mm, material ${back.nama_material}`
-              : `Back panel ${W} × ${H} mm dibagi ${strips} lembar setinggi ${Math.round(H / strips)} mm (batas lebar sheet), material ${back.nama_material}`,
+              ? `Back panel penuh ${W} × ${H} mm, material ${materialLabel(back.nama_material)}`
+              : `Back panel ${W} × ${H} mm dibagi ${strips} lembar setinggi ${Math.round(H / strips)} mm (batas lebar sheet), material ${materialLabel(back.nama_material)}`,
         }),
       );
     }
@@ -254,7 +255,7 @@ export function generateParts(mod: ModuleSpec): Part[] {
             length_mm: boxInner,
             width_mm: boxDepth,
             materialId: bottomMat.id,
-            derivation: `Dasar laci ${bottomMat.nama_material}`,
+            derivation: `Dasar laci ${materialLabel(bottomMat.nama_material)}`,
           }),
         );
       }
@@ -293,7 +294,7 @@ export function generateParts(mod: ModuleSpec): Part[] {
         length_mm: H,
         width_mm: D,
         materialId: mod.bodyMaterialId,
-        derivation: `Kaki panel plywood ${H} × ${D} mm`,
+        derivation: `Kaki panel triplek ${H} × ${D} mm`,
       }),
       build(mod, {
         name: "Apron / Pengaku",
