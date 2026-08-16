@@ -22,8 +22,8 @@ export function loadProjects(): Project[] {
 
 /**
  * Gambar kerja disimpan sebagai data URL base64 — ukurannya bisa MB dan
- * membuat localStorage melebihi kuota. Data URL hanya hidup di memori;
- * yang dipersist cuma metadata-nya.
+ * membuat localStorage melebihi kuota. Isi file dipindahkan ke IndexedDB
+ * (lihat drawing-blobs.ts); localStorage hanya menyimpan metadata.
  */
 function stripHeavyFields(projects: Project[]): Project[] {
   return projects.map((p) => ({
@@ -46,6 +46,8 @@ function stripHeavyFields(projects: Project[]): Project[] {
 
 export function saveProjects(projects: Project[]) {
   if (!isBrowser()) return;
+  // Isi file gambar disimpan permanen di IndexedDB sebelum di-strip.
+  for (const p of projects) void persistProjectDrawings(p);
   try {
     window.localStorage.setItem(KEY, JSON.stringify(stripHeavyFields(projects)));
   } catch (err) {
@@ -54,6 +56,7 @@ export function saveProjects(projects: Project[]) {
   }
   window.dispatchEvent(new Event("sme:projects"));
 }
+
 
 export function getProject(id: string): Project | null {
   return loadProjects().find((p) => p.id === id) ?? null;
