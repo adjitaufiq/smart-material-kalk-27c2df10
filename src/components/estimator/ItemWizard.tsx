@@ -802,7 +802,7 @@ function ModuleEditor({
           label="Material body"
           value={mod.bodyMaterialId}
           onChange={(v) => onChange({ bodyMaterialId: v })}
-          options={MATERIAL_MASTER.map((m) => ({ value: m.id, label: m.nama_material }))}
+          options={MATERIAL_MASTER.map((m) => ({ value: m.id, label: materialLabel(m.nama_material) }))}
         />
         <Pick
           label="Material back panel"
@@ -810,7 +810,7 @@ function ModuleEditor({
           onChange={(v) => onChange({ backMaterialId: v === "none" ? null : v, hasBack: v !== "none" })}
           options={[
             { value: "none", label: "Tanpa back panel" },
-            ...MATERIAL_MASTER.map((m) => ({ value: m.id, label: m.nama_material })),
+            ...MATERIAL_MASTER.map((m) => ({ value: m.id, label: materialLabel(m.nama_material) })),
           ]}
         />
         <Pick
@@ -861,7 +861,7 @@ function ModuleEditor({
             onChange={(v) => onChange({ frameMaterial: v as ModuleSpec["frameMaterial"] })}
             options={[
               { value: "besi", label: "Besi (tanpa HPL & tanpa panel)" },
-              { value: "plywood", label: "Plywood" },
+              { value: "plywood", label: "Triplek" },
               { value: "solid_wood", label: "Solid wood" },
               { value: "lainnya", label: "Lainnya" },
             ]}

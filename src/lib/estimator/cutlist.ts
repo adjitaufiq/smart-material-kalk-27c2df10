@@ -1,3 +1,4 @@
+import { materialLabel } from "./terminology";
 import { findMaterial } from "./masters";
 import type { Issue, Part, PlacedPart, SheetLayout, SheetResult } from "./types";
 
@@ -188,7 +189,7 @@ export function calculateSheets(
       const { sheets, usedArea_mm2 } = quickSheetEstimate(group, sheetArea, wasteFactor);
       results.push({
         materialId,
-        materialName: mat.nama_material,
+        materialName: materialLabel(mat.nama_material),
         sheets,
         layouts: [],
         usedArea_mm2,
@@ -212,13 +213,13 @@ export function calculateSheets(
       issues.push({
         severity: "error",
         code: "PART_LARGER_THAN_SHEET",
-        message: `Part "${name}" lebih besar dari lembar ${mat.nama_material} (${mat.panjang_mm} × ${mat.lebar_mm} mm) atau tidak muat karena arah serat terkunci.`,
+        message: `Part "${name}" lebih besar dari lembar ${materialLabel(mat.nama_material)} (${mat.panjang_mm} × ${mat.lebar_mm} mm) atau tidak muat karena arah serat terkunci.`,
       });
     }
     const usedArea_mm2 = layouts.reduce((acc, l) => acc + l.usedArea_mm2, 0);
     results.push({
       materialId,
-      materialName: mat.nama_material,
+      materialName: materialLabel(mat.nama_material),
       sheets: layouts.length,
       layouts,
       usedArea_mm2,

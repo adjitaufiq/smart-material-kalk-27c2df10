@@ -1,3 +1,4 @@
+import { materialLabel } from "./terminology";
 import { calculateSheets, nestParts } from "./cutlist";
 import {
   findEdging,
@@ -437,14 +438,14 @@ export function collectAssumptions(item: FurnitureItem): Assumption[] {
     out.push({
       key: `${mod.id}-body`,
       label: `${mod.name} — Body`,
-      value: body?.nama_material ?? "belum dipilih",
+      value: materialLabel(body?.nama_material) ?? "belum dipilih",
       isDefault: body?.id === tpl?.body_material_id,
     });
     if (mod.hasBack) {
       out.push({
         key: `${mod.id}-back`,
         label: `${mod.name} — Back panel`,
-        value: back?.nama_material ?? "belum dipilih",
+        value: materialLabel(back?.nama_material) ?? "belum dipilih",
         isDefault: back?.id === tpl?.back_material_id,
       });
     }
