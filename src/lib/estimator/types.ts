@@ -300,17 +300,21 @@ export interface FurnitureItem {
   confirmedDimensions: boolean;
   wasteFactor: number; // 0.05 | 0.10 | 0.15 | custom
   sheetMode: "cepat" | "potong";
-  briefing?: {
-    width_mm: number;
-    height_mm: number;
-    depth_mm: number;
-    doors: number;
-    drawers: number;
-    shelves: number;
-    doorType: DoorType;
-    notes: string;
-  } | undefined;
+  briefing?: Briefing | undefined;
 }
+
+/** Input user. null = BELUM DIISI (bukan 0). */
+export interface Briefing {
+  width_mm: number | null;
+  height_mm: number | null;
+  depth_mm: number | null;
+  doors: number | null;
+  drawers: number | null;
+  shelves: number | null;
+  doorType: DoorType;
+  notes: string;
+}
+
 
 export interface DrawingRef {
   id: string;
