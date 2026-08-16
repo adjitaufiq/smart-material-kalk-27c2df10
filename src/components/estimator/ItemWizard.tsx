@@ -490,20 +490,12 @@ function DrawingStep({
         <div className="rounded-lg border bg-surface p-3">
           <div className="flex items-center gap-2">
             <ConfidenceDot level={extraction ? (extraction.confirmed_by_user ? "green" : "yellow") : "red"} />
-            <p className="text-sm font-medium">Hasil Ekstraksi Gambar</p>
+            <p className="text-sm font-medium">Hasil Pembacaan Gambar Kerja</p>
           </div>
-          {!drawingExtractionService.available ? (
-            <p className="mt-2 text-xs text-muted-foreground">
-              AI Vision extraction <strong>belum tersambung</strong> ({drawingExtractionService.providerName}).
-              Alur ekstraksi sudah tersedia, tetapi tidak ada hasil AI yang dibuat-buat. Isi ukuran
-              dari gambar secara manual pada langkah Material.
-            </p>
-          ) : (
-            <p className="mt-2 text-xs text-muted-foreground">
-              Mode pembacaan ketat: AI hanya membaca angka yang tertulis pada gambar. Ukuran yang
-              tidak ada tetap kosong — tidak ditebak, tidak memakai standar furniture.
-            </p>
-          )}
+          <p className="mt-2 text-xs text-muted-foreground">
+            Pembacaan ketat: hanya angka yang tertulis pada gambar yang diambil. Ukuran yang tidak
+            ada tetap kosong — tidak ditebak, tidak memakai standar furniture.
+          </p>
           <Button
             size="sm"
             variant="outline"
@@ -511,11 +503,11 @@ function DrawingStep({
             disabled={busy || item.drawings.length === 0}
             onClick={() => void runExtraction()}
           >
-            <Sparkles /> {busy ? "Membaca gambar…" : "Jalankan AI Extraction"}
+            <Sparkles /> {busy ? "Membaca gambar…" : "Baca Gambar Kerja"}
           </Button>
 
           {extraction ? (
-            <div className="mt-3 space-y-2">
+            <div className="mt-3 space-y-3">
               {extraction.strict ? (
                 <ExtractionReview
                   strict={extraction.strict}
@@ -534,27 +526,37 @@ function DrawingStep({
                   ))}
                 </ul>
               )}
-              <p className="text-[11px] text-muted-foreground">
-                Confidence AI {(extraction.confidence * 100).toFixed(0)}% — confidence bukan
-                pengganti konfirmasi user.
-              </p>
               <Button
                 size="sm"
-                onClick={() =>
+                className="w-full"
+                onClick={() => {
+                  const missing = missingCriticalDimensions(brief);
+                  if (missing.length > 0) {
+                    toast.error(
+                      `Masih ada ukuran yang perlu dilengkapi: ${missing.join(", ")}.`,
+                    );
+                    document
+                      .getElementById("perlu-dikonfirmasi")
+                      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                    return;
+                  }
                   patch({
                     extraction: {
                       ...extraction,
                       confirmed_by_user: true,
                       confirmed_at: new Date().toISOString(),
                     },
-                  })
-                }
+                  });
+                }}
               >
-                Konfirmasi Hasil Ekstraksi
+                {extraction.confirmed_by_user
+                  ? "Hasil Ekstraksi Telah Dikonfirmasi"
+                  : "Konfirmasi Hasil Ekstraksi"}
               </Button>
             </div>
           ) : null}
         </div>
+
 
         <Button className="w-full" onClick={onNext}>
           Lanjut ke Model
