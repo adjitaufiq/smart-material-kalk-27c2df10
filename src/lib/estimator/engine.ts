@@ -412,7 +412,16 @@ export function validateItem(item: FurnitureItem): Issue[] {
       message: "Konstruksi belum dikonfirmasi user.",
     });
   }
+  if (item.sheetMode === "cepat") {
+    issues.push({
+      severity: "warning",
+      code: "SHEET_MODE_CEPAT",
+      message:
+        "Mode Estimasi Cepat memakai waste factor, bukan nesting nyata. Untuk BOM siap belanja gunakan Estimasi Potong.",
+    });
+  }
   return issues;
+
 }
 
 /* ------------------------------------------------------------------ */
