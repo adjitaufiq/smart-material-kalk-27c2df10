@@ -5,7 +5,9 @@ import {
   findHpl,
   findMaterial,
   findTemplate,
+  hingeCountForDoor,
   hingeCountForDoorHeight,
+
   LED_DRIVER_SAFETY_MARGIN,
 } from "./masters";
 import { generatePartsForModules, resetPartIds } from "./parts";
@@ -174,14 +176,23 @@ export function calculateHardware(
         );
       } else if (mod.doorType !== "none") {
         const leafHeight = mod.height_mm - 2 * clearance;
-        const perDoor = overrides[`hinge:${mod.id}`] ?? hingeCountForDoorHeight(leafHeight);
+        const leafWidth = (mod.width_mm - clearance * (mod.doors + 1)) / Math.max(mod.doors, 1);
+        const doorMat = findMaterial(mod.doorMaterialId) ?? findMaterial(mod.bodyMaterialId);
+        const rule = hingeCountForDoor({
+          height_mm: leafHeight,
+          width_mm: leafWidth,
+          thickness_mm: doorMat?.ketebalan_mm ?? 18,
+        });
+        const override = mod.hingeOverride ?? overrides[`hinge:${mod.id}`] ?? null;
+        const perDoor = override ?? rule.count;
         addHw(
           map,
           "engsel-sendok",
           perDoor * mod.doors * factor,
-          `${mod.name}: tinggi daun ${Math.round(leafHeight)} mm → ${perDoor} engsel/pintu × ${mod.doors} pintu × ${factor} modul`,
+          `${mod.name}: ${override !== null ? `override user ${override} engsel/pintu` : rule.reason} × ${mod.doors} pintu × ${factor} modul`,
         );
       }
+
       addHw(
         map,
         "handle",
@@ -401,7 +412,16 @@ export function validateItem(item: FurnitureItem): Issue[] {
       message: "Konstruksi belum dikonfirmasi user.",
     });
   }
+  if (item.sheetMode === "cepat") {
+    issues.push({
+      severity: "warning",
+      code: "SHEET_MODE_CEPAT",
+      message:
+        "Mode Estimasi Cepat memakai waste factor, bukan nesting nyata. Untuk BOM siap belanja gunakan Estimasi Potong.",
+    });
+  }
   return issues;
+
 }
 
 /* ------------------------------------------------------------------ */
@@ -445,13 +465,62 @@ export function collectAssumptions(item: FurnitureItem): Assumption[] {
     });
     if (mod.doors > 0 && mod.doorType !== "sliding" && mod.doorType !== "none") {
       const clearance = tpl?.door_clearance_mm ?? 3;
+      const doorMat = findMaterial(mod.doorMaterialId) ?? findMaterial(mod.bodyMaterialId);
+      const rule = hingeCountForDoor({
+        height_mm: mod.height_mm - 2 * clearance,
+        width_mm: (mod.width_mm - clearance * (mod.doors + 1)) / mod.doors,
+        thickness_mm: doorMat?.ketebalan_mm ?? 18,
+      });
       out.push({
         key: `${mod.id}-hinge`,
         label: `${mod.name} — Engsel`,
-        value: `${hingeCountForDoorHeight(mod.height_mm - 2 * clearance)} per pintu (aturan tinggi daun)`,
+        value:
+          mod.hingeOverride != null
+            ? `${mod.hingeOverride} per pintu (override user)`
+            : `${rule.count} per pintu — ${rule.reason}`,
+        isDefault: mod.hingeOverride == null,
+      });
+      out.push({
+        key: `${mod.id}-clearance`,
+        label: `${mod.name} — Clearance pintu`,
+        value: `${clearance} mm per sisi`,
         isDefault: true,
       });
     }
+    if (mod.drawers > 0) {
+      const rel = findHardware("rel-laci");
+      out.push({
+        key: `${mod.id}-drawer`,
+        label: `${mod.name} — Konstruksi laci`,
+        value: `Box plywood 12 mm, dasar plywood 4 mm, clearance rel 13 mm/sisi${rel ? `, rel ${rel.brand} ${rel.nama}` : ""}`,
+        isDefault: true,
+      });
+    }
+    if (mod.shelves > 0) {
+      out.push({
+        key: `${mod.id}-shelf`,
+        label: `${mod.name} — Setback shelf`,
+        value: `${tpl?.shelf_setback_mm ?? 20} mm dari muka`,
+        isDefault: true,
+      });
+    }
+    const bodyMat = findMaterial(mod.bodyMaterialId);
+    if (bodyMat) {
+      out.push({
+        key: `${mod.id}-kerf`,
+        label: `${mod.name} — Kerf mata potong`,
+        value: `${bodyMat.kerf_mm} mm`,
+        isDefault: true,
+      });
+    }
+  }
+  for (const hw of calculateHardware(item.modules)) {
+    out.push({
+      key: `hw-${hw.id}`,
+      label: `Hardware default — ${hw.name}`,
+      value: `${hw.qty} ${hw.unit} — ${hw.explanation}`,
+      isDefault: true,
+    });
   }
   out.push({
     key: "waste",
@@ -470,6 +539,7 @@ export function collectAssumptions(item: FurnitureItem): Assumption[] {
   });
   return out;
 }
+
 
 /* ------------------------------------------------------------------ */
 /* MAIN ENGINE                                                         */

@@ -32,3 +32,19 @@ export function rupiah(value: number | null): string {
     maximumFractionDigits: 0,
   }).format(value);
 }
+
+/** Unit default untuk INPUT user (tukang membaca meteran dalam cm). */
+export const DEFAULT_INPUT_UNIT: Unit = "cm";
+
+/** Pembulatan display: mm -> unit input, tanpa trailing zero. */
+export function displayIn(value_mm: number | null, unit: Unit): string {
+  if (value_mm === null || !Number.isFinite(value_mm)) return "";
+  const v = fromMm(value_mm, unit);
+  return String(Math.round(v * 1000) / 1000);
+}
+
+/** "240 × 260 × 60 cm (2400 × 2600 × 600 mm)" */
+export function dualDim(w: number, h: number, d: number): string {
+  const cm = (v: number) => Math.round((v / 10) * 10) / 10;
+  return `${cm(w)} × ${cm(h)} × ${cm(d)} cm (${Math.round(w)} × ${Math.round(h)} × ${Math.round(d)} mm)`;
+}

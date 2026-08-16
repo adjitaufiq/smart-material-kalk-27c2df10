@@ -166,12 +166,15 @@ export interface ModuleSpec {
     doorFaceB: FaceFinish;
   };
   edgingId: string | null;
+  /** override jumlah engsel per pintu (null = pakai aturan default) */
+  hingeOverride?: number | null | undefined;
   /** table_top only: number of stacked layers */
   topLayers?: number | undefined;
   /** table_frame only: frame is not sheet material */
   frameMaterial?: "besi" | "plywood" | "solid_wood" | "lainnya" | undefined;
   led?: { enabled: boolean; length_mm: number; watt_per_m: number; segments: number } | undefined;
 }
+
 
 export interface Part {
   id: string;
@@ -297,17 +300,21 @@ export interface FurnitureItem {
   confirmedDimensions: boolean;
   wasteFactor: number; // 0.05 | 0.10 | 0.15 | custom
   sheetMode: "cepat" | "potong";
-  briefing?: {
-    width_mm: number;
-    height_mm: number;
-    depth_mm: number;
-    doors: number;
-    drawers: number;
-    shelves: number;
-    doorType: DoorType;
-    notes: string;
-  } | undefined;
+  briefing?: Briefing | undefined;
 }
+
+/** Input user. null = BELUM DIISI (bukan 0). */
+export interface Briefing {
+  width_mm: number | null;
+  height_mm: number | null;
+  depth_mm: number | null;
+  doors: number | null;
+  drawers: number | null;
+  shelves: number | null;
+  doorType: DoorType;
+  notes: string;
+}
+
 
 export interface DrawingRef {
   id: string;
@@ -340,6 +347,13 @@ export interface DrawingExtraction {
   created_at: string;
 }
 
+export interface RequirementChange {
+  field: string;
+  label: string;
+  from: number | string;
+  to: number | string;
+}
+
 export interface GeneratedDesignOption {
   id: string;
   option_number: number;
@@ -350,7 +364,20 @@ export interface GeneratedDesignOption {
   image_reference: string | null;
   selected: boolean;
   created_at: string;
+  /** brief yang dipakai model ini */
+  brief_snapshot: {
+    width_mm: number;
+    height_mm: number;
+    depth_mm: number;
+    doors: number;
+    drawers: number;
+    shelves: number;
+    doorType: DoorType;
+  };
+  /** perbedaan terhadap input user — wajib disetujui sebelum dipakai */
+  requirement_changes: RequirementChange[];
 }
+
 
 export interface ProjectRevision {
   id: string;

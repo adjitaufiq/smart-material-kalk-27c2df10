@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { ResultTabs } from "@/components/estimator/ResultTabs";
 import {
   ConfidenceDot,
+  CountInput,
+
   DimensionInput,
   IssueList,
   SectionCard,
@@ -26,10 +28,13 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { AiUnavailableError, designGenerationService, drawingExtractionService } from "@/lib/estimator/ai";
 import { calculateItem } from "@/lib/estimator/engine";
+import { dualDim } from "@/lib/estimator/units";
 import {
+  applyDesignOption,
   buildDesignOptions,
   composeModules,
   makeModule,
+  resolveBrief,
   templateName,
   uid,
 } from "@/lib/estimator/factory";
@@ -40,6 +45,7 @@ import {
   MATERIAL_MASTER,
 } from "@/lib/estimator/masters";
 import type {
+  Briefing,
   DoorType,
   DrawingRef,
   FurnitureItem,
@@ -86,17 +92,18 @@ export function ItemWizard({
   const patchModule = (id: string, partial: Partial<ModuleSpec>) =>
     patch({ modules: item.modules.map((m) => (m.id === id ? { ...m, ...partial } : m)) });
 
-  const brief = item.briefing ?? {
-    width_mm: 0,
-    height_mm: 0,
-    depth_mm: 0,
-    doors: 0,
-    drawers: 0,
-    shelves: 0,
+  const brief: Briefing = item.briefing ?? {
+    width_mm: null,
+    height_mm: null,
+    depth_mm: null,
+    doors: null,
+    drawers: null,
+    shelves: null,
     doorType: "swing" as DoorType,
     notes: "",
   };
-  const setBrief = (p: Partial<typeof brief>) => patch({ briefing: { ...brief, ...p } });
+  const setBrief = (p: Partial<Briefing>) => patch({ briefing: { ...brief, ...p } });
+
 
   return (
     <div className="space-y-4">
@@ -173,9 +180,9 @@ export function ItemWizard({
               />
             </div>
             <div className="mt-3 grid gap-3 sm:grid-cols-4">
-              <NumField label="Jumlah pintu" value={brief.doors} onChange={(v) => setBrief({ doors: v })} />
-              <NumField label="Jumlah laci" value={brief.drawers} onChange={(v) => setBrief({ drawers: v })} />
-              <NumField label="Jumlah shelf" value={brief.shelves} onChange={(v) => setBrief({ shelves: v })} />
+              <CountInput label="Jumlah pintu" value={brief.doors} onChange={(v) => setBrief({ doors: v })} placeholder="contoh: 4" />
+              <CountInput label="Jumlah laci" value={brief.drawers} onChange={(v) => setBrief({ drawers: v })} placeholder="contoh: 2" />
+              <CountInput label="Jumlah shelf" value={brief.shelves} onChange={(v) => setBrief({ shelves: v })} placeholder="contoh: 3" />
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">Tipe pintu</Label>
                 <Select
@@ -245,7 +252,7 @@ export function ItemWizard({
                     makeModule({
                       kind,
                       name: MODULE_KINDS.find((k) => k.kind === kind)?.label ?? kind,
-                      width_mm: brief.width_mm || 600,
+                      width_mm: brief.width_mm ?? 600,
                     }),
                   ],
                 })
@@ -301,6 +308,17 @@ export function ItemWizard({
         >
           <div className="space-y-3">
             <IssueList issues={result.issues} />
+            <div className="rounded-lg border bg-surface p-3">
+              <p className="text-xs font-medium">Ringkasan ukuran (cm & mm)</p>
+              <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                {item.modules.map((m) => (
+                  <li key={m.id} className="num">
+                    {m.name}: {dualDim(m.width_mm, m.height_mm, m.depth_mm)} · {m.doors} pintu ·{" "}
+                    {m.drawers} laci · {m.shelves} shelf
+                  </li>
+                ))}
+              </ul>
+            </div>
             <label className="flex items-start gap-2 rounded-lg border p-3 text-sm">
               <Checkbox
                 checked={item.confirmedDimensions}
@@ -533,20 +551,13 @@ function ModelStep({
   onNext,
 }: {
   item: FurnitureItem;
-  brief: {
-    width_mm: number;
-    height_mm: number;
-    depth_mm: number;
-    doors: number;
-    drawers: number;
-    shelves: number;
-    doorType: DoorType;
-    notes: string;
-  };
+  brief: Briefing;
   patch: (p: Partial<FurnitureItem>) => void;
   onNext: () => void;
 }) {
   const options = item.designOptions;
+  const [approved, setApproved] = useState<Record<string, boolean>>({});
+
 
   return (
     <div className="space-y-4">
@@ -559,15 +570,7 @@ function ModelStep({
             size="sm"
             onClick={() =>
               patch({
-                modules: composeModules(item.category, {
-                  width_mm: brief.width_mm,
-                  height_mm: brief.height_mm,
-                  depth_mm: brief.depth_mm,
-                  doors: brief.doors,
-                  drawers: brief.drawers,
-                  shelves: brief.shelves,
-                  doorType: brief.doorType,
-                }),
+                modules: composeModules(item.category, resolveBrief(brief)),
               })
             }
             disabled={!brief.width_mm}
@@ -581,15 +584,7 @@ function ModelStep({
               disabled={!brief.width_mm}
               onClick={() =>
                 patch({
-                  designOptions: buildDesignOptions(item.category, {
-                    width_mm: brief.width_mm,
-                    height_mm: brief.height_mm,
-                    depth_mm: brief.depth_mm,
-                    doors: brief.doors,
-                    drawers: brief.drawers,
-                    shelves: brief.shelves,
-                    doorType: brief.doorType,
-                  }),
+                  designOptions: buildDesignOptions(item.category, resolveBrief(brief)),
                 })
               }
             >
@@ -649,6 +644,29 @@ function ModelStep({
                     {opt.overall_dimensions.depth_mm} D — Module:{" "}
                     {opt.structured_model.map((m) => m.width_mm).join(" | ")}
                   </p>
+                  {opt.requirement_changes.length > 0 ? (
+                    <div className="mt-2 rounded-md border border-warning/40 bg-warning/10 p-2 text-[11px] text-warning-foreground">
+                      <p className="font-medium">
+                        Model ini mengubah kebutuhan yang Anda isi — perlu persetujuan:
+                      </p>
+                      <ul className="mt-1 list-disc pl-4">
+                        {opt.requirement_changes.map((c) => (
+                          <li key={c.field}>
+                            {c.label}: {String(c.from)} → {String(c.to)}
+                          </li>
+                        ))}
+                      </ul>
+                      <label className="mt-2 flex items-center gap-2">
+                        <Checkbox
+                          checked={approved[opt.id] ?? false}
+                          onCheckedChange={(v) =>
+                            setApproved((s) => ({ ...s, [opt.id]: v === true }))
+                          }
+                        />
+                        <span>Saya setuju perubahan ini.</span>
+                      </label>
+                    </div>
+                  ) : null}
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <div className="flex h-16 flex-1 items-center justify-center rounded border border-dashed bg-surface text-[10px] text-muted-foreground">
                       {designGenerationService.available
@@ -657,16 +675,23 @@ function ModelStep({
                     </div>
                     <Button
                       size="sm"
-                      onClick={() =>
-                        patch({
-                          selectedOptionId: opt.id,
-                          modules: opt.structured_model.map((m) => ({ ...m, id: uid("mod") })),
-                        })
+                      disabled={
+                        opt.requirement_changes.length > 0 && !(approved[opt.id] ?? false)
                       }
+                      onClick={() => {
+                        const res = applyDesignOption(item, opt, approved[opt.id] ?? false);
+                        if (res.blocked) return;
+                        patch({
+                          selectedOptionId: res.item.selectedOptionId,
+                          modules: res.item.modules,
+                          ...(res.item.briefing ? { briefing: res.item.briefing } : {}),
+                        });
+                      }}
                     >
                       Gunakan Model Ini
                     </Button>
                   </div>
+
                 </div>
               );
             })}
@@ -704,9 +729,9 @@ function ModuleEditor({
       </div>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-3">
-        <DimensionInput label="Width" value_mm={mod.width_mm} onChange={(v) => onChange({ width_mm: v })} />
-        <DimensionInput label="Height" value_mm={mod.height_mm} onChange={(v) => onChange({ height_mm: v })} />
-        <DimensionInput label="Depth" value_mm={mod.depth_mm} onChange={(v) => onChange({ depth_mm: v })} />
+        <DimensionInput label="Width" value_mm={mod.width_mm} onChange={(v) => onChange({ width_mm: v ?? 0 })} />
+        <DimensionInput label="Height" value_mm={mod.height_mm} onChange={(v) => onChange({ height_mm: v ?? 0 })} />
+        <DimensionInput label="Depth" value_mm={mod.depth_mm} onChange={(v) => onChange({ depth_mm: v ?? 0 })} />
       </div>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-4">
@@ -715,6 +740,20 @@ function ModuleEditor({
         <NumField label="Laci" value={mod.drawers} onChange={(v) => onChange({ drawers: v })} />
         <NumField label="Shelf" value={mod.shelves} onChange={(v) => onChange({ shelves: v })} />
       </div>
+
+      {mod.doors > 0 && mod.doorType !== "none" && mod.doorType !== "sliding" ? (
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <CountInput
+            label="Engsel per pintu (override)"
+            value={mod.hingeOverride ?? null}
+            onChange={(v) => onChange({ hingeOverride: v })}
+            placeholder="kosong = aturan default"
+          />
+          <p className="self-end text-[11px] text-muted-foreground">
+            Default dihitung dari tinggi, lebar, dan berat estimasi daun pintu.
+          </p>
+        </div>
+      ) : null}
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <Pick

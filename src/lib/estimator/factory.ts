@@ -5,7 +5,9 @@ import type {
   GeneratedDesignOption,
   ModuleKind,
   ModuleSpec,
+  RequirementChange,
 } from "./types";
+
 
 let seq = 0;
 export function uid(prefix = "id"): string {
@@ -67,7 +69,7 @@ export function templateName(mod: ModuleSpec): string {
   return findTemplate(mod.templateId)?.nama ?? mod.kind;
 }
 
-interface Brief {
+export interface Brief {
   width_mm: number;
   height_mm: number;
   depth_mm: number;
@@ -77,85 +79,132 @@ interface Brief {
   doorType: DoorType;
 }
 
+/** Brief user (boleh null) -> Brief siap hitung. null count = 0, dimensi null = 0 (diblokir validasi). */
+export function resolveBrief(b: {
+  width_mm: number | null;
+  height_mm: number | null;
+  depth_mm: number | null;
+  doors: number | null;
+  drawers: number | null;
+  shelves: number | null;
+  doorType: DoorType;
+}): Brief {
+  return {
+    width_mm: b.width_mm ?? 0,
+    height_mm: b.height_mm ?? 0,
+    depth_mm: b.depth_mm ?? 0,
+    doors: b.doors ?? 0,
+    drawers: b.drawers ?? 0,
+    shelves: b.shelves ?? 0,
+    doorType: b.doorType,
+  };
+}
+
+/** Kategori bebas teks -> kategori kanonik untuk pemilihan konstruksi. */
+export function normalizeCategory(category: string): string {
+  const c = category.trim().toLowerCase();
+  if (/lemari\s*baju|wardrobe|lemari\s*pakaian|^lemari$|lemari\s/.test(c)) return "Lemari Baju";
+  if (/kitchen|dapur/.test(c)) return "Kitchen Set";
+  if (/backdrop/.test(c)) return "Backdrop TV";
+  if (/buffet/.test(c)) return "Buffet TV";
+  if (/rak|ambalan/.test(c)) return "Rak / Ambalan";
+  if (/partisi/.test(c)) return "Partisi";
+  if (/pintu/.test(c)) return "Pintu Furniture";
+  if (/meja|table|credenza|counter/.test(c)) return "Meja";
+  return category;
+}
+
+/** Bagi total menjadi n bagian integer, sisa dibagi ke bay pertama (deterministik). */
+export function splitEvenly(total: number, n: number): number[] {
+  if (n <= 0) return [];
+  const base = Math.floor(total / n);
+  let rem = total - base * n;
+  return Array.from({ length: n }, () => {
+    const extra = rem > 0 ? 1 : 0;
+    rem -= extra;
+    return base + extra;
+  });
+}
+
 /**
- * MODULE COMPOSER deterministik: kategori furniture = gabungan primitive module.
- * Ini BUKAN AI. Dipakai sebagai titik awal yang harus dikonfirmasi user.
+ * Pembagian bay wardrobe: JANGAN pernah menjadikan seluruh width 1 carcass.
+ * Jumlah bay mengikuti jumlah pintu user bila ada, dibatasi max 1000 mm/bay.
  */
-export function composeModules(category: string, brief: Brief): ModuleSpec[] {
+export function planBays(width_mm: number, doors: number): number[] {
+  let n = doors > 0 ? doors : Math.max(1, Math.round(width_mm / 600));
+  while (width_mm / n > 1000) n += 1;
+  return splitEvenly(Math.round(width_mm), n);
+}
+
+/**
+ * MODULE COMPOSER deterministik. Nilai user (dimensi, pintu, laci, shelf)
+ * adalah SOURCE OF TRUTH dan tidak boleh diubah diam-diam.
+ */
+export function composeModules(category: string, briefInput: Brief): ModuleSpec[] {
+  const brief = briefInput;
   const { width_mm: W, height_mm: H, depth_mm: D } = brief;
-  switch (category) {
+  switch (normalizeCategory(category)) {
     case "Kitchen Set": {
-      const baseWidth = W;
-      const baseModules = Math.max(1, Math.round(baseWidth / 600));
-      return [
+      const bays = planBays(W, brief.doors > 0 ? Math.ceil(brief.doors / 2) : 0);
+      const doorsPer = splitEvenly(brief.doors, bays.length);
+      const drawersPer = splitEvenly(brief.drawers, bays.length);
+      const shelvesPer = splitEvenly(brief.shelves, bays.length);
+      return bays.map((w, i) =>
         makeModule({
           kind: "base_cabinet",
-          name: "Kabinet Bawah",
-          qty: baseModules,
-          width_mm: Math.round(baseWidth / baseModules),
-          height_mm: 720,
+          name: `Kabinet Bawah ${i + 1}`,
+          width_mm: w,
+          height_mm: H || 720,
           depth_mm: D || 550,
-          doors: brief.doors > 0 ? 2 : 0,
-          drawers: 0,
-          shelves: 1,
+          doors: doorsPer[i] ?? 0,
+          doorType: brief.doorType,
+          drawers: drawersPer[i] ?? 0,
+          shelves: shelvesPer[i] ?? 0,
         }),
-        makeModule({
-          kind: "wall_cabinet",
-          name: "Kabinet Atas",
-          qty: Math.max(1, baseModules - 1),
-          width_mm: Math.round(baseWidth / baseModules),
-          height_mm: 700,
-          depth_mm: 350,
-          doors: 2,
-          shelves: 1,
-        }),
-        makeModule({
-          kind: "drawer_module",
-          name: "Modul Laci",
-          qty: 1,
-          width_mm: 600,
-          height_mm: 720,
-          depth_mm: D || 550,
-          drawers: Math.max(brief.drawers, 3),
-          shelves: 0,
-        }),
-      ];
+      );
     }
     case "Lemari Baju": {
-      // Side panel tidak boleh melebihi panjang lembar. Bila tinggi > 2100 mm,
-      // lemari dipecah menjadi badan utama + loft cabinet (praktik workshop).
+      // Side panel tidak boleh melebihi panjang lembar: badan utama + loft bila perlu.
       const mainHeight = H > 2100 ? 2100 : H;
       const loftHeight = H - mainHeight;
-      const mods = [
+      const bays = planBays(W, brief.doors);
+      const doorsPer = splitEvenly(brief.doors, bays.length);
+      const drawersPer = splitEvenly(brief.drawers, bays.length);
+      const shelvesPer = splitEvenly(brief.shelves, bays.length);
+      const mods = bays.map((w, i) =>
         makeModule({
           kind: "wardrobe",
-          name: "Badan Lemari",
-          width_mm: W,
+          name: `Bay Lemari ${i + 1}`,
+          width_mm: w,
           height_mm: mainHeight,
           depth_mm: D || 600,
-          doors: brief.doors,
+          doors: doorsPer[i] ?? 0,
           doorType: brief.doorType,
-          drawers: brief.drawers,
-          shelves: brief.shelves,
-          hangingRod: true,
+          drawers: drawersPer[i] ?? 0,
+          shelves: shelvesPer[i] ?? 0,
+          hangingRod: (shelvesPer[i] ?? 0) === 0 || i === 0,
         }),
-      ];
+      );
       if (loftHeight >= 200) {
-        mods.push(
-          makeModule({
-            kind: "tall_cabinet",
-            name: "Loft Cabinet",
-            width_mm: W,
-            height_mm: loftHeight,
-            depth_mm: D || 600,
-            doors: Math.max(brief.doors, 2),
-            doorType: brief.doorType,
-            shelves: 0,
-          }),
+        bays.forEach((w, i) =>
+          mods.push(
+            makeModule({
+              kind: "tall_cabinet",
+              name: `Loft Cabinet ${i + 1}`,
+              width_mm: w,
+              height_mm: loftHeight,
+              depth_mm: D || 600,
+              // Tidak menambah pintu/laci/shelf tanpa persetujuan user.
+              doors: 0,
+              doorType: "none",
+              shelves: 0,
+            }),
+          ),
         );
       }
       return mods;
     }
+
     case "Meja":
     case "Meja Kerja":
     case "Meja Makan":
@@ -256,47 +305,62 @@ export function composeModules(category: string, brief: Brief): ModuleSpec[] {
   }
 }
 
+const CHANGE_LABEL: Record<string, string> = {
+  width_mm: "Lebar",
+  height_mm: "Tinggi",
+  depth_mm: "Depth",
+  doors: "Jumlah pintu",
+  drawers: "Jumlah laci",
+  shelves: "Jumlah shelf",
+  doorType: "Tipe pintu",
+};
+
+/** Diff antara input user dan brief varian model. */
+export function requirementChanges(original: Brief, variant: Brief): RequirementChange[] {
+  const out: RequirementChange[] = [];
+  for (const key of Object.keys(CHANGE_LABEL) as (keyof Brief)[]) {
+    if (original[key] !== variant[key]) {
+      out.push({
+        field: key,
+        label: CHANGE_LABEL[key] ?? key,
+        from: original[key],
+        to: variant[key],
+      });
+    }
+  }
+  return out;
+}
+
 /**
- * Alternatif desain BUKAN AI: 3 varian struktural deterministik dari ukuran user.
- * Bila provider AI tersedia, service AI dapat menggantikan/melengkapi fungsi ini,
- * tetapi setiap opsi tetap wajib memiliki structured model + BOM sendiri.
+ * Alternatif desain deterministik. Model 1 SELALU sama persis dengan input user.
+ * Model lain boleh berbeda, tetapi perbedaannya wajib dicatat dan disetujui user.
  */
-export function buildDesignOptions(
-  category: string,
-  brief: Brief,
-): GeneratedDesignOption[] {
+export function buildDesignOptions(category: string, brief: Brief): GeneratedDesignOption[] {
   const dims = { width_mm: brief.width_mm, height_mm: brief.height_mm, depth_mm: brief.depth_mm };
   const variants: { name: string; description: string; brief: Brief }[] = [
     {
-      name: "Model 1 — Minimalis Swing",
-      description: "Pintu swing, laci minimal, rak standar. Part paling sedikit.",
-      brief: {
-        ...brief,
-        doorType: "swing",
-        doors: Math.max(2, Math.round(brief.width_mm / 600)),
-        drawers: Math.max(brief.drawers, 2),
-        shelves: Math.max(brief.shelves, 3),
-      },
+      name: "Model 1 — Sesuai Input Anda",
+      description: "Struktur mengikuti persis kebutuhan yang Anda isi.",
+      brief: { ...brief },
     },
     {
       name: "Model 2 — Sliding",
-      description: "Pintu sliding, tanpa engsel, rak lebih banyak, laci lebih banyak.",
+      description: "Pintu sliding, tanpa engsel, rak lebih banyak.",
       brief: {
         ...brief,
         doorType: "sliding",
-        doors: 3,
-        drawers: Math.max(brief.drawers, 4),
+        doors: Math.max(2, Math.min(brief.doors || 2, 3)),
         shelves: Math.max(brief.shelves, 5),
       },
     },
     {
       name: "Model 3 — Kombinasi",
-      description: "Kombinasi pintu swing + laci internal + rak penuh. Part paling banyak.",
+      description: "Kombinasi pintu + laci internal + rak penuh. Part paling banyak.",
       brief: {
         ...brief,
         doorType: "swing",
-        doors: Math.max(4, Math.round(brief.width_mm / 500)),
-        drawers: Math.max(brief.drawers, 6),
+        doors: Math.max(brief.doors + 2, 4),
+        drawers: Math.max(brief.drawers, 4),
         shelves: Math.max(brief.shelves, 7),
       },
     },
@@ -312,8 +376,46 @@ export function buildDesignOptions(
     image_reference: null,
     selected: false,
     created_at: new Date().toISOString(),
+    brief_snapshot: v.brief,
+    requirement_changes: requirementChanges(brief, v.brief),
   }));
 }
+
+/**
+ * Terapkan model terpilih. Bila model mengubah kebutuhan user dan belum disetujui,
+ * item DIKEMBALIKAN APA ADANYA (input user tetap source of truth).
+ */
+export function applyDesignOption(
+  item: FurnitureItem,
+  option: GeneratedDesignOption,
+  approved: boolean,
+): { item: FurnitureItem; blocked: boolean } {
+  if (option.requirement_changes.length > 0 && !approved) {
+    return { item, blocked: true };
+  }
+  const b = option.brief_snapshot;
+  return {
+    item: {
+      ...item,
+      selectedOptionId: option.id,
+      modules: option.structured_model.map((m) => ({ ...m, id: uid("mod") })),
+      briefing: item.briefing
+        ? {
+            ...item.briefing,
+            width_mm: b.width_mm,
+            height_mm: b.height_mm,
+            depth_mm: b.depth_mm,
+            doors: b.doors,
+            drawers: b.drawers,
+            shelves: b.shelves,
+            doorType: b.doorType,
+          }
+        : item.briefing,
+    },
+    blocked: false,
+  };
+}
+
 
 export function newFurnitureItem(category: string, name: string): FurnitureItem {
   return {
