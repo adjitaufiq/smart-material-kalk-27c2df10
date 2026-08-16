@@ -67,7 +67,7 @@ export function templateName(mod: ModuleSpec): string {
   return findTemplate(mod.templateId)?.nama ?? mod.kind;
 }
 
-interface Brief {
+export interface Brief {
   width_mm: number;
   height_mm: number;
   depth_mm: number;
@@ -77,85 +77,63 @@ interface Brief {
   doorType: DoorType;
 }
 
+/** Brief user (boleh null) -> Brief siap hitung. null count = 0, dimensi null = 0 (diblokir validasi). */
+export function resolveBrief(b: {
+  width_mm: number | null;
+  height_mm: number | null;
+  depth_mm: number | null;
+  doors: number | null;
+  drawers: number | null;
+  shelves: number | null;
+  doorType: DoorType;
+}): Brief {
+  return {
+    width_mm: b.width_mm ?? 0,
+    height_mm: b.height_mm ?? 0,
+    depth_mm: b.depth_mm ?? 0,
+    doors: b.doors ?? 0,
+    drawers: b.drawers ?? 0,
+    shelves: b.shelves ?? 0,
+    doorType: b.doorType,
+  };
+}
+
+/** Kategori bebas teks -> kategori kanonik untuk pemilihan konstruksi. */
+export function normalizeCategory(category: string): string {
+  const c = category.trim().toLowerCase();
+  if (/lemari\s*baju|wardrobe|lemari\s*pakaian|^lemari$|lemari\s/.test(c)) return "Lemari Baju";
+  if (/kitchen|dapur/.test(c)) return "Kitchen Set";
+  if (/backdrop/.test(c)) return "Backdrop TV";
+  if (/buffet/.test(c)) return "Buffet TV";
+  if (/rak|ambalan/.test(c)) return "Rak / Ambalan";
+  if (/partisi/.test(c)) return "Partisi";
+  if (/pintu/.test(c)) return "Pintu Furniture";
+  if (/meja|table|credenza|counter/.test(c)) return "Meja";
+  return category;
+}
+
+/** Bagi total menjadi n bagian integer, sisa dibagi ke bay pertama (deterministik). */
+export function splitEvenly(total: number, n: number): number[] {
+  if (n <= 0) return [];
+  const base = Math.floor(total / n);
+  let rem = total - base * n;
+  return Array.from({ length: n }, () => {
+    const extra = rem > 0 ? 1 : 0;
+    rem -= extra;
+    return base + extra;
+  });
+}
+
 /**
- * MODULE COMPOSER deterministik: kategori furniture = gabungan primitive module.
- * Ini BUKAN AI. Dipakai sebagai titik awal yang harus dikonfirmasi user.
+ * Pembagian bay wardrobe: JANGAN pernah menjadikan seluruh width 1 carcass.
+ * Jumlah bay mengikuti jumlah pintu user bila ada, dibatasi max 1000 mm/bay.
  */
-export function composeModules(category: string, brief: Brief): ModuleSpec[] {
-  const { width_mm: W, height_mm: H, depth_mm: D } = brief;
-  switch (category) {
-    case "Kitchen Set": {
-      const baseWidth = W;
-      const baseModules = Math.max(1, Math.round(baseWidth / 600));
-      return [
-        makeModule({
-          kind: "base_cabinet",
-          name: "Kabinet Bawah",
-          qty: baseModules,
-          width_mm: Math.round(baseWidth / baseModules),
-          height_mm: 720,
-          depth_mm: D || 550,
-          doors: brief.doors > 0 ? 2 : 0,
-          drawers: 0,
-          shelves: 1,
-        }),
-        makeModule({
-          kind: "wall_cabinet",
-          name: "Kabinet Atas",
-          qty: Math.max(1, baseModules - 1),
-          width_mm: Math.round(baseWidth / baseModules),
-          height_mm: 700,
-          depth_mm: 350,
-          doors: 2,
-          shelves: 1,
-        }),
-        makeModule({
-          kind: "drawer_module",
-          name: "Modul Laci",
-          qty: 1,
-          width_mm: 600,
-          height_mm: 720,
-          depth_mm: D || 550,
-          drawers: Math.max(brief.drawers, 3),
-          shelves: 0,
-        }),
-      ];
-    }
-    case "Lemari Baju": {
-      // Side panel tidak boleh melebihi panjang lembar. Bila tinggi > 2100 mm,
-      // lemari dipecah menjadi badan utama + loft cabinet (praktik workshop).
-      const mainHeight = H > 2100 ? 2100 : H;
-      const loftHeight = H - mainHeight;
-      const mods = [
-        makeModule({
-          kind: "wardrobe",
-          name: "Badan Lemari",
-          width_mm: W,
-          height_mm: mainHeight,
-          depth_mm: D || 600,
-          doors: brief.doors,
-          doorType: brief.doorType,
-          drawers: brief.drawers,
-          shelves: brief.shelves,
-          hangingRod: true,
-        }),
-      ];
-      if (loftHeight >= 200) {
-        mods.push(
-          makeModule({
-            kind: "tall_cabinet",
-            name: "Loft Cabinet",
-            width_mm: W,
-            height_mm: loftHeight,
-            depth_mm: D || 600,
-            doors: Math.max(brief.doors, 2),
-            doorType: brief.doorType,
-            shelves: 0,
-          }),
-        );
-      }
-      return mods;
-    }
+export function planBays(width_mm: number, doors: number): number[] {
+  let n = doors > 0 ? doors : Math.max(1, Math.round(width_mm / 600));
+  while (width_mm / n > 1000) n += 1;
+  return splitEvenly(Math.round(width_mm), n);
+}
+
     case "Meja":
     case "Meja Kerja":
     case "Meja Makan":
