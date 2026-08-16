@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, Sparkles, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 
@@ -98,11 +98,26 @@ export function ItemWizard({
   onSaveRevision: () => void;
 }) {
   const [step, setStep] = useState(0);
+  const [showLegacyModules, setShowLegacyModules] = useState(false);
   const result = useMemo(() => calculateItem(item), [item]);
 
   const patch = (partial: Partial<FurnitureItem>) => onChange({ ...item, ...partial });
   const patchModule = (id: string, partial: Partial<ModuleSpec>) =>
     patch({ modules: item.modules.map((m) => (m.id === id ? { ...m, ...partial } : m)) });
+
+  /** Gambar kerja yang sudah dikonfirmasi = satu-satunya sumber data Model & Material. */
+  const snapshot = item.drawingSnapshot ?? null;
+  const drawingMode = Boolean(snapshot);
+  const drawingComponents = item.drawingComponents ?? [];
+  const needsDerive =
+    snapshot !== null && drawingComponents.length === 0 && snapshot.components.length > 0;
+
+  // Self-heal: snapshot ada tetapi material state hilang (item lama / gagal simpan).
+  useEffect(() => {
+    if (!needsDerive || !snapshot) return;
+    patch({ drawingComponents: materialStateFromModel(modelFromSnapshot(snapshot)) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needsDerive, snapshot?.id]);
 
   const brief: Briefing = item.briefing ?? {
     width_mm: null,
