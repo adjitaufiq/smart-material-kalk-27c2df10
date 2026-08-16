@@ -48,11 +48,76 @@ export interface DesignGenerationService {
   renderConcept(model: ModuleSpec[], description: string): Promise<string>;
 }
 
+/** Ringkasan strict result -> field datar untuk validasi engine (tidak menambah nilai baru). */
+function flatten(strict: StrictExtractionResult): ExtractedField[] {
+  const out: ExtractedField[] = [];
+  for (const sec of strict.sections) {
+    for (const m of sec.measurements) {
+      out.push({
+        key: `${sec.id}.${m.field}`,
+        label: `${sec.name} — ${m.label}`,
+        value: m.value_mm,
+        unit: "mm",
+        confidence: m.confidence,
+        ambiguous: m.status === "AMBIGUOUS" || m.status === "CONFLICT",
+        range:
+          m.candidates_mm && m.candidates_mm.length > 1
+            ? [Math.min(...m.candidates_mm), Math.max(...m.candidates_mm)]
+            : undefined,
+      });
+    }
+    for (const c of sec.counts) {
+      out.push({
+        key: `${sec.id}.count.${c.label}`,
+        label: `${sec.name} — ${c.label}`,
+        value: c.value,
+        confidence: c.confidence,
+        ambiguous: c.status === "AMBIGUOUS" || c.status === "CONFLICT",
+      });
+    }
+    for (const s of sec.specs) {
+      out.push({
+        key: `${sec.id}.spec.${s.field}`,
+        label: `${sec.name} — ${s.label}`,
+        value: s.value,
+        confidence: s.confidence,
+        ambiguous: s.status === "AMBIGUOUS" || s.status === "CONFLICT",
+      });
+    }
+  }
+  return out;
+}
+
 export const drawingExtractionService: DrawingExtractionService = {
-  available: false,
-  providerName: "belum tersambung",
-  async extract() {
-    throw new AiUnavailableError("AI Vision drawing extraction");
+  available: true,
+  providerName: "Lovable AI Gateway (Gemini Vision)",
+  async extract(drawing: DrawingRef, category = ""): Promise<DrawingExtraction> {
+    const strict = (await readDrawing({
+      data: {
+        name: drawing.name,
+        mime: drawing.mime,
+        dataUrl: drawing.dataUrl,
+        category,
+      },
+    })) as StrictExtractionResult;
+    const normalized = flatten(strict);
+    const confident = normalized.filter((f) => f.value !== null);
+    return {
+      id: `ext_${Date.now().toString(36)}`,
+      drawingId: drawing.id,
+      provider: strict.provider,
+      raw: strict,
+      normalized,
+      confidence:
+        confident.length > 0
+          ? confident.reduce((a, f) => a + f.confidence, 0) / confident.length
+          : 0,
+      warnings: [...strict.needs_confirmation, ...strict.conflicts],
+      confirmed_by_user: false,
+      confirmed_at: null,
+      created_at: new Date().toISOString(),
+      strict,
+    };
   },
 };
 
