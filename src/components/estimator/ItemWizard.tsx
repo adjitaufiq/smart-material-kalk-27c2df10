@@ -274,40 +274,83 @@ export function ItemWizard({
         <SectionCard
           title="Material & Konstruksi"
           description={
-            item.drawingComponents && item.drawingComponents.length > 0
+            drawingMode
               ? "Mengikuti Gambar Kerja. Field yang tidak tercantum pada gambar tetap kosong sampai Anda mengisinya."
               : "Spesifikasi gambar kerja selalu menang atas default template."
           }
         >
           <div className="space-y-4">
-            {item.drawingComponents && item.drawingComponents.length > 0 ? (
-              <DrawingMaterialEditor
-                components={item.drawingComponents}
-                onChange={(next) => patch({ drawingComponents: next })}
-              />
-            ) : null}
-            {item.modules.map((mod) => (
-              <ModuleEditor
-                key={mod.id}
-                mod={mod}
-                onChange={(p) => patchModule(mod.id, p)}
-                onRemove={() => patch({ modules: item.modules.filter((m) => m.id !== mod.id) })}
-              />
-            ))}
-            <AddModule
-              onAdd={(kind) =>
-                patch({
-                  modules: [
-                    ...item.modules,
-                    makeModule({
-                      kind,
-                      name: MODULE_KINDS.find((k) => k.kind === kind)?.label ?? kind,
-                      width_mm: brief.width_mm ?? 600,
-                    }),
-                  ],
-                })
-              }
-            />
+            {drawingMode ? (
+              <>
+                {drawingComponents.length > 0 ? (
+                  <DrawingMaterialEditor
+                    components={drawingComponents}
+                    onChange={(next) => patch({ drawingComponents: next })}
+                  />
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Gambar kerja terkonfirmasi tidak memuat komponen yang bisa dibaca. Tidak ada
+                    material default yang diisikan otomatis.
+                  </p>
+                )}
+                {item.modules.length > 0 ? (
+                  <div className="rounded-lg border border-dashed p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs text-muted-foreground">
+                        Modul default konstruksi (opsional) — {item.modules.length} modul, di luar
+                        data gambar kerja.
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setShowLegacyModules((v) => !v)}
+                      >
+                        {showLegacyModules ? "Sembunyikan" : "Tampilkan"}
+                      </Button>
+                    </div>
+                    {showLegacyModules ? (
+                      <div className="mt-3 space-y-4">
+                        {item.modules.map((mod) => (
+                          <ModuleEditor
+                            key={mod.id}
+                            mod={mod}
+                            onChange={(p) => patchModule(mod.id, p)}
+                            onRemove={() =>
+                              patch({ modules: item.modules.filter((m) => m.id !== mod.id) })
+                            }
+                          />
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <>
+                {item.modules.map((mod) => (
+                  <ModuleEditor
+                    key={mod.id}
+                    mod={mod}
+                    onChange={(p) => patchModule(mod.id, p)}
+                    onRemove={() => patch({ modules: item.modules.filter((m) => m.id !== mod.id) })}
+                  />
+                ))}
+                <AddModule
+                  onAdd={(kind) =>
+                    patch({
+                      modules: [
+                        ...item.modules,
+                        makeModule({
+                          kind,
+                          name: MODULE_KINDS.find((k) => k.kind === kind)?.label ?? kind,
+                          width_mm: brief.width_mm ?? 600,
+                        }),
+                      ],
+                    })
+                  }
+                />
+              </>
+            )}
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">Mode perhitungan lembar</Label>
