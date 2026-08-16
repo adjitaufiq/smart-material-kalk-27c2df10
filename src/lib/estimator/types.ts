@@ -347,6 +347,13 @@ export interface DrawingExtraction {
   created_at: string;
 }
 
+export interface RequirementChange {
+  field: string;
+  label: string;
+  from: number | string;
+  to: number | string;
+}
+
 export interface GeneratedDesignOption {
   id: string;
   option_number: number;
@@ -357,7 +364,20 @@ export interface GeneratedDesignOption {
   image_reference: string | null;
   selected: boolean;
   created_at: string;
+  /** brief yang dipakai model ini */
+  brief_snapshot: {
+    width_mm: number;
+    height_mm: number;
+    depth_mm: number;
+    doors: number;
+    drawers: number;
+    shelves: number;
+    doorType: DoorType;
+  };
+  /** perbedaan terhadap input user — wajib disetujui sebelum dipakai */
+  requirement_changes: RequirementChange[];
 }
+
 
 export interface ProjectRevision {
   id: string;
