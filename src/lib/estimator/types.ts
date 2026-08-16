@@ -1,5 +1,7 @@
 // Core domain types. INTERNAL UNIT IS ALWAYS MILLIMETER (mm).
 
+import type { ConfirmedExtractionSnapshot, DrawingComponent } from "./drawing-model";
+
 export type Unit = "mm" | "cm" | "m";
 
 export type GrainDirection = "length" | "width" | "none";
