@@ -29,6 +29,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { ExtractionReview } from "@/components/estimator/ExtractionReview";
 import { AiUnavailableError, designGenerationService, drawingExtractionService } from "@/lib/estimator/ai";
 import { calculateItem } from "@/lib/estimator/engine";
+import { missingCriticalDimensions } from "@/lib/estimator/extraction-review";
+import { materialLabel } from "@/lib/estimator/terminology";
 import { dualDim } from "@/lib/estimator/units";
 import {
   applyDesignOption,
