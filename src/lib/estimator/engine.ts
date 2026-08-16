@@ -174,14 +174,23 @@ export function calculateHardware(
         );
       } else if (mod.doorType !== "none") {
         const leafHeight = mod.height_mm - 2 * clearance;
-        const perDoor = overrides[`hinge:${mod.id}`] ?? hingeCountForDoorHeight(leafHeight);
+        const leafWidth = (mod.width_mm - clearance * (mod.doors + 1)) / Math.max(mod.doors, 1);
+        const doorMat = findMaterial(mod.doorMaterialId) ?? findMaterial(mod.bodyMaterialId);
+        const rule = hingeCountForDoor({
+          height_mm: leafHeight,
+          width_mm: leafWidth,
+          thickness_mm: doorMat?.ketebalan_mm ?? 18,
+        });
+        const override = mod.hingeOverride ?? overrides[`hinge:${mod.id}`] ?? null;
+        const perDoor = override ?? rule.count;
         addHw(
           map,
           "engsel-sendok",
           perDoor * mod.doors * factor,
-          `${mod.name}: tinggi daun ${Math.round(leafHeight)} mm → ${perDoor} engsel/pintu × ${mod.doors} pintu × ${factor} modul`,
+          `${mod.name}: ${override !== null ? `override user ${override} engsel/pintu` : rule.reason} × ${mod.doors} pintu × ${factor} modul`,
         );
       }
+
       addHw(
         map,
         "handle",
