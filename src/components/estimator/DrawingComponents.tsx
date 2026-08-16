@@ -69,11 +69,13 @@ function FieldRow({
 /** MODEL step — struktur persis seperti gambar kerja. Read-only. */
 export function DrawingModelView({ snapshot }: { snapshot: ConfirmedExtractionSnapshot }) {
   const o = snapshot.overall;
-  const overall = [o.width_mm.value, o.height_mm.value, o.depth_mm.value];
+  // urutan standar aplikasi: L (width) x D (depth) x T (height)
+  const overall = [o.width_mm.value, o.depth_mm.value, o.height_mm.value];
+  const ungrouped = snapshot.ungrouped ?? [];
   return (
     <div className="space-y-3">
       <div className="rounded-lg border bg-surface p-3">
-        <p className="text-xs font-medium">Ukuran keseluruhan</p>
+        <p className="text-xs font-medium">Ukuran keseluruhan (L × D × T)</p>
         <p className="num mt-1 text-sm">
           {overall.every((v) => v === null)
             ? NOT_IN_DRAWING
@@ -94,10 +96,15 @@ export function DrawingModelView({ snapshot }: { snapshot: ConfirmedExtractionSn
             </div>
             <p className="num mt-1 text-sm text-muted-foreground">{dimsLabel(c)}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {c.material.value ?? UNDETERMINED}
-              {c.layers.value ? ` · ${c.layers.value} layer` : ""}
-              {" · "}
-              {c.finishing.value ?? UNDETERMINED}
+              Material: {c.material.value ?? UNDETERMINED}
+            </p>
+            {c.layers.value && c.layers.value >= 2 ? (
+              <p className="text-xs text-muted-foreground">
+                Konstruksi: {c.layers.value === 2 ? "Double layer" : `${c.layers.value} layer`}
+              </p>
+            ) : null}
+            <p className="text-xs text-muted-foreground">
+              Finishing: {c.finishing.value ?? UNDETERMINED}
             </p>
           </li>
         ))}
@@ -109,6 +116,19 @@ export function DrawingModelView({ snapshot }: { snapshot: ConfirmedExtractionSn
           <ul className="mt-1 list-disc pl-4 text-xs text-muted-foreground">
             {snapshot.relations.map((r) => (
               <li key={r}>{r}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {ungrouped.length > 0 ? (
+        <div className="rounded-lg border bg-surface p-3">
+          <p className="text-xs font-medium">Data belum terkelompok</p>
+          <ul className="mt-1 space-y-1 text-xs text-muted-foreground">
+            {ungrouped.map((u) => (
+              <li key={`${u.label}-${u.value}`}>
+                {u.label}: {u.value}
+              </li>
             ))}
           </ul>
         </div>
