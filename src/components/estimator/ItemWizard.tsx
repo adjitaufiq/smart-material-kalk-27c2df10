@@ -86,17 +86,18 @@ export function ItemWizard({
   const patchModule = (id: string, partial: Partial<ModuleSpec>) =>
     patch({ modules: item.modules.map((m) => (m.id === id ? { ...m, ...partial } : m)) });
 
-  const brief = item.briefing ?? {
-    width_mm: 0,
-    height_mm: 0,
-    depth_mm: 0,
-    doors: 0,
-    drawers: 0,
-    shelves: 0,
+  const brief: Briefing = item.briefing ?? {
+    width_mm: null,
+    height_mm: null,
+    depth_mm: null,
+    doors: null,
+    drawers: null,
+    shelves: null,
     doorType: "swing" as DoorType,
     notes: "",
   };
-  const setBrief = (p: Partial<typeof brief>) => patch({ briefing: { ...brief, ...p } });
+  const setBrief = (p: Partial<Briefing>) => patch({ briefing: { ...brief, ...p } });
+
 
   return (
     <div className="space-y-4">
