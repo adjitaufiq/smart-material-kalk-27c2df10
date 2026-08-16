@@ -8,6 +8,21 @@
  * - Setiap field menyimpan provenance: DRAWING | USER_EDIT | USER_ADDED | DEFAULT_CONFIRMED.
  */
 
+import {
+  DIMENSION_ATTRS,
+  DIM_LABEL,
+  GLOBAL_SPEC_RE,
+  OTHER_MEASURE_RE,
+  OVERALL_RE,
+  attributeOf,
+  componentKeyOf,
+  componentKeysOf,
+  displayNameOf,
+  expandTargets,
+  normText,
+  type ComponentAttribute,
+  type ComponentKey,
+} from "./component-semantics";
 import { materialLabel } from "./terminology";
 import type {
   ExtractedCount,
@@ -84,6 +99,8 @@ export interface ConfirmedExtractionSnapshot {
   generalSpecs: { label: string; value: string }[];
   /** ukuran lain (inset, jarak) yang bukan dimensi komponen */
   otherMeasurements: { label: string; value_mm: number }[];
+  /** field terbaca yang belum bisa dikelompokkan ke komponen fisik */
+  ungrouped?: { label: string; value: string }[] | undefined;
   notes: string[];
 }
 
@@ -301,6 +318,7 @@ export function buildConfirmedSnapshot(
     relations,
     generalSpecs,
     otherMeasurements,
+    ungrouped,
     notes,
   };
 }
