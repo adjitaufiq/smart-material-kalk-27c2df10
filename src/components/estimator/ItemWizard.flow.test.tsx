@@ -214,8 +214,9 @@ describe("alur gambar kerja: extract -> pakai semua -> konfirmasi -> model -> ma
     expect(text).toContain("1600 \u00d7 700 \u00d7 36 mm");
     expect(text).toContain("714 \u00d7 650 \u00d7 18 mm");
     expect(text).toContain("1500 \u00d7 400 \u00d7 18 mm");
-    expect(text).toContain("HPL permukaan atas");
-    expect((text.match(/Tanpa HPL/g) ?? []).length).toBe(3);
+    // Nilai finishing berada di input, bukan teks statis.
+    expect(screen.getAllByDisplayValue(/HPL permukaan atas/i).length).toBe(1);
+    expect(screen.getAllByDisplayValue(/^Tanpa HPL$/i).length).toBe(3);
     expect((text.match(/Triplek 18 mm/g) ?? []).length).toBeGreaterThanOrEqual(4);
 
     for (const legacy of LEGACY_STRINGS) {
