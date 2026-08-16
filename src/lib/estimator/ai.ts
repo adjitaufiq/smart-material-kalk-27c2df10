@@ -1,4 +1,12 @@
-import type { DrawingExtraction, DrawingRef, GeneratedDesignOption, ModuleSpec } from "./types";
+import { readDrawing } from "./extraction.functions";
+import type {
+  DrawingExtraction,
+  DrawingRef,
+  ExtractedField,
+  GeneratedDesignOption,
+  ModuleSpec,
+  StrictExtractionResult,
+} from "./types";
 
 /**
  * ABSTRAKSI SERVICE AI.
