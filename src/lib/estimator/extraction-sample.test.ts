@@ -11,7 +11,8 @@ import type { ExtractionRequest } from "./providers/types";
  * Meja Kantor 1600x700x750, top plywood 18mm double layer (36mm),
  * kaki kiri/kanan 714x650, modesty 1500x400, HPL hanya top, skala NTS.
  */
-const SAMPLE_MODEL_TEXT = "```json\n" +
+const SAMPLE_MODEL_TEXT =
+  "```json\n" +
   JSON.stringify({
     sections: [
       {
@@ -119,7 +120,6 @@ describe("sample ground truth — meja kantor", () => {
     expect(names.filter((n) => n.includes("kiri"))).toHaveLength(1);
     expect(names.filter((n) => n.includes("kanan"))).toHaveLength(1);
     expect(names.some((n) => n.includes("modesty"))).toBe(true);
-
 
     // tidak ada hardware / edging yang dikarang
     for (const comp of snapshot.components) {

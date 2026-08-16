@@ -139,7 +139,10 @@ describe("ai-router rotation", () => {
     const { fetchImpl, calls } = makeFetch(() => geminiOk());
     await expect(
       routeExtraction(
-        { ...req, file: { name: "a.txt", mime: "text/plain", dataUrl: "data:text/plain;base64,QQ==" } },
+        {
+          ...req,
+          file: { name: "a.txt", mime: "text/plain", dataUrl: "data:text/plain;base64,QQ==" },
+        },
         { env: envAll, fetchImpl, pool: createPool(5) },
       ),
     ).rejects.toThrow(MSG_REQUEST);
@@ -173,7 +176,11 @@ describe("ai-router rotation", () => {
     for (const f of [
       { name: "a.png", mime: "image/png", dataUrl: "data:image/png;base64,QUJD" },
       { name: "b.jpg", mime: "image/jpg", dataUrl: "data:image/jpeg;base64,QUJD" },
-      { name: "c.pdf", mime: "application/octet-stream", dataUrl: "data:application/pdf;base64,QUJD" },
+      {
+        name: "c.pdf",
+        mime: "application/octet-stream",
+        dataUrl: "data:application/pdf;base64,QUJD",
+      },
     ]) {
       const { fetchImpl, inits } = makeFetch(() => geminiOk());
       await routeExtraction({ ...req, file: f }, { env: envAll, fetchImpl, pool: createPool(5) });
@@ -182,7 +189,13 @@ describe("ai-router rotation", () => {
       };
       const inline = body.contents[0]!.parts[1]!.inline_data!;
       expect(inline.data).toBe("QUJD");
-      expect(inline.mime_type).toBe(f.name.endsWith(".pdf") ? "application/pdf" : f.name.endsWith(".png") ? "image/png" : "image/jpeg");
+      expect(inline.mime_type).toBe(
+        f.name.endsWith(".pdf")
+          ? "application/pdf"
+          : f.name.endsWith(".png")
+            ? "image/png"
+            : "image/jpeg",
+      );
     }
   });
 

@@ -84,12 +84,7 @@ export function markSuccess(pool: ProviderPool, key: KeyState, now: number): voi
   pool.cursor = ((key.index % pool.keys.length) + pool.keys.length) % pool.keys.length;
 }
 
-export function markFailure(
-  key: KeyState,
-  cls: CooldownClass,
-  reason: string,
-  now: number,
-): void {
+export function markFailure(key: KeyState, cls: CooldownClass, reason: string, now: number): void {
   key.failCount += 1;
   key.lastError = reason;
   const base = COOLDOWN_MS[cls];

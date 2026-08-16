@@ -33,7 +33,6 @@ export const MSG_REQUEST =
 export const MSG_INTERNAL =
   "Pembacaan gambar gagal karena kendala teknis pada sistem, bukan pada file Anda. Silakan coba lagi.";
 
-
 export class ExtractionServiceError extends Error {
   constructor(message: string) {
     super(message);
@@ -208,7 +207,6 @@ export async function routeExtraction(
   }
 
   if (sawInternal) throw new ExtractionServiceError(MSG_INTERNAL);
-
 
   log({ attempts, outcome: "exhausted", fallback: false, sawQuota });
   if (attempts === 0 && keys.size === 0) throw new ExtractionServiceError(MSG_FINAL);
