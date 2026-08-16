@@ -166,12 +166,15 @@ export interface ModuleSpec {
     doorFaceB: FaceFinish;
   };
   edgingId: string | null;
+  /** override jumlah engsel per pintu (null = pakai aturan default) */
+  hingeOverride?: number | null | undefined;
   /** table_top only: number of stacked layers */
   topLayers?: number | undefined;
   /** table_frame only: frame is not sheet material */
   frameMaterial?: "besi" | "plywood" | "solid_wood" | "lainnya" | undefined;
   led?: { enabled: boolean; length_mm: number; watt_per_m: number; segments: number } | undefined;
 }
+
 
 export interface Part {
   id: string;
