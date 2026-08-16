@@ -1,3 +1,4 @@
+import { routeExtraction } from "./ai-router";
 import type {
   ExtractedCount,
   ExtractedMeasurement,
@@ -8,8 +9,7 @@ import type {
   StrictExtractionResult,
 } from "./types";
 
-const MODEL = "google/gemini-3-flash-preview";
-const ENDPOINT = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const MODEL = "gemini/lovable-router";
 
 /**
  * STRICT DRAWING READING MODE.
