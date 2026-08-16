@@ -44,13 +44,19 @@ ATURAN NILAI:
 - Jenis furniture tidak jelas -> furniture_type "TIDAK_DIKETAHUI".
 - Bila gambar punya beberapa unit/area/modul, buat satu section per unit sesuai penamaan pada gambar.
 
+DRAWING SET (BEBERAPA FILE):
+- Semua file yang dikirim adalah SATU paket gambar kerja untuk SATU furniture. Setiap file diawali baris "FILE: <nama file>".
+- Cocokkan informasi antar file/view/halaman; jangan buat section terpisah hanya karena beda file.
+- Nilai berbeda untuk komponen sama antar file -> status "CONFLICT".
+- Untuk setiap measurement/spec, isi "source_file" dengan nama file tempat nilai itu terbaca.
+
 KELUARAN: HANYA JSON valid (tanpa markdown, tanpa penjelasan) dengan bentuk:
 {
   "sections": [{
     "name": string,
     "furniture_type": string,
     "furniture_type_confidence": number,
-    "measurements": [{"field": string, "label": string, "raw_value": string|null, "raw_unit": string|null, "value_mm": number|null, "source": string, "source_text": string|null, "view": string|null, "page": number|null, "status": string, "confidence": number, "candidates_mm": number[]|null, "note": string|null}],
+    "measurements": [{"field": string, "label": string, "raw_value": string|null, "raw_unit": string|null, "value_mm": number|null, "source": string, "source_text": string|null, "view": string|null, "page": number|null, "source_file": string|null, "status": string, "confidence": number, "candidates_mm": number[]|null, "note": string|null}],
     "counts": [{"label": string, "value": number|null, "source": string, "source_text": string|null, "status": string, "confidence": number}],
     "specs": [{"field": string, "label": string, "value": string|null, "source": string, "source_text": string|null, "status": string, "confidence": number}],
     "relations": string[],
@@ -117,6 +123,7 @@ function normalizeMeasurement(raw: Record<string, unknown>, i: number): Extracte
     page: asNum(raw["page"]),
     status: value === null && status === "CONFIRMED_FROM_DRAWING" ? "NOT_FOUND" : status,
     confidence: conf(raw["confidence"]),
+    source_file_name: asStr(raw["source_file"]) ?? asStr(raw["source_file_name"]),
     candidates_mm: candidates && candidates.length > 0 ? candidates : undefined,
     note: asStr(raw["note"]) ?? undefined,
   };
@@ -242,15 +249,14 @@ export function parseStrictText(text: string): StrictExtractionResult {
 }
 
 export async function readDrawingStrict(input: {
-  name: string;
-  mime: string;
-  dataUrl: string;
+  files: { name: string; mime: string; dataUrl: string }[];
   category: string;
 }): Promise<StrictExtractionResult> {
+  const list = input.files.map((f, i) => `${i + 1}. ${f.name}`).join("\n");
   const text = await routeExtraction({
     systemPrompt: SYSTEM_PROMPT,
-    userText: `Baca gambar kerja berikut. Konteks kategori dari user (JANGAN dipakai untuk mengisi ukuran, hanya konteks): "${input.category}". Kembalikan JSON sesuai skema.`,
-    file: { name: input.name, mime: input.mime, dataUrl: input.dataUrl },
+    userText: `Baca ${input.files.length} file gambar kerja berikut sebagai SATU drawing set untuk satu furniture:\n${list}\nKonteks kategori dari user (JANGAN dipakai untuk mengisi ukuran, hanya konteks): "${input.category}". Kembalikan JSON sesuai skema.`,
+    files: input.files.map((f) => ({ name: f.name, mime: f.mime, dataUrl: f.dataUrl })),
   });
 
   return parseStrictText(text);

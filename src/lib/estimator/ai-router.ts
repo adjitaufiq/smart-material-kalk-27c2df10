@@ -7,6 +7,7 @@ import {
   type ProviderPool,
 } from "./provider-state";
 import { checkFile } from "./providers/file";
+import { requestFiles } from "./providers/types";
 import { callGemini } from "./providers/gemini";
 import { callLovable } from "./providers/lovable";
 import type { ExtractionRequest, FetchLike } from "./providers/types";
@@ -87,12 +88,24 @@ export async function routeExtraction(
   const pool = deps.pool ?? globalPool;
   const log = deps.log ?? ((entry) => console.info("[extraction-router]", entry));
 
-  const fileCheck = checkFile(req.file);
-  if (!fileCheck.ok) {
-    log({ outcome: "invalid_file", reason: fileCheck.reason, mime: req.file.mime });
+  const files = requestFiles(req);
+  if (files.length === 0) {
+    log({ outcome: "invalid_file", reason: "empty" });
     throw new ExtractionServiceError(MSG_REQUEST);
   }
-  const { mime, bytes } = fileCheck.payload;
+  let bytes = 0;
+  const mimes: string[] = [];
+  for (const f of files) {
+    const fileCheck = checkFile(f);
+    if (!fileCheck.ok) {
+      log({ outcome: "invalid_file", reason: fileCheck.reason, mime: f.mime });
+      throw new ExtractionServiceError(MSG_REQUEST);
+    }
+    bytes += fileCheck.payload.bytes;
+    mimes.push(fileCheck.payload.mime);
+  }
+  const mime = mimes.join(",");
+  const fileCount = files.length;
 
   const models = [
     env["GEMINI_MODEL"]?.trim() || DEFAULT_GEMINI_MODEL,
@@ -132,6 +145,7 @@ export async function routeExtraction(
           attempts,
           mime,
           bytes,
+          fileCount,
           outcome: "success",
           fallback: false,
         });

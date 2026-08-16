@@ -2,9 +2,15 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 const schema = z.object({
-  name: z.string().min(1),
-  mime: z.string().min(1),
-  dataUrl: z.string().min(1),
+  files: z
+    .array(
+      z.object({
+        name: z.string().min(1),
+        mime: z.string().min(1),
+        dataUrl: z.string().min(1),
+      }),
+    )
+    .min(1),
   category: z.string().default(""),
 });
 

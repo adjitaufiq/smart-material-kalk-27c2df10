@@ -1,9 +1,10 @@
-import type { ExtractionRequest, FetchLike, ProviderResult } from "./types";
+import { requestFiles } from "./types";
+import type { ExtractionFile, ExtractionRequest, FetchLike, ProviderResult } from "./types";
 
 const ENDPOINT = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
-function contentBlock(req: ExtractionRequest) {
-  const { name, mime, dataUrl } = req.file;
+function contentBlock(f: ExtractionFile) {
+  const { name, mime, dataUrl } = f;
   const isPdf =
     mime === "application/pdf" ||
     dataUrl.startsWith("data:application/pdf") ||
@@ -36,7 +37,13 @@ export async function callLovable(args: {
           { role: "system", content: args.req.systemPrompt },
           {
             role: "user",
-            content: [{ type: "text", text: args.req.userText }, contentBlock(args.req)],
+            content: [
+              { type: "text", text: args.req.userText },
+              ...requestFiles(args.req).flatMap((f) => [
+                { type: "text", text: `FILE: ${f.name}` },
+                contentBlock(f),
+              ]),
+            ],
           },
         ],
       }),
