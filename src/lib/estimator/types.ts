@@ -345,6 +345,8 @@ export interface DrawingExtraction {
   confirmed_by_user: boolean;
   confirmed_at: string | null;
   created_at: string;
+  /** hasil pembacaan gambar mode ketat (source-bound) */
+  strict?: StrictExtractionResult | null | undefined;
 }
 
 export interface RequirementChange {
