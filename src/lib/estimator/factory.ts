@@ -303,47 +303,62 @@ export function composeModules(category: string, briefInput: Brief): ModuleSpec[
   }
 }
 
+const CHANGE_LABEL: Record<string, string> = {
+  width_mm: "Lebar",
+  height_mm: "Tinggi",
+  depth_mm: "Depth",
+  doors: "Jumlah pintu",
+  drawers: "Jumlah laci",
+  shelves: "Jumlah shelf",
+  doorType: "Tipe pintu",
+};
+
+/** Diff antara input user dan brief varian model. */
+export function requirementChanges(original: Brief, variant: Brief): RequirementChange[] {
+  const out: RequirementChange[] = [];
+  for (const key of Object.keys(CHANGE_LABEL) as (keyof Brief)[]) {
+    if (original[key] !== variant[key]) {
+      out.push({
+        field: key,
+        label: CHANGE_LABEL[key] ?? key,
+        from: original[key],
+        to: variant[key],
+      });
+    }
+  }
+  return out;
+}
+
 /**
- * Alternatif desain BUKAN AI: 3 varian struktural deterministik dari ukuran user.
- * Bila provider AI tersedia, service AI dapat menggantikan/melengkapi fungsi ini,
- * tetapi setiap opsi tetap wajib memiliki structured model + BOM sendiri.
+ * Alternatif desain deterministik. Model 1 SELALU sama persis dengan input user.
+ * Model lain boleh berbeda, tetapi perbedaannya wajib dicatat dan disetujui user.
  */
-export function buildDesignOptions(
-  category: string,
-  brief: Brief,
-): GeneratedDesignOption[] {
+export function buildDesignOptions(category: string, brief: Brief): GeneratedDesignOption[] {
   const dims = { width_mm: brief.width_mm, height_mm: brief.height_mm, depth_mm: brief.depth_mm };
   const variants: { name: string; description: string; brief: Brief }[] = [
     {
-      name: "Model 1 — Minimalis Swing",
-      description: "Pintu swing, laci minimal, rak standar. Part paling sedikit.",
-      brief: {
-        ...brief,
-        doorType: "swing",
-        doors: Math.max(2, Math.round(brief.width_mm / 600)),
-        drawers: Math.max(brief.drawers, 2),
-        shelves: Math.max(brief.shelves, 3),
-      },
+      name: "Model 1 — Sesuai Input Anda",
+      description: "Struktur mengikuti persis kebutuhan yang Anda isi.",
+      brief: { ...brief },
     },
     {
       name: "Model 2 — Sliding",
-      description: "Pintu sliding, tanpa engsel, rak lebih banyak, laci lebih banyak.",
+      description: "Pintu sliding, tanpa engsel, rak lebih banyak.",
       brief: {
         ...brief,
         doorType: "sliding",
-        doors: 3,
-        drawers: Math.max(brief.drawers, 4),
+        doors: Math.max(2, Math.min(brief.doors || 2, 3)),
         shelves: Math.max(brief.shelves, 5),
       },
     },
     {
       name: "Model 3 — Kombinasi",
-      description: "Kombinasi pintu swing + laci internal + rak penuh. Part paling banyak.",
+      description: "Kombinasi pintu + laci internal + rak penuh. Part paling banyak.",
       brief: {
         ...brief,
         doorType: "swing",
-        doors: Math.max(4, Math.round(brief.width_mm / 500)),
-        drawers: Math.max(brief.drawers, 6),
+        doors: Math.max(brief.doors, 4),
+        drawers: Math.max(brief.drawers, 4),
         shelves: Math.max(brief.shelves, 7),
       },
     },
@@ -359,8 +374,46 @@ export function buildDesignOptions(
     image_reference: null,
     selected: false,
     created_at: new Date().toISOString(),
+    brief_snapshot: v.brief,
+    requirement_changes: requirementChanges(brief, v.brief),
   }));
 }
+
+/**
+ * Terapkan model terpilih. Bila model mengubah kebutuhan user dan belum disetujui,
+ * item DIKEMBALIKAN APA ADANYA (input user tetap source of truth).
+ */
+export function applyDesignOption(
+  item: FurnitureItem,
+  option: GeneratedDesignOption,
+  approved: boolean,
+): { item: FurnitureItem; blocked: boolean } {
+  if (option.requirement_changes.length > 0 && !approved) {
+    return { item, blocked: true };
+  }
+  const b = option.brief_snapshot;
+  return {
+    item: {
+      ...item,
+      selectedOptionId: option.id,
+      modules: option.structured_model.map((m) => ({ ...m, id: uid("mod") })),
+      briefing: item.briefing
+        ? {
+            ...item.briefing,
+            width_mm: b.width_mm,
+            height_mm: b.height_mm,
+            depth_mm: b.depth_mm,
+            doors: b.doors,
+            drawers: b.drawers,
+            shelves: b.shelves,
+            doorType: b.doorType,
+          }
+        : item.briefing,
+    },
+    blocked: false,
+  };
+}
+
 
 export function newFurnitureItem(category: string, name: string): FurnitureItem {
   return {
