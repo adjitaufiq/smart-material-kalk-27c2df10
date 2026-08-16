@@ -630,6 +630,29 @@ function ModelStep({
                     {opt.overall_dimensions.depth_mm} D — Module:{" "}
                     {opt.structured_model.map((m) => m.width_mm).join(" | ")}
                   </p>
+                  {opt.requirement_changes.length > 0 ? (
+                    <div className="mt-2 rounded-md border border-warning/40 bg-warning/10 p-2 text-[11px] text-warning-foreground">
+                      <p className="font-medium">
+                        Model ini mengubah kebutuhan yang Anda isi — perlu persetujuan:
+                      </p>
+                      <ul className="mt-1 list-disc pl-4">
+                        {opt.requirement_changes.map((c) => (
+                          <li key={c.field}>
+                            {c.label}: {String(c.from)} → {String(c.to)}
+                          </li>
+                        ))}
+                      </ul>
+                      <label className="mt-2 flex items-center gap-2">
+                        <Checkbox
+                          checked={approved[opt.id] ?? false}
+                          onCheckedChange={(v) =>
+                            setApproved((s) => ({ ...s, [opt.id]: v === true }))
+                          }
+                        />
+                        <span>Saya setuju perubahan ini.</span>
+                      </label>
+                    </div>
+                  ) : null}
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <div className="flex h-16 flex-1 items-center justify-center rounded border border-dashed bg-surface text-[10px] text-muted-foreground">
                       {designGenerationService.available
@@ -638,16 +661,23 @@ function ModelStep({
                     </div>
                     <Button
                       size="sm"
-                      onClick={() =>
-                        patch({
-                          selectedOptionId: opt.id,
-                          modules: opt.structured_model.map((m) => ({ ...m, id: uid("mod") })),
-                        })
+                      disabled={
+                        opt.requirement_changes.length > 0 && !(approved[opt.id] ?? false)
                       }
+                      onClick={() => {
+                        const res = applyDesignOption(item, opt, approved[opt.id] ?? false);
+                        if (res.blocked) return;
+                        patch({
+                          selectedOptionId: res.item.selectedOptionId,
+                          modules: res.item.modules,
+                          ...(res.item.briefing ? { briefing: res.item.briefing } : {}),
+                        });
+                      }}
                     >
                       Gunakan Model Ini
                     </Button>
                   </div>
+
                 </div>
               );
             })}
