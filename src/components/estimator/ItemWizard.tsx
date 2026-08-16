@@ -544,6 +544,8 @@ function ModelStep({
   onNext: () => void;
 }) {
   const options = item.designOptions;
+  const [approved, setApproved] = useState<Record<string, boolean>>({});
+
 
   return (
     <div className="space-y-4">
