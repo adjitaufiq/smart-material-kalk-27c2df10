@@ -99,7 +99,13 @@ export async function routeExtraction(
     const result = await callGemini({ apiKey, model, req, fetchImpl: deps.fetchImpl });
     if (result.ok) {
       markSuccess(pool, key, now());
-      log({ provider: "gemini", keyIndex: key.index, attempts, outcome: "success", fallback: false });
+      log({
+        provider: "gemini",
+        keyIndex: key.index,
+        attempts,
+        outcome: "success",
+        fallback: false,
+      });
       return result.text;
     }
 
@@ -124,7 +130,12 @@ export async function routeExtraction(
   if (fallbackEnabled(env) && fbKey) {
     attempts += 1;
     const fbModel = env["LOVABLE_AI_MODEL"]?.trim() || DEFAULT_LOVABLE_MODEL;
-    const result = await callLovable({ apiKey: fbKey, model: fbModel, req, fetchImpl: deps.fetchImpl });
+    const result = await callLovable({
+      apiKey: fbKey,
+      model: fbModel,
+      req,
+      fetchImpl: deps.fetchImpl,
+    });
     if (result.ok) {
       log({ provider: "lovable", attempts, outcome: "success", fallback: true });
       return result.text;

@@ -18,9 +18,12 @@ function contentBlock(req: ExtractionRequest) {
 }
 
 /** Fallback terakhir: Lovable AI Gateway. */
-export async function callLovable(
-  args: { apiKey: string; model: string; req: ExtractionRequest; fetchImpl?: FetchLike | undefined },
-): Promise<ProviderResult> {
+export async function callLovable(args: {
+  apiKey: string;
+  model: string;
+  req: ExtractionRequest;
+  fetchImpl?: FetchLike | undefined;
+}): Promise<ProviderResult> {
   const fetchImpl = args.fetchImpl ?? (fetch as unknown as FetchLike);
   try {
     const res = await fetchImpl(ENDPOINT, {
@@ -47,6 +50,10 @@ export async function callLovable(
     if (!text) return { ok: false, status: 502, body: "empty response" };
     return { ok: true, text };
   } catch (error) {
-    return { ok: false, status: null, body: error instanceof Error ? error.message : "network error" };
+    return {
+      ok: false,
+      status: null,
+      body: error instanceof Error ? error.message : "network error",
+    };
   }
 }

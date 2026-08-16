@@ -5,7 +5,6 @@ export interface ExtractionRequest {
 }
 
 export type ProviderResult =
-  | { ok: true; text: string }
-  | { ok: false; status: number | null; body: string };
+  { ok: true; text: string } | { ok: false; status: number | null; body: string };
 
 export type FetchLike = (input: string, init: RequestInit) => Promise<Response>;

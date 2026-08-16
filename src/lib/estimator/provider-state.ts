@@ -77,7 +77,7 @@ export function markSuccess(pool: ProviderPool, key: KeyState, now: number): voi
   key.failCount = 0;
   key.lastSuccessAt = now;
   // request berikutnya mulai dari key setelah yang sukses
-  pool.cursor = (key.index % pool.keys.length + pool.keys.length) % pool.keys.length;
+  pool.cursor = ((key.index % pool.keys.length) + pool.keys.length) % pool.keys.length;
 }
 
 export function markFailure(
@@ -107,7 +107,12 @@ export function classifyFailure(status: number | null, body: string): FailureCla
   ) {
     return "quota";
   }
-  if (status === 401 || status === 403 || text.includes("api key not valid") || text.includes("permission denied")) {
+  if (
+    status === 401 ||
+    status === 403 ||
+    text.includes("api key not valid") ||
+    text.includes("permission denied")
+  ) {
     return "auth";
   }
   if (status !== null && status >= 500) return "transient";

@@ -8,7 +8,6 @@ import type {
   RequirementChange,
 } from "./types";
 
-
 let seq = 0;
 export function uid(prefix = "id"): string {
   seq += 1;
@@ -415,7 +414,6 @@ export function applyDesignOption(
     blocked: false,
   };
 }
-
 
 export function newFurnitureItem(category: string, name: string): FurnitureItem {
   return {

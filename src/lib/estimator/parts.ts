@@ -199,9 +199,7 @@ export function generateParts(mod: ModuleSpec): Part[] {
 
     if (mod.drawers > 0 && doorMat) {
       const frontH =
-        mod.doors > 0
-          ? 180
-          : (H - tpl.door_clearance_mm * (mod.drawers + 1)) / mod.drawers;
+        mod.doors > 0 ? 180 : (H - tpl.door_clearance_mm * (mod.drawers + 1)) / mod.drawers;
       // Pada modul yang juga berpintu, laci berada di dalam bay (bukan front
       // selebar badan). Lebar front mengikuti lebar bay, bukan lebar total.
       const bayWidth = mod.doors > 0 ? iw / mod.doors : W - 2 * tpl.door_clearance_mm;

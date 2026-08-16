@@ -11,7 +11,12 @@ import {
   resolveStatus,
   validateItem,
 } from "@/lib/estimator/engine";
-import { buildDesignOptions, composeModules, makeModule, newFurnitureItem } from "@/lib/estimator/factory";
+import {
+  buildDesignOptions,
+  composeModules,
+  makeModule,
+  newFurnitureItem,
+} from "@/lib/estimator/factory";
 import { findMaterial } from "@/lib/estimator/masters";
 import { generateParts, generatePartsForModules } from "@/lib/estimator/parts";
 import { toMm } from "@/lib/estimator/units";
@@ -281,7 +286,9 @@ describe("11 & 12. generated design options each own their BOM", () => {
   it("produces three structurally different models", () => {
     expect(options).toHaveLength(3);
     const signatures = options.map((o) =>
-      o.structured_model.map((m) => `${m.kind}:${m.doors}:${m.doorType}:${m.drawers}:${m.shelves}`).join("|"),
+      o.structured_model
+        .map((m) => `${m.kind}:${m.doors}:${m.doorType}:${m.drawers}:${m.shelves}`)
+        .join("|"),
     );
     expect(new Set(signatures).size).toBe(3);
   });
@@ -290,9 +297,7 @@ describe("11 & 12. generated design options each own their BOM", () => {
     const boms = options.map((o) => calculateItem(itemWith(o.structured_model)));
     const partCounts = boms.map((b) => b.parts.reduce((a, p) => a + p.qty, 0));
     expect(new Set(partCounts).size).toBeGreaterThan(1);
-    const hardware = boms.map(
-      (b) => b.hardware.find((h) => h.id === "engsel-sendok")?.qty ?? 0,
-    );
+    const hardware = boms.map((b) => b.hardware.find((h) => h.id === "engsel-sendok")?.qty ?? 0);
     expect(hardware[1]).toBe(0); // model sliding tanpa engsel
     expect(hardware[0]).not.toBe(hardware[2]);
   });
@@ -414,9 +419,30 @@ describe("mock drawing flow 2400 × 2600 × 600, 4 doors, 3 drawers", () => {
           provider: "mock",
           raw: { note: "mock extraction fixture" },
           normalized: [
-            { key: "width", label: "Lebar", value: 2400, unit: "mm", confidence: 0.95, ambiguous: false },
-            { key: "height", label: "Tinggi", value: 2600, unit: "mm", confidence: 0.95, ambiguous: false },
-            { key: "depth", label: "Depth", value: 600, unit: "mm", confidence: 0.93, ambiguous: false },
+            {
+              key: "width",
+              label: "Lebar",
+              value: 2400,
+              unit: "mm",
+              confidence: 0.95,
+              ambiguous: false,
+            },
+            {
+              key: "height",
+              label: "Tinggi",
+              value: 2600,
+              unit: "mm",
+              confidence: 0.95,
+              ambiguous: false,
+            },
+            {
+              key: "depth",
+              label: "Depth",
+              value: 600,
+              unit: "mm",
+              confidence: 0.93,
+              ambiguous: false,
+            },
             { key: "doors", label: "Jumlah pintu", value: 4, confidence: 0.9, ambiguous: false },
             { key: "drawers", label: "Jumlah laci", value: 3, confidence: 0.9, ambiguous: false },
           ],
@@ -441,9 +467,7 @@ describe("AI services are abstractions only", () => {
   it("drawing reading is available, design generation stays unavailable", async () => {
     expect(drawingExtractionService.available).toBe(true);
     expect(designGenerationService.available).toBe(false);
-    await expect(designGenerationService.renderConcept([], "")).rejects.toThrow(
-      /belum tersambung/,
-    );
+    await expect(designGenerationService.renderConcept([], "")).rejects.toThrow(/belum tersambung/);
   });
 });
 

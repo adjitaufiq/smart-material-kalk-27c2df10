@@ -28,10 +28,13 @@ const envAll = {
 const PAYLOAD = '{"sections":[]}';
 
 function geminiOk() {
-  return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: PAYLOAD }] } }] }), {
-    status: 200,
-    headers: { "content-type": "application/json" },
-  });
+  return new Response(
+    JSON.stringify({ candidates: [{ content: { parts: [{ text: PAYLOAD }] } }] }),
+    {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    },
+  );
 }
 function lovableOk() {
   return new Response(JSON.stringify({ choices: [{ message: { content: PAYLOAD } }] }), {
@@ -64,14 +67,18 @@ describe("ai-router rotation", () => {
   });
 
   it("2. key 1 kena 429 -> key 2 sukses", async () => {
-    const { fetchImpl, calls } = makeFetch((i) => (i === 1 ? err(429, "RESOURCE_EXHAUSTED") : geminiOk()));
+    const { fetchImpl, calls } = makeFetch((i) =>
+      i === 1 ? err(429, "RESOURCE_EXHAUSTED") : geminiOk(),
+    );
     const text = await routeExtraction(req, { env: envAll, fetchImpl, pool: createPool(5) });
     expect(text).toBe(PAYLOAD);
     expect(calls).toEqual([1, 2]);
   });
 
   it("3. key 1-4 limit -> key 5 sukses", async () => {
-    const { fetchImpl, calls } = makeFetch((i) => (i !== null && i < 5 ? err(429, "quota") : geminiOk()));
+    const { fetchImpl, calls } = makeFetch((i) =>
+      i !== null && i < 5 ? err(429, "quota") : geminiOk(),
+    );
     await routeExtraction(req, { env: envAll, fetchImpl, pool: createPool(5) });
     expect(calls).toEqual([1, 2, 3, 4, 5]);
   });
@@ -101,7 +108,11 @@ describe("ai-router rotation", () => {
   it("5b. fallback Lovable gagal kredit -> pesan final", async () => {
     const { fetchImpl } = makeFetch((i) => (i === null ? err(402, "credits") : err(429, "quota")));
     await expect(
-      routeExtraction(req, { env: { ...envAll, LOVABLE_API_KEY: "lov" }, fetchImpl, pool: createPool(5) }),
+      routeExtraction(req, {
+        env: { ...envAll, LOVABLE_API_KEY: "lov" },
+        fetchImpl,
+        pool: createPool(5),
+      }),
     ).rejects.toThrow(MSG_FINAL);
   });
 
