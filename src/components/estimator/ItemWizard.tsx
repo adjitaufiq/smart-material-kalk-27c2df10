@@ -427,6 +427,20 @@ function NumField({
   );
 }
 
+/** Sebagian browser mengirim tipe file kosong; deteksi ulang dari ekstensi/data URL. */
+function resolveMime(name: string, type: string, dataUrl: string): string {
+  if (type && type !== "application/octet-stream") return type;
+  const fromDataUrl = /^data:([^;,]+)[;,]/.exec(dataUrl)?.[1];
+  if (fromDataUrl && fromDataUrl !== "application/octet-stream") return fromDataUrl;
+  const ext = name.split(".").pop()?.toLowerCase() ?? "";
+  if (ext === "pdf") return "application/pdf";
+  if (ext === "png") return "image/png";
+  if (ext === "webp") return "image/webp";
+  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+  return type || "application/octet-stream";
+}
+
+
 function DrawingStep({
   item,
   patch,
