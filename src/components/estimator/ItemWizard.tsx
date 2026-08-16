@@ -28,6 +28,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { AiUnavailableError, designGenerationService, drawingExtractionService } from "@/lib/estimator/ai";
 import { calculateItem } from "@/lib/estimator/engine";
+import { dualDim } from "@/lib/estimator/units";
 import {
   applyDesignOption,
   buildDesignOptions,
@@ -307,6 +308,17 @@ export function ItemWizard({
         >
           <div className="space-y-3">
             <IssueList issues={result.issues} />
+            <div className="rounded-lg border bg-surface p-3">
+              <p className="text-xs font-medium">Ringkasan ukuran (cm & mm)</p>
+              <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                {item.modules.map((m) => (
+                  <li key={m.id} className="num">
+                    {m.name}: {dualDim(m.width_mm, m.height_mm, m.depth_mm)} · {m.doors} pintu ·{" "}
+                    {m.drawers} laci · {m.shelves} shelf
+                  </li>
+                ))}
+              </ul>
+            </div>
             <label className="flex items-start gap-2 rounded-lg border p-3 text-sm">
               <Checkbox
                 checked={item.confirmedDimensions}
