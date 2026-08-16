@@ -96,53 +96,6 @@ const norm = (s: string) =>
     .replace(/\s+/g, " ")
     .trim();
 
-type DimRole = "width" | "height" | "depth" | "thickness" | "other";
-
-const DIM_ROLES: { re: RegExp; role: DimRole; key: string; label: string }[] = [
-  {
-    re: /\b(tebal|ketebalan|thickness|thk)\b/,
-    role: "thickness",
-    key: "thickness",
-    label: "Tebal",
-  },
-  { re: /\b(depth|kedalaman|dalam)\b/, role: "depth", key: "depth", label: "Depth" },
-  { re: /\b(tinggi|height)\b/, role: "height", key: "height", label: "Tinggi" },
-  { re: /\b(panjang|lebar|width|length)\b/, role: "width", key: "width", label: "Panjang / Lebar" },
-  {
-    re: /\b(inset|jarak|offset|overhang|gap)\b/,
-    role: "other",
-    key: "other",
-    label: "Ukuran lain",
-  },
-];
-
-const OVERALL_RE = /\b(overall|keseluruhan|total|global|furniture|unit)\b/;
-
-function roleOf(text: string) {
-  const t = norm(text);
-  for (const r of DIM_ROLES) if (r.re.test(t)) return r;
-  return null;
-}
-
-/** Nama komponen = label dikurangi kata peran dimensi/spesifikasi. */
-function componentNameFrom(label: string, field: string, strip: RegExp): string {
-  const source = label && label.trim() !== "" ? label : field;
-  const cleaned = norm(source)
-    .replace(strip, " ")
-    .replace(/\b(ukuran|dimensi|size|mm|cm)\b/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  return cleaned;
-}
-
-function titleCase(s: string): string {
-  return s
-    .split(" ")
-    .filter(Boolean)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
-}
-
 type SpecKey =
   | "material"
   | "finishing"
@@ -153,22 +106,19 @@ type SpecKey =
   | "hplBrand"
   | "hplCode";
 
-const SPEC_KEYS: { re: RegExp; key: SpecKey }[] = [
-  { re: /\b(brand|merk|merek)\b/, key: "hplBrand" },
-  { re: /\b(kode|code|warna hpl)\b/, key: "hplCode" },
-  { re: /\b(hpl|finishing|finish|tacon|laminate|cat|duco)\b/, key: "finishing" },
-  { re: /\b(layer|lapis|double|ply layer)\b/, key: "layers" },
-  { re: /\b(edging|tepi|edge banding|edge)\b/, key: "edging" },
-  { re: /\b(hardware|engsel|rel|handle|minifix|dowel|sekrup|screw|connector)\b/, key: "hardware" },
-  { re: /\b(tebal|ketebalan|thickness)\b/, key: "thickness" },
-  { re: /\b(material|bahan|triplek|plywood|multipleks|mdf|blockboard)\b/, key: "material" },
+const SPEC_ATTRS: SpecKey[] = [
+  "material",
+  "finishing",
+  "layers",
+  "thickness",
+  "edging",
+  "hardware",
+  "hplBrand",
+  "hplCode",
 ];
 
-function specKeyOf(text: string): { re: RegExp; key: SpecKey } | null {
-  const t = norm(text);
-  for (const s of SPEC_KEYS) if (s.re.test(t)) return s;
-  return null;
-}
+const isSpecAttr = (a: ComponentAttribute | null): a is SpecKey =>
+  a !== null && (SPEC_ATTRS as string[]).includes(a);
 
 const isConfirmed = (s: { status: string }) => s.status === "CONFIRMED_FROM_DRAWING";
 
@@ -190,16 +140,20 @@ function blankComponent(id: string, name: string): DrawingComponent {
   };
 }
 
+const textOf = (field: string, label: string) => `${field} ${label}`.trim();
+
 /**
  * Bangun snapshot immutable dari hasil pembacaan gambar yang dikonfirmasi user.
  * HANYA nilai berstatus CONFIRMED_FROM_DRAWING yang ikut. Sisanya tetap kosong.
+ *
+ * Dua fase:
+ *  1. identitas komponen fisik (semantic component key)
+ *  2. penempelan atribut (dimensi / spesifikasi / jumlah) ke komponen tersebut
  */
 export function buildConfirmedSnapshot(
   strict: StrictExtractionResult,
   opts: { id?: string; now?: string } = {},
 ): ConfirmedExtractionSnapshot {
-  const components: DrawingComponent[] = [];
-  const byKey = new Map<string, DrawingComponent>();
   const overall = {
     width_mm: emptyField<number>(),
     height_mm: emptyField<number>(),
@@ -209,17 +163,8 @@ export function buildConfirmedSnapshot(
   const notes: string[] = [];
   const generalSpecs: { label: string; value: string }[] = [];
   const otherMeasurements: { label: string; value_mm: number }[] = [];
+  const ungrouped: { label: string; value: string }[] = [];
   let furnitureType = "TIDAK_DIKETAHUI";
-
-  const getComponent = (rawName: string): DrawingComponent => {
-    const key = norm(rawName);
-    const found = byKey.get(key);
-    if (found) return found;
-    const comp = blankComponent(`comp_${components.length + 1}`, titleCase(rawName));
-    byKey.set(key, comp);
-    components.push(comp);
-    return comp;
-  };
 
   for (const sec of strict.sections) {
     if (furnitureType === "TIDAK_DIKETAHUI" && sec.furniture_type) {
@@ -227,65 +172,124 @@ export function buildConfirmedSnapshot(
     }
     relations.push(...sec.relations);
     notes.push(...sec.notes);
+  }
 
+  // ---------------- fase 1: identitas komponen
+  const order: ComponentKey[] = [];
+  const remember = (key: ComponentKey) => {
+    if (!order.includes(key)) order.push(key);
+  };
+
+  for (const sec of strict.sections) {
     for (const m of sec.measurements as ExtractedMeasurement[]) {
       if (!isConfirmed(m) || m.value_mm === null) continue;
-      const role = roleOf(`${m.field} ${m.label}`);
-      const compName = componentNameFrom(m.label, m.field, role ? role.re : /$^/);
-      const isOverall = compName === "" || OVERALL_RE.test(compName);
+      const text = textOf(m.field, m.label);
+      const t = normText(text);
+      if (OTHER_MEASURE_RE.test(t) || OVERALL_RE.test(t)) continue;
+      const attr = attributeOf(text);
+      if (attr === null || (!DIMENSION_ATTRS.includes(attr) && attr !== "thickness")) continue;
+      const key = componentKeyOf(text);
+      if (key) remember(key);
+    }
+    for (const s of sec.specs as ExtractedSpec[]) {
+      if (!isConfirmed(s) || s.value === null) continue;
+      const text = textOf(s.field, s.label);
+      if (OVERALL_RE.test(normText(text)) || GLOBAL_SPEC_RE.test(normText(text))) continue;
+      const keys = componentKeysOf(text);
+      // spesifikasi hanya membentuk komponen bila subjeknya tunggal & jelas
+      if (keys.length === 1 && keys[0]) remember(keys[0]);
+    }
+  }
 
-      if (isOverall && role && role.role !== "other" && role.role !== "thickness") {
-        const target = `${role.role === "width" ? "width" : role.role}_mm` as keyof typeof overall;
-        if (overall[target].value === null) overall[target] = drawingField(m.value_mm);
-        continue;
-      }
-      if (!role || role.role === "other") {
+  const known = order.filter((k) => !(k === "LEG" && (order.includes("LEG_LEFT") || order.includes("LEG_RIGHT"))));
+  const components: DrawingComponent[] = known.map((key, i) =>
+    blankComponent(`comp_${i + 1}`, displayNameOf(key)),
+  );
+  const byKey = new Map<ComponentKey, DrawingComponent>();
+  known.forEach((key, i) => byKey.set(key, components[i]!));
+
+  const targetsFor = (text: string): DrawingComponent[] =>
+    expandTargets(componentKeysOf(text), known)
+      .map((k) => byKey.get(k))
+      .filter((c): c is DrawingComponent => Boolean(c));
+
+  // ---------------- fase 2: atribut
+  for (const sec of strict.sections) {
+    for (const m of sec.measurements as ExtractedMeasurement[]) {
+      if (!isConfirmed(m) || m.value_mm === null) continue;
+      const text = textOf(m.field, m.label);
+      const t = normText(text);
+      const attr = attributeOf(text);
+
+      if (OTHER_MEASURE_RE.test(t)) {
         otherMeasurements.push({ label: m.label, value_mm: m.value_mm });
         continue;
       }
-      const comp = getComponent(compName);
-      if (role.role === "thickness") {
-        if (comp.thickness_mm.value === null) comp.thickness_mm = drawingField(m.value_mm);
+      if (attr && DIMENSION_ATTRS.includes(attr) && OVERALL_RE.test(t)) {
+        const slot = `${attr}_mm` as keyof typeof overall;
+        if (overall[slot].value === null) overall[slot] = drawingField(m.value_mm);
         continue;
       }
-      if (!comp.dims.some((d) => d.key === role.key)) {
-        comp.dims.push({ key: role.key, label: role.label, value_mm: drawingField(m.value_mm) });
+      const targets = targetsFor(text);
+      if (attr === null || targets.length === 0) {
+        ungrouped.push({ label: m.label, value: `${m.value_mm} mm` });
+        continue;
+      }
+      for (const comp of targets) {
+        if (attr === "thickness") {
+          if (comp.thickness_mm.value === null) comp.thickness_mm = drawingField(m.value_mm);
+          continue;
+        }
+        if (!DIMENSION_ATTRS.includes(attr)) continue;
+        if (!comp.dims.some((d) => d.key === attr)) {
+          comp.dims.push({
+            key: attr,
+            label: DIM_LABEL[attr] ?? attr,
+            value_mm: drawingField(m.value_mm),
+          });
+        }
       }
     }
 
     for (const s of sec.specs as ExtractedSpec[]) {
       if (!isConfirmed(s) || s.value === null) continue;
-      const sk = specKeyOf(`${s.field} ${s.label}`);
-      const compName = componentNameFrom(s.label, s.field, sk ? sk.re : /$^/);
-      if (!sk) {
+      const text = textOf(s.field, s.label);
+      const attr = attributeOf(text);
+      const targets = targetsFor(text);
+
+      if (!isSpecAttr(attr)) {
         generalSpecs.push({ label: s.label, value: s.value });
         continue;
       }
-      if (compName === "" || OVERALL_RE.test(compName)) {
+      if (targets.length === 0) {
+        // spesifikasi global: ditempel ke komponen yang belum punya nilai tersebut
         generalSpecs.push({ label: s.label, value: s.value });
+        for (const comp of components) applySpec(comp, attr, s.value);
         continue;
       }
-      const comp = getComponent(compName);
-      applySpec(comp, sk.key, s.value);
+      for (const comp of targets) applySpec(comp, attr, s.value);
     }
 
     for (const c of sec.counts as ExtractedCount[]) {
       if (!isConfirmed(c) || c.value === null) continue;
-      const sk = specKeyOf(c.label);
-      const compName = componentNameFrom(
-        c.label,
-        c.label,
-        sk ? sk.re : /\b(jumlah|qty|quantity)\b/,
-      );
-      if (compName === "" || OVERALL_RE.test(compName)) continue;
-      const comp = getComponent(compName);
-      if (sk?.key === "layers") {
-        if (comp.layers.value === null) comp.layers = drawingField(c.value);
-      } else if (comp.qty.value === null) {
-        comp.qty = drawingField(c.value);
+      const text = c.label;
+      if (OVERALL_RE.test(normText(text))) continue;
+      const attr = attributeOf(text);
+      const targets = targetsFor(text);
+      if (targets.length === 0) {
+        ungrouped.push({ label: c.label, value: String(c.value) });
+        continue;
+      }
+      for (const comp of targets) {
+        if (attr === "layers") {
+          if (comp.layers.value === null) comp.layers = drawingField(c.value);
+        } else if (comp.qty.value === null) {
+          comp.qty = drawingField(c.value);
+        }
       }
     }
   }
+
 
   return {
     id: opts.id ?? `snap_${Date.now().toString(36)}`,
