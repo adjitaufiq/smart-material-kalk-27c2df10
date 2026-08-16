@@ -222,6 +222,25 @@ function statusLabel(s: ExtractionStatus): string {
   }
 }
 
+/** Parse + sanitasi teks mentah model menjadi hasil strict. */
+export function parseStrictText(text: string): StrictExtractionResult {
+  const cleaned = text
+    .replace(/^\s*```(?:json)?/i, "")
+    .replace(/```\s*$/i, "")
+    .trim();
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start === -1 || end === -1) throw new Error("Hasil pembacaan gambar tidak dapat diproses.");
+  try {
+    return normalizeStrictResult(JSON.parse(cleaned.slice(start, end + 1)));
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw new Error("Hasil pembacaan gambar tidak dapat diproses.");
+    }
+    throw error;
+  }
+}
+
 export async function readDrawingStrict(input: {
   name: string;
   mime: string;
@@ -234,19 +253,5 @@ export async function readDrawingStrict(input: {
     file: { name: input.name, mime: input.mime, dataUrl: input.dataUrl },
   });
 
-  const cleaned = text
-    .replace(/^\s*```(?:json)?/i, "")
-    .replace(/```\s*$/i, "")
-    .trim();
-  const start = cleaned.indexOf("{");
-  const end = cleaned.lastIndexOf("}");
-  if (start === -1 || end === -1) throw new Error("Hasil pembacaan gambar tidak dapat diproses.");
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(cleaned.slice(start, end + 1));
-  } catch {
-    throw new Error("Hasil pembacaan gambar tidak dapat diproses.");
-  }
-  return normalizeStrictResult(parsed);
+  return parseStrictText(text);
 }
