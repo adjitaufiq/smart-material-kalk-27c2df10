@@ -1,5 +1,7 @@
+import { persistProjectDrawings } from "./drawing-blobs";
 import { uid } from "./estimator/factory";
 import type { FurnitureItem, Project, ProjectRevision } from "./estimator/types";
+
 
 const KEY = "sme.projects.v1";
 
