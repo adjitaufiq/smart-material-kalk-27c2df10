@@ -633,3 +633,45 @@ export function hingeCountForDoorHeight(height_mm: number): number {
   }
   return HINGE_RULES[HINGE_RULES.length - 1]?.count ?? 2;
 }
+
+/**
+ * Aturan engsel yang mempertimbangkan tinggi, lebar, tebal, dan berat estimasi daun.
+ * Masih "default sementara" sampai hardware dikonfirmasi user.
+ */
+export interface DoorLeafInput {
+  height_mm: number;
+  width_mm: number;
+  thickness_mm: number;
+  /** kg/m3 — plywood ±600 */
+  density_kg_m3?: number;
+}
+
+export interface HingeRuleResult {
+  count: number;
+  weight_kg: number;
+  reason: string;
+  provisional: boolean;
+}
+
+export function hingeCountForDoor(input: DoorLeafInput): HingeRuleResult {
+  const density = input.density_kg_m3 ?? 600;
+  const volume_m3 =
+    (input.height_mm / 1000) * (input.width_mm / 1000) * (input.thickness_mm / 1000);
+  const weight_kg = Math.round(volume_m3 * density * 100) / 100;
+  let count = hingeCountForDoorHeight(input.height_mm);
+  const reasons = [`tinggi daun ${Math.round(input.height_mm)} mm → ${count} engsel`];
+  if (input.width_mm > 600) {
+    count += 1;
+    reasons.push(`lebar daun ${Math.round(input.width_mm)} mm > 600 mm → +1`);
+  }
+  if (weight_kg > 12) {
+    count += 1;
+    reasons.push(`berat estimasi ${weight_kg} kg > 12 kg → +1`);
+  }
+  return {
+    count,
+    weight_kg,
+    reason: `${reasons.join(", ")} (default sementara — perlu konfirmasi hardware)`,
+    provisional: true,
+  };
+}
