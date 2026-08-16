@@ -1,4 +1,5 @@
 import { checkFile } from "./file";
+import { requestFiles } from "./types";
 import type { ExtractionRequest, FetchLike, ProviderResult } from "./types";
 
 const BASE = "https://generativelanguage.googleapis.com/v1beta/models";
@@ -15,8 +16,16 @@ export async function callGemini(args: {
 }): Promise<ProviderResult> {
   const fetchImpl = args.fetchImpl ?? (fetch as unknown as FetchLike);
   const { req } = args;
-  const file = checkFile(req.file);
-  if (!file.ok) return { ok: false, status: 0, body: `invalid_file:${file.reason}` };
+  const files = requestFiles(req);
+  if (files.length === 0) return { ok: false, status: 0, body: "invalid_file:empty" };
+  const parts: { inline_data: { mime_type: string; data: string } }[] = [];
+  const labels: { text: string }[] = [];
+  for (const f of files) {
+    const check = checkFile(f);
+    if (!check.ok) return { ok: false, status: 0, body: `invalid_file:${check.reason}` };
+    labels.push({ text: `FILE: ${f.name}` });
+    parts.push({ inline_data: { mime_type: check.payload.mime, data: check.payload.base64 } });
+  }
 
   try {
     const res = await fetchImpl(`${BASE}/${encodeURIComponent(args.model)}:generateContent`, {
@@ -33,7 +42,7 @@ export async function callGemini(args: {
             role: "user",
             parts: [
               { text: req.userText },
-              { inline_data: { mime_type: file.payload.mime, data: file.payload.base64 } },
+              ...files.flatMap((_f, i) => [labels[i]!, parts[i]!]),
             ],
           },
         ],

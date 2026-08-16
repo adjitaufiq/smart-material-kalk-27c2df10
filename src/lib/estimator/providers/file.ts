@@ -1,4 +1,4 @@
-import type { ExtractionRequest } from "./types";
+import type { ExtractionFile } from "./types";
 
 export const SUPPORTED_MIMES = [
   "image/jpeg",
@@ -23,7 +23,7 @@ export type FileCheck =
 const BASE64_RE = /^[A-Za-z0-9+/=\s]+$/;
 
 /** Deteksi mime yang bisa dipercaya: header data URL > mime input > ekstensi nama. */
-export function resolveMime(file: ExtractionRequest["file"]): string {
+export function resolveMime(file: ExtractionFile): string {
   const fromDataUrl = /^data:([^;,]+)[;,]/.exec(file.dataUrl)?.[1]?.toLowerCase();
   if (fromDataUrl && fromDataUrl !== "application/octet-stream") return normalizeMime(fromDataUrl);
   const declared = (file.mime || "").toLowerCase();
@@ -48,7 +48,7 @@ export function stripDataUrl(dataUrl: string): string {
 }
 
 /** Validasi payload file sebelum dikirim ke provider (tanpa melog isi file). */
-export function checkFile(file: ExtractionRequest["file"]): FileCheck {
+export function checkFile(file: ExtractionFile): FileCheck {
   const mime = resolveMime(file);
   const base64 = stripDataUrl(file.dataUrl);
   if (base64.length === 0) return { ok: false, reason: "empty" };
