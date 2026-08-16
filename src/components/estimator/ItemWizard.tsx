@@ -27,9 +27,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { AiUnavailableError, designGenerationService, drawingExtractionService } from "@/lib/estimator/ai";
 import { calculateItem } from "@/lib/estimator/engine";
 import {
+  applyDesignOption,
   buildDesignOptions,
   composeModules,
   makeModule,
+  resolveBrief,
   templateName,
   uid,
 } from "@/lib/estimator/factory";
@@ -40,6 +42,7 @@ import {
   MATERIAL_MASTER,
 } from "@/lib/estimator/masters";
 import type {
+  Briefing,
   DoorType,
   DrawingRef,
   FurnitureItem,
@@ -174,9 +177,9 @@ export function ItemWizard({
               />
             </div>
             <div className="mt-3 grid gap-3 sm:grid-cols-4">
-              <NumField label="Jumlah pintu" value={brief.doors} onChange={(v) => setBrief({ doors: v })} />
-              <NumField label="Jumlah laci" value={brief.drawers} onChange={(v) => setBrief({ drawers: v })} />
-              <NumField label="Jumlah shelf" value={brief.shelves} onChange={(v) => setBrief({ shelves: v })} />
+              <CountInput label="Jumlah pintu" value={brief.doors} onChange={(v) => setBrief({ doors: v })} placeholder="contoh: 4" />
+              <CountInput label="Jumlah laci" value={brief.drawers} onChange={(v) => setBrief({ drawers: v })} placeholder="contoh: 2" />
+              <CountInput label="Jumlah shelf" value={brief.shelves} onChange={(v) => setBrief({ shelves: v })} placeholder="contoh: 3" />
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">Tipe pintu</Label>
                 <Select
@@ -246,7 +249,7 @@ export function ItemWizard({
                     makeModule({
                       kind,
                       name: MODULE_KINDS.find((k) => k.kind === kind)?.label ?? kind,
-                      width_mm: brief.width_mm || 600,
+                      width_mm: brief.width_mm ?? 600,
                     }),
                   ],
                 })
@@ -534,16 +537,7 @@ function ModelStep({
   onNext,
 }: {
   item: FurnitureItem;
-  brief: {
-    width_mm: number;
-    height_mm: number;
-    depth_mm: number;
-    doors: number;
-    drawers: number;
-    shelves: number;
-    doorType: DoorType;
-    notes: string;
-  };
+  brief: Briefing;
   patch: (p: Partial<FurnitureItem>) => void;
   onNext: () => void;
 }) {
@@ -560,15 +554,7 @@ function ModelStep({
             size="sm"
             onClick={() =>
               patch({
-                modules: composeModules(item.category, {
-                  width_mm: brief.width_mm,
-                  height_mm: brief.height_mm,
-                  depth_mm: brief.depth_mm,
-                  doors: brief.doors,
-                  drawers: brief.drawers,
-                  shelves: brief.shelves,
-                  doorType: brief.doorType,
-                }),
+                modules: composeModules(item.category, resolveBrief(brief)),
               })
             }
             disabled={!brief.width_mm}
@@ -582,15 +568,7 @@ function ModelStep({
               disabled={!brief.width_mm}
               onClick={() =>
                 patch({
-                  designOptions: buildDesignOptions(item.category, {
-                    width_mm: brief.width_mm,
-                    height_mm: brief.height_mm,
-                    depth_mm: brief.depth_mm,
-                    doors: brief.doors,
-                    drawers: brief.drawers,
-                    shelves: brief.shelves,
-                    doorType: brief.doorType,
-                  }),
+                  designOptions: buildDesignOptions(item.category, resolveBrief(brief)),
                 })
               }
             >
@@ -705,9 +683,9 @@ function ModuleEditor({
       </div>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-3">
-        <DimensionInput label="Width" value_mm={mod.width_mm} onChange={(v) => onChange({ width_mm: v })} />
-        <DimensionInput label="Height" value_mm={mod.height_mm} onChange={(v) => onChange({ height_mm: v })} />
-        <DimensionInput label="Depth" value_mm={mod.depth_mm} onChange={(v) => onChange({ depth_mm: v })} />
+        <DimensionInput label="Width" value_mm={mod.width_mm} onChange={(v) => onChange({ width_mm: v ?? 0 })} />
+        <DimensionInput label="Height" value_mm={mod.height_mm} onChange={(v) => onChange({ height_mm: v ?? 0 })} />
+        <DimensionInput label="Depth" value_mm={mod.depth_mm} onChange={(v) => onChange({ depth_mm: v ?? 0 })} />
       </div>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-4">
