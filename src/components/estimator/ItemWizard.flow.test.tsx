@@ -205,7 +205,7 @@ describe("alur gambar kerja: extract -> pakai semua -> konfirmasi -> model -> ma
 
     // Step Material
     await goTo(user, "Material");
-    await screen.findByText(/mengikuti gambar kerja/i);
+    await screen.findAllByText(/mengikuti gambar kerja/i);
     const text = document.body.textContent ?? "";
 
     for (const name of ["Top Meja", "Kaki Panel Kiri", "Kaki Panel Kanan", "Modesty Panel"]) {
