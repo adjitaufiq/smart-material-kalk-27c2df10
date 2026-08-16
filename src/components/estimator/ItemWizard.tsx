@@ -712,6 +712,8 @@ function ModelStep({
 }) {
   const options = item.designOptions;
   const [approved, setApproved] = useState<Record<string, boolean>>({});
+  const [confirmDefault, setConfirmDefault] = useState(false);
+  const drawingMode = Boolean(item.drawingSnapshot);
 
   return (
     <div className="space-y-4">
@@ -735,15 +737,29 @@ function ModelStep({
         <div className="flex flex-wrap gap-2">
           <Button
             size="sm"
-            onClick={() =>
-              patch({
-                modules: composeModules(item.category, resolveBrief(brief)),
-              })
-            }
+            variant={drawingMode && confirmDefault ? "destructive" : "default"}
+            onClick={() => {
+              if (drawingMode && !confirmDefault) {
+                setConfirmDefault(true);
+                return;
+              }
+              setConfirmDefault(false);
+              patch({ modules: composeModules(item.category, resolveBrief(brief)) });
+            }}
             disabled={!brief.width_mm}
           >
-            {item.drawingSnapshot ? "Gunakan Default Konstruksi" : "Susun Modul dari Ukuran"}
+            {drawingMode
+              ? confirmDefault
+                ? "Ya, tambahkan default konstruksi"
+                : "Gunakan Default Konstruksi"
+              : "Susun Modul dari Ukuran"}
           </Button>
+          {drawingMode && confirmDefault ? (
+            <p className="basis-full text-xs text-warning-foreground">
+              Default konstruksi bukan bagian dari gambar kerja. Data gambar tetap tersimpan, tetapi
+              modul default akan ditambahkan sebagai data terpisah.
+            </p>
+          ) : null}
           {!item.hasDrawing ? (
             <Button
               size="sm"
