@@ -155,6 +155,7 @@ export function calculateHardware(
   overrides: Record<string, number> = {},
 ): BomItem[] {
   const map = new Map<string, BomItem>();
+  let screws = 0;
   for (const mod of modules) {
     const tpl = findTemplate(mod.templateId);
     const clearance = tpl?.door_clearance_mm ?? 3;
@@ -229,9 +230,59 @@ export function calculateHardware(
         joints * 4 * factor,
         `${mod.name}: ${joints} sambungan struktural × 4 set × ${factor} modul`,
       );
+      screws += 40 * factor;
+    }
+    if (mod.kind === "backdrop_panel" && mod.frameGrid) screws += 30 * factor;
+    if (mod.adjusterFeet && mod.adjusterFeet > 0) {
+      addHw(
+        map,
+        mod.kind === "table_frame" ? "glide-meja" : "kaki-adjust",
+        mod.adjusterFeet * factor,
+        `${mod.name}: ${mod.adjusterFeet} kaki × ${factor} modul`,
+      );
+    }
+    if (mod.grommets && mod.grommets > 0) {
+      addHw(map, "grommet", mod.grommets * factor, `${mod.name}: ${mod.grommets} lubang kabel`);
+    }
+    if (mod.wallMount) {
+      const points = Math.max(2, Math.ceil(mod.width_mm / 400) + 1);
+      addHw(
+        map,
+        "dynabolt",
+        points * factor,
+        `${mod.name}: French cleat ${mod.width_mm} mm ÷ 400 mm + 1 = ${points} titik × ${factor}`,
+      );
     }
   }
+  if (screws > 0) {
+    const boxes = Math.ceil(screws / 100);
+    addHw(map, "sekrup", boxes, `Total ± ${screws} sekrup ÷ 100 per box = ${boxes} box`);
+  }
   return [...map.values()];
+}
+
+/** Lem HPL: 1 kaleng per ± 4 m² bidang HPL (dari face yang di-HPL). */
+export const HPL_GLUE_M2_PER_CAN = 4;
+export function calculateHplGlue(parts: Part[]): BomItem | null {
+  let area = 0;
+  for (const faceParts of hplFaceParts(parts).values()) {
+    for (const p of faceParts) area += (p.length_mm * p.width_mm * p.qty) / 1e6;
+  }
+  if (area <= 0) return null;
+  const master = findHardware("lem-hpl");
+  if (!master) return null;
+  const qty = Math.ceil(area / HPL_GLUE_M2_PER_CAN);
+  return {
+    id: "lem-hpl",
+    group: "hardware",
+    name: `${master.nama} (${master.brand})`,
+    qty,
+    unit: master.unit,
+    unitPrice: master.harga,
+    total: master.harga !== null ? master.harga * qty : null,
+    trace: [`Bidang HPL ${area.toFixed(2)} m² ÷ ${HPL_GLUE_M2_PER_CAN} m²/kaleng = ${qty} kaleng`],
+    explanation: master.rule_default,
+  };
 }
 
 export function calculateElectrical(modules: ModuleSpec[]): BomItem[] {
@@ -601,6 +652,8 @@ export function calculateItem(item: FurnitureItem): CalculationResult {
       explanation: "Total panjang sisi part yang di-edging.",
     });
   }
+  const glue = calculateHplGlue(parts);
+  if (glue) hardware.push(glue);
   bom.push(...hardware, ...electrical);
 
   const cost = summarizeCost(bom);
