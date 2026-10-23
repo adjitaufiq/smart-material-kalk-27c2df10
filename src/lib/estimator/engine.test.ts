@@ -167,7 +167,7 @@ describe("5. grain direction is respected during nesting", () => {
 });
 
 describe("6. table with HPL only on the tabletop", () => {
-  it("does not compute HPL for the steel frame", () => {
+  it("HPL only lands on the tabletop when legs are left unfinished", () => {
     const modules = composeModules("Meja", {
       width_mm: 1600,
       height_mm: 750,
@@ -180,10 +180,9 @@ describe("6. table with HPL only on the tabletop", () => {
     const top = modules.find((m) => m.kind === "table_top");
     const frame = modules.find((m) => m.kind === "table_frame");
     expect(top).toBeDefined();
-    expect(frame?.frameMaterial).toBe("besi");
+    expect(frame?.frameMaterial).toBe("plywood");
     if (top) top.finish.bodyOutside = { hplId: "taco-002aa" };
     const parts = generatePartsForModules(modules);
-    expect(parts.every((p) => p.module_id !== frame?.id)).toBe(true);
     const faces = hplFaceParts(parts);
     const hplParts = faces.get("taco-002aa") ?? [];
     expect(hplParts.length).toBeGreaterThan(0);

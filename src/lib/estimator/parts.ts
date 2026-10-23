@@ -114,7 +114,16 @@ export function generateParts(mod: ModuleSpec): Part[] {
           ? `Side = tinggi ${H} mm (top/bottom di antara side)`
           : `Side = tinggi ${H} - 2 × tebal ${t} (top/bottom menutup side)`,
       }),
-      build(mod, {
+      mod.openTop
+        ? build(mod, {
+            name: "Palang Atas (Stretcher)",
+            qty: 2,
+            length_mm: tbLength,
+            width_mm: 100,
+            materialId: mod.bodyMaterialId,
+            derivation: `Kabinet bawah kitchen: atas terbuka, 2 palang depan/belakang ${tbLength} × 100 mm untuk dudukan top table`,
+          })
+        : build(mod, {
         name: "Top Panel",
         qty: 1,
         length_mm: tbLength,
@@ -141,6 +150,19 @@ export function generateParts(mod: ModuleSpec): Part[] {
           : `Bottom = lebar penuh ${W} mm`,
       }),
     );
+
+    if (mod.wallMount) {
+      parts.push(
+        build(mod, {
+          name: "French Cleat (pasangan dinding + kabinet)",
+          qty: 2,
+          length_mm: iw,
+          width_mm: 100,
+          materialId: "ply18",
+          derivation: `Cleat 45° dipotong dari 1 strip ${iw} × 200 mm → 2 bilah ${iw} × 100 mm (1 di dinding, 1 di kabinet)`,
+        }),
+      );
+    }
 
     if (mod.shelves > 0) {
       parts.push(
@@ -285,22 +307,40 @@ export function generateParts(mod: ModuleSpec): Part[] {
       // Frame besi / solid wood: bukan sheet material, tidak menghasilkan part panel & tanpa HPL.
       return parts;
     }
+    const modestyH = Math.min(350, Math.max(H - 100, 100));
     parts.push(
       build(mod, {
-        name: "Kaki Panel",
-        qty: 2,
+        name: "Kaki Panel Kiri",
+        qty: 1,
         length_mm: H,
         width_mm: D,
         materialId: mod.bodyMaterialId,
-        derivation: `Kaki panel triplek ${H} × ${D} mm`,
+        faceA: outside,
+        faceB: inside,
+        edge: { top: true, left: true, right: true },
+        derivation: `Kaki panel ${H} (tinggi meja - tebal top) × ${D} mm`,
       }),
       build(mod, {
-        name: "Apron / Pengaku",
+        name: "Kaki Panel Kanan",
+        qty: 1,
+        length_mm: H,
+        width_mm: D,
+        materialId: mod.bodyMaterialId,
+        faceA: outside,
+        faceB: inside,
+        edge: { top: true, left: true, right: true },
+        derivation: `Kaki panel ${H} × ${D} mm`,
+      }),
+      build(mod, {
+        name: "Modesty Panel",
         qty: 1,
         length_mm: iw,
-        width_mm: 150,
+        width_mm: modestyH,
         materialId: mod.bodyMaterialId,
-        derivation: `Apron = lebar bersih ${iw} mm × 150 mm`,
+        faceA: outside,
+        faceB: inside,
+        edge: { bottom: true },
+        derivation: `Modesty = lebar ${W} - 2 × tebal kaki ${t} = ${iw} mm × tinggi ${modestyH} mm (pengikat kaki agar tidak goyang)`,
       }),
     );
     return parts;
@@ -349,6 +389,37 @@ export function generateParts(mod: ModuleSpec): Part[] {
         derivation: `Bidang ${W} × ${H} mm dibagi ${stripCount} panel selebar ${Math.round(stripWidth)} mm (mengikuti construction: panel di atas rangka, bukan solid 18 mm penuh)`,
       }),
     );
+    if (mod.frameGrid) {
+      const verticals = Math.ceil(W / 400) + 1;
+      const horizontals = Math.ceil(H / 600) + 1;
+      const hSegments = Math.ceil(W / 2400);
+      parts.push(
+        build(mod, {
+          name: "Rangka Reng Vertikal",
+          qty: verticals,
+          length_mm: H,
+          width_mm: 50,
+          materialId: "ply18",
+          derivation: `Reng triplek 18 × 50 mm jarak ≤ 400 mm: ceil(${W}/400)+1 = ${verticals} batang × ${H} mm`,
+        }),
+        build(mod, {
+          name: "Rangka Reng Horizontal",
+          qty: horizontals * hSegments,
+          length_mm: W / hSegments,
+          width_mm: 50,
+          materialId: "ply18",
+          derivation: `Reng jarak ≤ 600 mm: ceil(${H}/600)+1 = ${horizontals} baris × ${hSegments} segmen`,
+        }),
+        build(mod, {
+          name: "French Cleat Backdrop",
+          qty: 2 * hSegments,
+          length_mm: W / hSegments,
+          width_mm: 100,
+          materialId: "ply18",
+          derivation: `Cleat 45° pasangan dinding + panel, ${hSegments} segmen`,
+        }),
+      );
+    }
     return parts;
   }
 
