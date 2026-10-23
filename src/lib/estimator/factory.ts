@@ -29,6 +29,11 @@ export interface ModuleDraft {
   hangingRod?: boolean;
   frameMaterial?: ModuleSpec["frameMaterial"];
   topLayers?: number;
+  openTop?: boolean;
+  wallMount?: boolean;
+  frameGrid?: boolean;
+  grommets?: number;
+  adjusterFeet?: number;
 }
 
 /** Membuat ModuleSpec dari construction template (default terlihat, bukan tersembunyi). */
@@ -61,6 +66,11 @@ export function makeModule(draft: ModuleDraft): ModuleSpec {
     edgingId: "pvc1-white",
     topLayers: draft.topLayers,
     frameMaterial: draft.frameMaterial,
+    openTop: draft.openTop,
+    wallMount: draft.wallMount,
+    frameGrid: draft.frameGrid,
+    grommets: draft.grommets,
+    adjusterFeet: draft.adjusterFeet,
   };
 }
 
@@ -144,23 +154,57 @@ export function composeModules(category: string, briefInput: Brief): ModuleSpec[
   const { width_mm: W, height_mm: H, depth_mm: D } = brief;
   switch (normalizeCategory(category)) {
     case "Kitchen Set": {
+      // Anatomi WS: Kabinet Bawah (atas terbuka + palang) di atas plinth/kaki adjuster,
+      // Kabinet Atas gantung (D 350, French cleat). Tinggi brief = tinggi total bawah.
+      const PLINTH = 100;
+      const totalH = H || 820;
+      const bodyH = totalH >= 700 ? totalH - PLINTH : totalH;
       const bays = planBays(W, brief.doors > 0 ? Math.ceil(brief.doors / 2) : 0);
       const doorsPer = splitEvenly(brief.doors, bays.length);
       const drawersPer = splitEvenly(brief.drawers, bays.length);
       const shelvesPer = splitEvenly(brief.shelves, bays.length);
-      return bays.map((w, i) =>
+      const mods = bays.map((w, i) =>
         makeModule({
           kind: "base_cabinet",
           name: `Kabinet Bawah ${i + 1}`,
           width_mm: w,
-          height_mm: H || 720,
-          depth_mm: D || 550,
+          height_mm: bodyH,
+          depth_mm: D || 560,
           doors: doorsPer[i] ?? 0,
           doorType: brief.doorType,
           drawers: drawersPer[i] ?? 0,
           shelves: shelvesPer[i] ?? 0,
+          openTop: true,
+          adjusterFeet: i === 0 ? 4 : 2,
         }),
       );
+      if (totalH >= 700) {
+        mods.push(
+          makeModule({
+            kind: "plinth",
+            name: "Plinth / Sepatu Kitchen",
+            width_mm: W,
+            height_mm: PLINTH,
+            depth_mm: (D || 560) - 50,
+          }),
+        );
+      }
+      bays.forEach((w, i) =>
+        mods.push(
+          makeModule({
+            kind: "wall_cabinet",
+            name: `Kabinet Atas ${i + 1}`,
+            width_mm: w,
+            height_mm: 700,
+            depth_mm: 350,
+            doors: w > 600 ? 2 : 1,
+            doorType: brief.doorType === "sliding" ? "swing" : brief.doorType === "none" ? "swing" : brief.doorType,
+            shelves: 1,
+            wallMount: true,
+          }),
+        ),
+      );
+      return mods;
     }
     case "Lemari Baju": {
       // Side panel tidak boleh melebihi panjang lembar: badan utama + loft bila perlu.
@@ -207,7 +251,7 @@ export function composeModules(category: string, briefInput: Brief): ModuleSpec[
     case "Meja":
     case "Meja Kerja":
     case "Meja Makan":
-      // Meja: top table dan frame DIPISAH.
+      // Meja WS: top double layer 36 mm + Kaki Panel Kiri/Kanan + Modesty (triplek).
       return [
         makeModule({
           kind: "table_top",
@@ -216,14 +260,16 @@ export function composeModules(category: string, briefInput: Brief): ModuleSpec[
           height_mm: 36,
           depth_mm: D || 600,
           topLayers: 2,
+          grommets: 1,
         }),
         makeModule({
           kind: "table_frame",
           name: "Kaki / Frame",
           width_mm: W,
           height_mm: (H || 750) - 36,
-          depth_mm: D || 600,
-          frameMaterial: "besi",
+          depth_mm: (D || 600) - 50,
+          frameMaterial: "plywood",
+          adjusterFeet: 4,
         }),
       ];
     case "Buffet TV":
@@ -255,6 +301,7 @@ export function composeModules(category: string, briefInput: Brief): ModuleSpec[
           width_mm: W,
           height_mm: H,
           depth_mm: 40,
+          frameGrid: true,
         }),
         makeModule({
           kind: "floating_shelf",
