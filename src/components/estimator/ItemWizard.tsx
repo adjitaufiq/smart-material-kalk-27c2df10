@@ -41,6 +41,7 @@ import {
   drawingExtractionService,
 } from "@/lib/estimator/ai";
 import { calculateItem } from "@/lib/estimator/engine";
+import { modulesFromDrawing } from "@/lib/estimator/drawing-parts";
 import { missingCriticalDimensions } from "@/lib/estimator/extraction-review";
 import { materialLabel } from "@/lib/estimator/terminology";
 import { dualDim } from "@/lib/estimator/units";
@@ -407,6 +408,13 @@ export function ItemWizard({
             <div className="rounded-lg border bg-surface p-3">
               <p className="text-xs font-medium">Ringkasan ukuran (cm & mm)</p>
               <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                {result.parts
+                  .filter((p) => p.module_name === "Gambar Kerja")
+                  .map((p) => (
+                    <li key={p.id} className="num">
+                      {p.part_name}: {p.qty} pcs @ {dualDim(p.length_mm, p.width_mm, p.thickness_mm)}
+                    </li>
+                  ))}
                 {item.modules.map((m) => (
                   <li key={m.id} className="num">
                     {m.name}: {dualDim(m.width_mm, m.height_mm, m.depth_mm)} · {m.doors} pintu ·{" "}
@@ -685,7 +693,8 @@ function DrawingStep({
                           drawingSnapshot: snapshot,
                           drawingComponents: materialStateFromModel(modelFromSnapshot(snapshot)),
                           // Jalur legacy dibersihkan supaya data gambar tidak dikalahkan default lama.
-                          modules: [],
+                          // Gambar tampak / komponen kotak disusun jadi modul workshop.
+                          modules: modulesFromDrawing(snapshot, item.category),
                           designOptions: [],
                           selectedOptionId: null,
                           confirmedConstruction: false,
