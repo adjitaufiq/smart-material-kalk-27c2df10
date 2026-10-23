@@ -11,6 +11,7 @@ import {
   LED_DRIVER_SAFETY_MARGIN,
 } from "./masters";
 import { generatePartsForModules, resetPartIds } from "./parts";
+import { partsFromDrawingComponents } from "./drawing-parts";
 import { meters } from "./units";
 import type {
   Assumption,
@@ -593,8 +594,12 @@ export function collectAssumptions(item: FurnitureItem): Assumption[] {
 
 export function calculateItem(item: FurnitureItem): CalculationResult {
   resetPartIds();
-  const parts = generatePartsForModules(item.modules);
-  const validation = validateItem(item);
+  const drawing = partsFromDrawingComponents(item.drawingComponents ?? []);
+  const parts = [...generatePartsForModules(item.modules), ...drawing.parts];
+  const validation = [
+    ...validateItem(item).filter((i) => !(i.code === "NO_MODULE" && parts.length > 0)),
+    ...drawing.issues,
+  ];
   const { results: sheets, issues: sheetIssues } = calculateSheets(
     parts,
     item.sheetMode,
