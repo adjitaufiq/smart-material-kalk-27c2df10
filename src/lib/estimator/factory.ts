@@ -208,8 +208,11 @@ export function composeModules(category: string, briefInput: Brief): ModuleSpec[
     }
     case "Lemari Baju": {
       // Side panel tidak boleh melebihi panjang lembar: badan utama + loft bila perlu.
-      const mainHeight = H > 2100 ? 2100 : H;
-      const loftHeight = H - mainHeight;
+      // Anatomi WS: plinth/sepatu 80 mm di bawah, tinggi total user tetap dipertahankan.
+      const PLINTH = H >= 1500 ? 80 : 0;
+      const bodyTotal = H - PLINTH;
+      const mainHeight = bodyTotal > 2100 ? 2100 : bodyTotal;
+      const loftHeight = bodyTotal - mainHeight;
       const bays = planBays(W, brief.doors);
       const doorsPer = splitEvenly(brief.doors, bays.length);
       const drawersPer = splitEvenly(brief.drawers, bays.length);
@@ -245,6 +248,17 @@ export function composeModules(category: string, briefInput: Brief): ModuleSpec[
           ),
         );
       }
+      if (PLINTH > 0) {
+        mods.push(
+          makeModule({
+            kind: "plinth",
+            name: "Plinth / Sepatu Lemari",
+            width_mm: W,
+            height_mm: PLINTH,
+            depth_mm: (D || 600) - 50,
+          }),
+        );
+      }
       return mods;
     }
 
@@ -278,7 +292,8 @@ export function composeModules(category: string, briefInput: Brief): ModuleSpec[
           kind: "base_cabinet",
           name: "Body Buffet",
           width_mm: W,
-          height_mm: H || 450,
+          // Tinggi total user = body + plinth 100 mm.
+          height_mm: H >= 300 ? H - 100 : H || 450,
           depth_mm: D || 400,
           doors: brief.doors,
           doorType: brief.doorType === "sliding" ? "sliding" : "swing",
