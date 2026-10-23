@@ -174,6 +174,16 @@ export interface ModuleSpec {
   topLayers?: number | undefined;
   /** table_frame only: frame is not sheet material */
   frameMaterial?: "besi" | "plywood" | "solid_wood" | "lainnya" | undefined;
+  /** base_cabinet kitchen: atas terbuka, pakai 2 palang (stretcher) untuk dudukan top table */
+  openTop?: boolean | undefined;
+  /** dipasang gantung di dinding dengan French cleat + dynabolt */
+  wallMount?: boolean | undefined;
+  /** backdrop: panel dipasang di atas rangka reng (grid) */
+  frameGrid?: boolean | undefined;
+  /** meja: jumlah grommet lubang kabel */
+  grommets?: number | undefined;
+  /** jumlah kaki adjuster (base kitchen / plinth / meja) */
+  adjusterFeet?: number | undefined;
   led?: { enabled: boolean; length_mm: number; watt_per_m: number; segments: number } | undefined;
 }
 
