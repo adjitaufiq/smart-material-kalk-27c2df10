@@ -5,6 +5,8 @@ import { toast } from "sonner";
 
 import { ItemWizard } from "@/components/estimator/ItemWizard";
 import { KisPanel } from "@/components/estimator/KisPanel";
+import { KisSurvey } from "@/components/estimator/KisSurvey";
+import { surveyComplete, surveyOf } from "@/lib/estimator/kis-survey";
 import { SectionCard, StatusBadge } from "@/components/estimator/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -124,8 +126,10 @@ function ProjectPage() {
               results={results}
               bom={projectBom}
               grandTotal={projectCost.grandTotal}
+              ready={project.items.length > 0 && project.items.every((i) => surveyComplete(surveyOf(i)))}
             />
           ) : null}
+          {project.kis ? <KisSurvey items={project.items} onChange={updateItem} /> : null}
           <SectionCard
             title="Furniture Item"
             description="Setiap item dihitung terpisah lalu digabung di level project."
