@@ -1216,3 +1216,97 @@ function AddModule({ onAdd }: { onAdd: (kind: ModuleKind) => void }) {
     </div>
   );
 }
+
+function QuickSpecPanel({
+  item,
+  onApply,
+}: {
+  item: FurnitureItem;
+  onApply: (spec: QuickSpec) => void;
+}) {
+  const spec = item.quickSpec ?? DEFAULT_QUICK_SPEC;
+  const hasModules = item.modules.length > 0;
+  useEffect(() => {
+    if (!item.quickSpec && hasModules) onApply(DEFAULT_QUICK_SPEC);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.quickSpec, hasModules]);
+
+  const cabinets = item.modules.filter((m) => m.kind !== "table_top" && m.kind !== "plinth");
+  const doors = item.modules.reduce((s, m) => s + m.doors * m.qty, 0);
+  const drawers = item.modules.reduce((s, m) => s + m.drawers * m.qty, 0);
+  const totalW = cabinets.reduce((s, m) => s + m.width_mm * m.qty, 0);
+  const hasDoors = doors > 0;
+  const hasDrawers = drawers > 0;
+  const hasBase = item.modules.some((m) => m.kind === "base_cabinet");
+
+  const set = (p: Partial<QuickSpec>) => onApply({ ...spec, ...p });
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-lg border bg-surface p-3">
+        <p className="text-xs font-medium">Ringkasan (ukuran sudah dihitung sistem)</p>
+        <p className="mt-1 text-sm">
+          {cabinets.length} kabinet · total lebar {Math.round(totalW / 10)} cm · {doors} pintu ·{" "}
+          {drawers} laci
+        </p>
+      </div>
+      {QUICK_QUESTIONS.filter(
+        (q) =>
+          (q.key !== "hinge" || hasDoors) &&
+          (q.key !== "slide" || hasDrawers) &&
+          (q.key !== "top" || hasBase),
+      ).map((q, idx) => (
+        <div key={q.key} className="space-y-2">
+          <p className="text-sm font-medium">
+            {idx + 1}. {q.title}
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {q.options.map((o) => {
+              const active = spec[q.key] === o.value;
+              return (
+                <button
+                  key={o.value}
+                  type="button"
+                  onClick={() => set({ [q.key]: o.value } as Partial<QuickSpec>)}
+                  className={`rounded-lg border p-3 text-left text-sm transition-colors ${
+                    active ? "border-primary bg-primary/10 font-medium" : "hover:bg-muted"
+                  }`}
+                >
+                  {o.label}
+                  {o.hint ? (
+                    <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                      {o.hint}
+                    </span>
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+      <div className="space-y-2">
+        <p className="text-sm font-medium">Aksesori tambahan (opsional)</p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {QUICK_ACCESSORIES.map((a) => {
+            const on = spec.accessories.includes(a.id);
+            return (
+              <label key={a.id} className="flex items-center gap-2 rounded-lg border p-3 text-sm">
+                <Checkbox
+                  checked={on}
+                  onCheckedChange={(v) =>
+                    set({
+                      accessories: v
+                        ? [...spec.accessories, a.id]
+                        : spec.accessories.filter((x) => x !== a.id),
+                    })
+                  }
+                />
+                {a.label}
+              </label>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
