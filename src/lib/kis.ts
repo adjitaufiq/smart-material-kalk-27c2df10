@@ -277,7 +277,8 @@ export function toBase64Url(json: string): string {
 
 export function kisReturnLink(returnUrl: string, payload: object): string {
   const u = new URL(returnUrl);
-  u.searchParams.set("estimate", JSON.stringify(payload));
+  // Base64URL: KIS router mem-parse JSON mentah jadi object sehingga tidak terbaca.
+  u.searchParams.set("estimate", toBase64Url(JSON.stringify(payload)));
   return u.toString();
 }
 

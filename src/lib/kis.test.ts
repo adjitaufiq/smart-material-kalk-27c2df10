@@ -23,7 +23,12 @@ describe("KIS integration", () => {
     expect(payload.projectId).toBe("kis-1");
     expect(payload.estimatedMaterialCost).toBe(1000);
     const url = new URL(kisReturnLink("https://kerjaku-design-forge.lovable.app/leads/1", payload));
-    expect(JSON.parse(url.searchParams.get("estimate")!).projectId).toBe("kis-1");
+    const raw = url.searchParams.get("estimate")!;
+    expect(raw).toMatch(/^[A-Za-z0-9_-]+$/);
+    const json = new TextDecoder().decode(
+      Uint8Array.from(atob(raw.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0)),
+    );
+    expect(JSON.parse(json).projectId).toBe("kis-1");
   });
 });
 
