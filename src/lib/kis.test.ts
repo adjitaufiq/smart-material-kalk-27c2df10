@@ -47,7 +47,7 @@ describe("KIS specHints", () => {
   });
 });
 
-import { parseKisSearch as parseNew, toBase64Url as b64 } from "./kis";
+import { parseKisSearch as parseNew } from "./kis";
 import { describe as d2, it as i2, expect as e2 } from "vitest";
 d2("KIS modules & shape", () => {
   i2("L-shape with 4 modules → 4 separate kitchen items", () => {
