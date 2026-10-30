@@ -95,3 +95,18 @@ describe("Consumables", () => {
     expect(calculateHardware(mods).find((h) => h.id === "sekrup")?.qty).toBe(Math.ceil((cab * 40) / 100));
   });
 });
+
+describe("Kitchen Set bawah / atas terpisah", () => {
+  it("Kitchenset bawah 240×85×60 cm: hanya kabinet bawah + plinth, tanpa kabinet atas", () => {
+    const mods = composeModules("Kitchenset bawah", brief(2400, 850, 600, 4, 2));
+    expect(mods.some((m) => m.kind === "wall_cabinet")).toBe(false);
+    expect(mods.find((m) => m.kind === "plinth")?.height_mm).toBe(100);
+    expect(mods.filter((m) => m.kind === "base_cabinet").every((m) => m.height_mm === 750)).toBe(true);
+  });
+  it("Kitchenset atas: hanya kabinet atas dengan ukuran dari user", () => {
+    const mods = composeModules("kitchenset atas", brief(2400, 700, 350, 4, 0));
+    expect(mods.every((m) => m.kind === "wall_cabinet")).toBe(true);
+    expect(mods.reduce((s, m) => s + m.width_mm, 0)).toBe(2400);
+    expect(mods.every((m) => m.height_mm === 700 && m.depth_mm === 350)).toBe(true);
+  });
+});

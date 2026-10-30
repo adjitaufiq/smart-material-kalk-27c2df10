@@ -48,3 +48,9 @@ export function dualDim(w: number, h: number, d: number): string {
   const cm = (v: number) => Math.round((v / 10) * 10) / 10;
   return `${cm(w)} × ${cm(h)} × ${cm(d)} cm (${Math.round(w)} × ${Math.round(h)} × ${Math.round(d)} mm)`;
 }
+
+/** "90 × 75 × 60 cm" — tampilan ringkas dalam satuan input (cm). */
+export function cmDim(w: number, h: number, d: number): string {
+  const cm = (v: number) => Math.round((v / 10) * 10) / 10;
+  return `${cm(w)} × ${cm(h)} × ${cm(d)} cm`;
+}

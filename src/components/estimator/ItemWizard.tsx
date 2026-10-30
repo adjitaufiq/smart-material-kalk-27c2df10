@@ -44,7 +44,7 @@ import { calculateItem } from "@/lib/estimator/engine";
 import { modulesFromDrawing } from "@/lib/estimator/drawing-parts";
 import { missingCriticalDimensions } from "@/lib/estimator/extraction-review";
 import { materialLabel } from "@/lib/estimator/terminology";
-import { dualDim } from "@/lib/estimator/units";
+import { cmDim, dualDim } from "@/lib/estimator/units";
 import {
   applyDesignOption,
   buildDesignOptions,
@@ -809,7 +809,7 @@ function ModelStep({
                   {m.name} <span className="text-muted-foreground">({templateName(m)})</span>
                 </span>
                 <span className="num text-xs text-muted-foreground">
-                  {m.width_mm}×{m.height_mm}×{m.depth_mm} · {m.doors} pintu · {m.drawers} laci
+                  {cmDim(m.width_mm, m.height_mm, m.depth_mm)} · {m.doors} pintu · {m.drawers} laci
                 </span>
               </li>
             ))}
