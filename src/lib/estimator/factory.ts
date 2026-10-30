@@ -109,6 +109,14 @@ export function resolveBrief(b: {
   };
 }
 
+/** Kitchen set: item bernama "bawah"/"atas" hanya membuat bagian itu saja. */
+export function kitchenPart(category: string): "bawah" | "atas" | "lengkap" {
+  const c = category.toLowerCase();
+  if (/bawah|base|lower/.test(c)) return "bawah";
+  if (/atas|upper|gantung|wall/.test(c)) return "atas";
+  return "lengkap";
+}
+
 /** Kategori bebas teks -> kategori kanonik untuk pemilihan konstruksi. */
 export function normalizeCategory(category: string): string {
   const c = category.trim().toLowerCase();
@@ -154,6 +162,26 @@ export function composeModules(category: string, briefInput: Brief): ModuleSpec[
   const { width_mm: W, height_mm: H, depth_mm: D } = brief;
   switch (normalizeCategory(category)) {
     case "Kitchen Set": {
+      const part = kitchenPart(category);
+      if (part === "atas") {
+        // Item khusus Kabinet Atas: ukuran user = ukuran kabinet gantung.
+        const bays = planBays(W, brief.doors > 0 ? Math.ceil(brief.doors / 2) : 0);
+        const doorsPer = brief.doors > 0 ? splitEvenly(brief.doors, bays.length) : null;
+        const shelvesPer = splitEvenly(brief.shelves, bays.length);
+        return bays.map((w, i) =>
+          makeModule({
+            kind: "wall_cabinet",
+            name: `Kabinet Atas ${i + 1}`,
+            width_mm: w,
+            height_mm: H || 700,
+            depth_mm: D || 350,
+            doors: doorsPer ? (doorsPer[i] ?? 0) : w > 600 ? 2 : 1,
+            doorType: brief.doorType === "sliding" || brief.doorType === "none" ? "swing" : brief.doorType,
+            shelves: shelvesPer[i] ?? 0,
+            wallMount: true,
+          }),
+        );
+      }
       // Anatomi WS: Kabinet Bawah (atas terbuka + palang) di atas plinth/kaki adjuster,
       // Kabinet Atas gantung (D 350, French cleat). Tinggi brief = tinggi total bawah.
       const PLINTH = 100;
@@ -189,6 +217,7 @@ export function composeModules(category: string, briefInput: Brief): ModuleSpec[
           }),
         );
       }
+      if (part === "bawah") return mods;
       bays.forEach((w, i) =>
         mods.push(
           makeModule({

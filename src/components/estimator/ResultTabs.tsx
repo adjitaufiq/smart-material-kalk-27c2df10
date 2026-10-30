@@ -14,7 +14,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { STATUS_LABEL } from "@/lib/estimator/engine";
 import type { BomItem, CalculationResult, FurnitureItem } from "@/lib/estimator/types";
-import { rupiah } from "@/lib/estimator/units";
+import { dualDim, rupiah } from "@/lib/estimator/units";
 
 function groupLabel(group: BomItem["group"]) {
   return {
@@ -111,7 +111,7 @@ export function ResultTabs({
                     {m.name} <span className="text-muted-foreground">×{m.qty}</span>
                   </span>
                   <span className="num text-muted-foreground">
-                    {m.width_mm} × {m.height_mm} × {m.depth_mm} mm
+                    {dualDim(m.width_mm, m.height_mm, m.depth_mm)}
                   </span>
                 </li>
               ))}
