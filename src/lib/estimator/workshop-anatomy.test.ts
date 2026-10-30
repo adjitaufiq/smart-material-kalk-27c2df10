@@ -11,7 +11,7 @@ const brief = (w: number, h: number, d: number, doors = 0, drawers = 0) => ({
 const item = (modules: ModuleSpec[]) => ({ ...newFurnitureItem("X", "T"), modules });
 
 describe("Kitchen Set anatomy", () => {
-  const mods = composeModules("Kitchen Set", brief(2400, 820, 600, 4, 0));
+  const mods = composeModules("Kitchen Set", brief(2400, 820, 600, 4, 0), "Kitchen Set lengkap");
   it("has base cabinets on 100 mm plinth, keeping total height 820", () => {
     const base = mods.filter((m) => m.kind === "base_cabinet");
     const plinth = mods.find((m) => m.kind === "plinth");
