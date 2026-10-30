@@ -437,10 +437,12 @@ export interface Project {
   jenis_pekerjaan: string;
   visit_date: string;
   notes: string;
-  source: "baru" | "ro_memory";
+  source: "baru" | "ro_memory" | "kis";
   created_at: string;
   items: FurnitureItem[];
   revisions: ProjectRevision[];
+  /** Link ke Kerjaku Interior Studio bila project diimpor dari KIS */
+  kis?: import("../kis").KisLink | undefined;
 }
 
 // ===================== STRICT DRAWING READING MODE =====================
