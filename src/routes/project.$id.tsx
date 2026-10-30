@@ -10,18 +10,12 @@ import { Input } from "@/components/ui/input";
 import { calculateItem, mergeProjectBom, summarizeCost } from "@/lib/estimator/engine";
 import { newFurnitureItem } from "@/lib/estimator/factory";
 import { FURNITURE_CATEGORIES } from "@/lib/estimator/masters";
+import { quickAddItems } from "@/lib/estimator/presets";
 import type { FurnitureItem, Project } from "@/lib/estimator/types";
 import { rupiah } from "@/lib/estimator/units";
 import { hydrateProjectDrawings } from "@/lib/drawing-blobs";
 import { getProject, snapshotRevision, upsertProject } from "@/lib/store";
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 export const Route = createFileRoute("/project/$id")({
   head: () => ({
@@ -126,8 +120,7 @@ function ProjectPage() {
           <SectionCard
             title="Furniture Item"
             description="Setiap item dihitung terpisah lalu digabung di level project."
-            action={<AddItem onAdd={(cat) => save({ ...project, items: [...project.items, newFurnitureItem(cat, cat)] })} />}
-          >
+            >
             {project.items.length === 0 ? (
               <p className="py-4 text-center text-sm text-muted-foreground">
                 Belum ada furniture item.
@@ -143,7 +136,7 @@ function ProjectPage() {
                   >
                     <div className="flex items-center justify-between gap-3">
                       <span className="min-w-0">
-                        <span className="block truncate font-medium">{item.name}</span>
+                        <span className="block break-words font-medium">{item.name}</span>
                         <span className="block text-xs text-muted-foreground">
                           {item.modules.length} modul ·{" "}
                           {item.hasDrawing === null
@@ -159,6 +152,12 @@ function ProjectPage() {
                 </li>
               ))}
             </ul>
+            <AddItem
+              existingNames={project.items.map((i) => i.name)}
+              onAdd={(category, name) =>
+                save({ ...project, items: [...project.items, newFurnitureItem(category, name)] })
+              }
+            />
           </SectionCard>
 
           {projectBom.length > 0 ? (
@@ -214,40 +213,68 @@ function ProjectPage() {
   );
 }
 
-function AddItem({ onAdd }: { onAdd: (category: string) => void }) {
+function AddItem({
+  existingNames,
+  onAdd,
+}: {
+  existingNames: string[];
+  onAdd: (category: string, name: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
   const [custom, setCustom] = useState("");
+  const quick = quickAddItems(existingNames);
   return (
-    <div className="flex items-center gap-2">
-      <Select onValueChange={onAdd}>
-        <SelectTrigger className="w-[190px] text-xs">
-          <SelectValue placeholder="Tambah item" />
-        </SelectTrigger>
-        <SelectContent>
-          {FURNITURE_CATEGORIES.map((c) => (
-            <SelectItem key={c} value={c}>
-              {c}
-            </SelectItem>
+    <div className="mt-3 space-y-2 border-t pt-3">
+      {quick.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {quick.map((q) => (
+            <Button key={q.name} size="sm" variant="outline" onClick={() => onAdd(q.category, q.name)}>
+              <Plus className="size-3.5" /> {q.name.replace("Kitchen Set ", "")}
+            </Button>
           ))}
-        </SelectContent>
-      </Select>
-      <Input
-        placeholder="Custom"
-        className="w-[110px] text-xs"
-        value={custom}
-        onChange={(e) => setCustom(e.target.value)}
-      />
-      <Button
-        size="icon"
-        variant="secondary"
-        aria-label="Tambah item custom"
-        disabled={!custom}
-        onClick={() => {
-          onAdd(custom);
-          setCustom("");
-        }}
-      >
-        <Plus className="size-4" />
+        </div>
+      ) : null}
+      <Button size="sm" variant="secondary" onClick={() => setOpen(!open)}>
+        <Plus className="size-3.5" /> Tambah item lain
       </Button>
+      {open ? (
+        <div className="space-y-2 rounded-lg border bg-surface p-2.5">
+          <div className="flex flex-wrap gap-1.5">
+            {FURNITURE_CATEGORIES.filter((c) => c !== "Jenis lainnya").map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => {
+                  onAdd(c, c);
+                  setOpen(false);
+                }}
+                className="rounded-full border bg-background px-3 py-1 text-xs hover:bg-accent"
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <Input
+              placeholder="Nama item lain"
+              className="text-sm"
+              value={custom}
+              onChange={(e) => setCustom(e.target.value)}
+            />
+            <Button
+              size="sm"
+              disabled={!custom.trim()}
+              onClick={() => {
+                onAdd(custom.trim(), custom.trim());
+                setCustom("");
+                setOpen(false);
+              }}
+            >
+              Tambah
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
