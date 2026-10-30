@@ -1224,10 +1224,10 @@ function QuickSpecPanel({
   item: FurnitureItem;
   onApply: (spec: QuickSpec) => void;
 }) {
-  const spec = item.quickSpec ?? DEFAULT_QUICK_SPEC;
+  const spec = item.quickSpec ?? item.quickSpecHint ?? DEFAULT_QUICK_SPEC;
   const hasModules = item.modules.length > 0;
   useEffect(() => {
-    if (!item.quickSpec && hasModules) onApply(DEFAULT_QUICK_SPEC);
+    if (!item.quickSpec && hasModules) onApply(item.quickSpecHint ?? DEFAULT_QUICK_SPEC);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.quickSpec, hasModules]);
 

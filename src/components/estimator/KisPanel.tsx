@@ -30,6 +30,8 @@ export function KisPanel({
   const kis = project.kis!;
   const before = useBlob(kis.beforeBlobKey, kis.beforeUrl);
   const render = useBlob(kis.renderBlobKey, kis.renderUrl);
+  const interior = useBlob(kis.interiorBlobKey, kis.interiorUrl ?? "");
+  const positions = Object.entries(kis.accessoryPositions ?? {});
 
   const send = () => {
     const payload = buildKisEstimate({
@@ -45,9 +47,9 @@ export function KisPanel({
 
   return (
     <SectionCard title="Dari Kerjaku Interior Studio" description={kis.clientName || "Data klien & visual"}>
-      {before || render ? (
-        <div className="grid grid-cols-2 gap-2">
-          {[["Sebelum", before], ["Render 3D", render]].map(([label, src]) => (
+      {before || render || interior ? (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {[["Sebelum", before], ["Render 3D", render], ...(kis.interiorUrl ? [["Tampak Dalam", interior]] : [])].map(([label, src]) => (
             <figure key={label}>
               {src ? (
                 <img src={src} alt={label} className="aspect-[4/3] w-full rounded-md border object-cover" />
@@ -59,6 +61,18 @@ export function KisPanel({
               <figcaption className="mt-1 text-xs text-muted-foreground">{label}</figcaption>
             </figure>
           ))}
+        </div>
+      ) : null}
+      {positions.length ? (
+        <div className="mt-3 rounded-md border p-2 text-xs">
+          <p className="font-medium">Posisi aksesori dari KIS</p>
+          <ul className="mt-1 space-y-0.5 text-muted-foreground">
+            {positions.map(([id, pos]) => (
+              <li key={id}>
+                {id.replace(/-/g, " ")}: {pos}
+              </li>
+            ))}
+          </ul>
         </div>
       ) : null}
       {!kis.beforeBlobKey && kis.beforeUrl ? (

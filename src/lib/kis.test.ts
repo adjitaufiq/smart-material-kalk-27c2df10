@@ -23,7 +23,26 @@ describe("KIS integration", () => {
     expect(payload.projectId).toBe("kis-1");
     expect(payload.estimatedMaterialCost).toBe(1000);
     const url = new URL(kisReturnLink("https://kerjaku-design-forge.lovable.app/leads/1", payload));
-    const b64 = url.searchParams.get("estimate")!.replace(/-/g, "+").replace(/_/g, "/");
-    expect(JSON.parse(atob(b64)).projectId).toBe("kis-1");
+    expect(JSON.parse(url.searchParams.get("estimate")!).projectId).toBe("kis-1");
+  });
+});
+
+import { parseSpecHints, toBase64Url as b64 } from "./kis";
+describe("KIS specHints", () => {
+  it("decodes base64url specHints", () => {
+    const enc = b64(JSON.stringify({ outside: "duco", inside: "tacosheet", hinge: "biasa", slide: "tandem",
+      accessories: [{ id: "rak-sayur", position: "kabinet 2" }, { id: "rak-gelas", position: "atas" }] }));
+    const r = parseSpecHints({ specHints: enc });
+    expect(r.spec).toMatchObject({ outside: "duco", inside: "tacosheet", hinge: "biasa", slide: "tandem" });
+    expect(r.spec?.accessories).toEqual(["rak-sayur", "rak-piring"]);
+    expect(r.positions["rak-sayur"]).toBe("kabinet 2");
+  });
+  it("accepts flat params and ignores unknown values", () => {
+    const r = parseSpecHints({ outside: "hpl", inside: "kayu" });
+    expect(r.spec?.outside).toBe("hpl");
+    expect(r.spec?.inside).toBe("blockmin");
+  });
+  it("returns null without hints", () => {
+    expect(parseSpecHints({}).spec).toBeNull();
   });
 });

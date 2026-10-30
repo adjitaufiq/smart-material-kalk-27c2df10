@@ -50,11 +50,15 @@ function ImportPage() {
           .join("\n"),
         jenis_pekerjaan: data.link.jobType,
         source: "kis",
-        items: data.items.map((i) => newFurnitureItem(i.category, i.name)),
+        items: data.items.map((i) => ({
+          ...newFurnitureItem(i.category, i.name),
+          quickSpecHint: data.specHint ?? undefined,
+        })),
       });
-      const [before, render] = await Promise.all([
+      const [before, render, interior] = await Promise.all([
         fetchAsDataUrl(data.link.beforeUrl),
         fetchAsDataUrl(data.link.renderUrl),
+        fetchAsDataUrl(data.link.interiorUrl ?? ""),
       ]);
       const link = { ...data.link };
       if (before) {
@@ -64,6 +68,10 @@ function ImportPage() {
       if (render) {
         link.renderBlobKey = `kis-render-${project.id}`;
         await putDrawingBlob(link.renderBlobKey, render);
+      }
+      if (interior) {
+        link.interiorBlobKey = `kis-interior-${project.id}`;
+        await putDrawingBlob(link.interiorBlobKey, interior);
       }
       upsertProject({ ...project, kis: link });
       void navigate({ to: "/project/$id", params: { id: project.id }, replace: true });

@@ -4,7 +4,8 @@
  * Balik: SME membuka returnUrl?estimate=<base64url JSON>
  */
 import { defaultSelection, itemsFromSelections, type PresetItem } from "./estimator/presets";
-import type { BomItem, CalculationResult, CalculationStatus } from "./estimator/types";
+import { DEFAULT_QUICK_SPEC } from "./estimator/quick-spec";
+import type { BomItem, CalculationResult, CalculationStatus, QuickSpec } from "./estimator/types";
 
 export const KIS_ORIGIN = "https://kerjaku-design-forge.lovable.app";
 
@@ -16,10 +17,14 @@ export interface KisLink {
   jobType: string;
   beforeUrl: string;
   renderUrl: string;
+  interiorUrl?: string | undefined;
   returnUrl: string;
+  /** Posisi aksesori dari KIS, mis. { "rak-sayur": "kabinet ke-2 dari kiri" } */
+  accessoryPositions?: Record<string, string> | undefined;
   /** Foto tersalin ke IndexedDB (key) — link KIS hanya aktif 1 jam */
   beforeBlobKey?: string | undefined;
   renderBlobKey?: string | undefined;
+  interiorBlobKey?: string | undefined;
   importedAt: string;
 }
 
@@ -29,6 +34,72 @@ export interface KisImport {
   location: string;
   notes: string;
   items: PresetItem[];
+  specHint: QuickSpec | null;
+}
+
+export function fromBase64Url(b64: string): string {
+  const norm = b64.replace(/-/g, "+").replace(/_/g, "/");
+  const bin = atob(norm + "=".repeat((4 - (norm.length % 4)) % 4));
+  return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
+}
+
+const OPTS = {
+  outside: ["hpl", "hpl_premium", "duco"],
+  inside: ["blockmin", "tacosheet", "hpl"],
+  hinge: ["slowmo", "biasa"],
+  slide: ["dt_slowmo", "dt_biasa", "push", "tandem"],
+} as const;
+// KIS punya rak-gelas terpisah; di SME gabung dengan rak-piring.
+const ACC_MAP: Record<string, string> = {
+  "rak-piring": "rak-piring",
+  "rak-gelas": "rak-piring",
+  "rak-sayur": "rak-sayur",
+  "rak-bumbu": "rak-bumbu",
+  "tray-sendok": "tray-sendok",
+};
+
+/** Ambil spek dari specHints (base64url JSON) atau param datar (outside=hpl&...). Nilai tak dikenal diabaikan. */
+export function parseSpecHints(search: Record<string, unknown>): {
+  spec: QuickSpec | null;
+  positions: Record<string, string>;
+} {
+  let raw: Record<string, unknown> = {};
+  const enc = search["specHints"];
+  if (typeof enc === "string" && enc) {
+    try {
+      raw = JSON.parse(fromBase64Url(enc)) as Record<string, unknown>;
+    } catch {
+      try {
+        raw = JSON.parse(enc) as Record<string, unknown>;
+      } catch {
+        raw = {};
+      }
+    }
+  } else if (enc && typeof enc === "object") raw = enc as Record<string, unknown>;
+  for (const k of Object.keys(OPTS)) if (raw[k] === undefined && search[k] !== undefined) raw[k] = search[k];
+
+  const spec: QuickSpec = { ...DEFAULT_QUICK_SPEC, accessories: [] };
+  let found = false;
+  for (const [k, allowed] of Object.entries(OPTS)) {
+    const v = raw[k];
+    if (typeof v === "string" && (allowed as readonly string[]).includes(v)) {
+      (spec as unknown as Record<string, string>)[k] = v;
+      found = true;
+    }
+  }
+  const positions: Record<string, string> = {};
+  if (Array.isArray(raw["accessories"])) {
+    for (const a of raw["accessories"]) {
+      const id = typeof a === "string" ? a : a && typeof a === "object" ? (a as { id?: unknown }).id : null;
+      const mapped = typeof id === "string" ? ACC_MAP[id] : undefined;
+      if (!mapped) continue;
+      found = true;
+      if (!spec.accessories.includes(mapped)) spec.accessories.push(mapped);
+      const pos = a && typeof a === "object" ? (a as { position?: unknown }).position : null;
+      if (typeof pos === "string" && pos.trim()) positions[id as string] = pos.trim();
+    }
+  }
+  return { spec: found ? spec : null, positions };
 }
 
 function str(v: unknown): string {
@@ -64,7 +135,9 @@ export function parseKisSearch(search: Record<string, unknown>): KisImport | nul
   if (!projectId) return null;
   const jobType = str(search["jobType"]) || "custom";
   const clientName = str(search["clientName"]);
+  const hints = parseSpecHints(search);
   return {
+    specHint: hints.spec,
     link: {
       projectId,
       workspaceId: str(search["workspaceId"]),
@@ -73,6 +146,8 @@ export function parseKisSearch(search: Record<string, unknown>): KisImport | nul
       jobType,
       beforeUrl: str(search["beforeUrl"]),
       renderUrl: str(search["renderUrl"]),
+      interiorUrl: str(search["interiorUrl"]),
+      accessoryPositions: Object.keys(hints.positions).length ? hints.positions : undefined,
       returnUrl: safeReturnUrl(str(search["returnUrl"])),
       importedAt: new Date().toISOString(),
     },
@@ -141,7 +216,7 @@ export function toBase64Url(json: string): string {
 
 export function kisReturnLink(returnUrl: string, payload: object): string {
   const u = new URL(returnUrl);
-  u.searchParams.set("estimate", toBase64Url(JSON.stringify(payload)));
+  u.searchParams.set("estimate", JSON.stringify(payload));
   return u.toString();
 }
 
