@@ -337,6 +337,8 @@ export interface FurnitureItem {
   drawingComponents?: DrawingComponent[] | null | undefined;
   /** jawaban spek cepat terakhir */
   quickSpec?: QuickSpec | undefined;
+  /** Pilihan spek awal dari KIS — dipakai saat modul pertama kali tersusun. */
+  quickSpecHint?: QuickSpec | undefined;
 }
 
 /** Input user. null = BELUM DIISI (bukan 0). */
