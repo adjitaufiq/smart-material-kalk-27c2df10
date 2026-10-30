@@ -46,6 +46,13 @@ import { missingCriticalDimensions } from "@/lib/estimator/extraction-review";
 import { materialLabel } from "@/lib/estimator/terminology";
 import { cmDim, dualDim } from "@/lib/estimator/units";
 import {
+  applyQuickSpec,
+  DEFAULT_QUICK_SPEC,
+  QUICK_ACCESSORIES,
+  QUICK_QUESTIONS,
+} from "@/lib/estimator/quick-spec";
+import type { QuickSpec } from "@/lib/estimator/types";
+import {
   applyDesignOption,
   buildDesignOptions,
   composeModules,
@@ -331,14 +338,40 @@ export function ItemWizard({
               </>
             ) : (
               <>
-                {item.modules.map((mod) => (
-                  <ModuleEditor
-                    key={mod.id}
-                    mod={mod}
-                    onChange={(p) => patchModule(mod.id, p)}
-                    onRemove={() => patch({ modules: item.modules.filter((m) => m.id !== mod.id) })}
-                  />
-                ))}
+                <QuickSpecPanel
+                  item={item}
+                  onApply={(spec) =>
+                    patch({ quickSpec: spec, modules: applyQuickSpec(item.modules, spec) })
+                  }
+                />
+                <div className="rounded-lg border border-dashed p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs text-muted-foreground">
+                      Detail per modul (opsional, untuk kasus khusus)
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setShowLegacyModules((v) => !v)}
+                    >
+                      {showLegacyModules ? "Sembunyikan" : "Tampilkan"}
+                    </Button>
+                  </div>
+                  {showLegacyModules ? (
+                    <div className="mt-3 space-y-4">
+                      {item.modules.map((mod) => (
+                        <ModuleEditor
+                          key={mod.id}
+                          mod={mod}
+                          onChange={(p) => patchModule(mod.id, p)}
+                          onRemove={() =>
+                            patch({ modules: item.modules.filter((m) => m.id !== mod.id) })
+                          }
+                        />
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
                 <AddModule
                   onAdd={(kind) =>
                     patch({
