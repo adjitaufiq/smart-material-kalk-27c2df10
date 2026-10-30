@@ -27,3 +27,23 @@ describe("KIS integration", () => {
     expect(JSON.parse(atob(b64)).projectId).toBe("kis-1");
   });
 });
+
+import { parseSpecHints, toBase64Url as b64 } from "./kis";
+describe("KIS specHints", () => {
+  it("decodes base64url specHints", () => {
+    const enc = b64(JSON.stringify({ outside: "duco", inside: "tacosheet", hinge: "biasa", slide: "tandem",
+      accessories: [{ id: "rak-sayur", position: "kabinet 2" }, { id: "rak-gelas", position: "atas" }] }));
+    const r = parseSpecHints({ specHints: enc });
+    expect(r.spec).toMatchObject({ outside: "duco", inside: "tacosheet", hinge: "biasa", slide: "tandem" });
+    expect(r.spec?.accessories).toEqual(["rak-sayur", "rak-piring"]);
+    expect(r.positions["rak-sayur"]).toBe("kabinet 2");
+  });
+  it("accepts flat params and ignores unknown values", () => {
+    const r = parseSpecHints({ outside: "hpl", inside: "kayu" });
+    expect(r.spec?.outside).toBe("hpl");
+    expect(r.spec?.inside).toBe("blockmin");
+  });
+  it("returns null without hints", () => {
+    expect(parseSpecHints({}).spec).toBeNull();
+  });
+});
