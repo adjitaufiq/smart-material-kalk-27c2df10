@@ -11,7 +11,7 @@ const brief = (w: number, h: number, d: number, doors = 0, drawers = 0) => ({
 const item = (modules: ModuleSpec[]) => ({ ...newFurnitureItem("X", "T"), modules });
 
 describe("Kitchen Set anatomy", () => {
-  const mods = composeModules("Kitchen Set", brief(2400, 820, 600, 4, 0));
+  const mods = composeModules("Kitchen Set", brief(2400, 820, 600, 4, 0), "Kitchen Set lengkap");
   it("has base cabinets on 100 mm plinth, keeping total height 820", () => {
     const base = mods.filter((m) => m.kind === "base_cabinet");
     const plinth = mods.find((m) => m.kind === "plinth");
@@ -108,5 +108,12 @@ describe("Kitchen Set bawah / atas terpisah", () => {
     expect(mods.every((m) => m.kind === "wall_cabinet")).toBe(true);
     expect(mods.reduce((s, m) => s + m.width_mm, 0)).toBe(2400);
     expect(mods.every((m) => m.height_mm === 700 && m.depth_mm === 350)).toBe(true);
+  });
+});
+
+describe("Kitchen Set umum tidak menambah kabinet atas diam-diam", () => {
+  it("Kitchen Set 240×85×60 cm tanpa kata bawah/atas = hanya kabinet bawah", () => {
+    const mods = composeModules("Kitchen Set", brief(2400, 850, 600, 4, 2), "Kitchen Set");
+    expect(mods.some((m) => m.kind === "wall_cabinet")).toBe(false);
   });
 });
