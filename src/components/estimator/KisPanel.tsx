@@ -21,7 +21,9 @@ export function KisPanel({
   results,
   bom,
   grandTotal,
+  ready = true,
 }: {
+  ready?: boolean;
   project: Project;
   results: CalculationResult[];
   bom: BomItem[];
@@ -82,8 +84,8 @@ export function KisPanel({
       ) : null}
       <div className="mt-3 flex flex-wrap gap-2">
         {kis.returnUrl ? (
-          <Button onClick={send}>
-            <Send /> Kirim Hasil ke KIS
+          <Button onClick={send} disabled={!ready}>
+            <Send /> {ready ? "Finalkan & Kirim ke KIS" : "Lengkapi meteran dulu"}
           </Button>
         ) : null}
         {kis.returnUrl ? (
