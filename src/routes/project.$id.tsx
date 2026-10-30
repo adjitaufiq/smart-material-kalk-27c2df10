@@ -4,6 +4,7 @@ import { ArrowLeft, History, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { ItemWizard } from "@/components/estimator/ItemWizard";
+import { KisPanel } from "@/components/estimator/KisPanel";
 import { SectionCard, StatusBadge } from "@/components/estimator/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -117,6 +118,14 @@ function ProjectPage() {
         </div>
       ) : (
         <div className="mt-6 space-y-4">
+          {project.kis ? (
+            <KisPanel
+              project={project}
+              results={results}
+              bom={projectBom}
+              grandTotal={projectCost.grandTotal}
+            />
+          ) : null}
           <SectionCard
             title="Furniture Item"
             description="Setiap item dihitung terpisah lalu digabung di level project."
