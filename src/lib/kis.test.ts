@@ -46,3 +46,24 @@ describe("KIS specHints", () => {
     expect(parseSpecHints({}).spec).toBeNull();
   });
 });
+
+import { parseKisSearch as parseNew, toBase64Url as b64 } from "./kis";
+import { describe as d2, it as i2, expect as e2 } from "vitest";
+d2("KIS modules & shape", () => {
+  i2("L-shape with 4 modules → 4 separate kitchen items", () => {
+    const hints = b64(JSON.stringify({
+      shape: "L", slide: "tandem",
+      modules: [
+        { level: "lower", side: "main" }, { level: "upper", side: "main" },
+        { level: "lower", side: "wing" }, { level: "upper", side: "wing" },
+      ],
+    }));
+    const r = parseNew({ projectId: "p1", jobType: "kitchen_set", specHints: hints, leadId: "L9" })!;
+    e2(r.link.shape).toBe("L");
+    e2(r.link.leadId).toBe("L9");
+    e2(r.items.map((i) => i.name)).toEqual([
+      "Kitchen Set Bawah", "Kitchen Set Atas", "Kitchen Set Bawah - Sayap L", "Kitchen Set Atas - Sayap L",
+    ]);
+    e2(r.specHint?.slide).toBe("tandem");
+  });
+});

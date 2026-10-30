@@ -244,12 +244,22 @@ export function buildKisEstimate(input: {
       sheetCount[slug(b.name)] = b.qty;
     else if (b.group === "edging") sheetCount[`${slug(b.name)}_meters`] = b.qty;
   }
+  const totalSheets = Object.entries(sheetCount)
+    .filter(([k]) => !k.endsWith("_meters"))
+    .reduce((a, [, v]) => a + v, 0);
+  const totalHw = Object.values(hardwareCount).reduce((a, v) => a + v, 0);
+  // Estimasi hari kerja WS: ±4 lembar/hari potong-rakit-finishing + 2 hari pasang & finishing.
+  const estimatedDays = totalSheets ? Math.ceil(totalSheets / 4) + 2 : 0;
   return {
     projectId: input.kisProjectId,
     estimateId: input.estimateId,
     status: lowest ? STATUS[lowest] : "draft",
     estimatedMaterialCost: input.grandTotal ?? 0,
+    sheetCount: totalSheets,
+    hardwareCount: totalHw,
+    estimatedDays,
     summary: {
+      estimatedDays,
       sheetCount,
       hardwareCount,
       lastCalculatedAt: new Date().toISOString(),
