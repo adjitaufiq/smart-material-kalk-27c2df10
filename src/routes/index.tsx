@@ -18,6 +18,14 @@ import {
   upsertProject,
 } from "@/lib/store";
 import { newFurnitureItem } from "@/lib/estimator/factory";
+import {
+  WORK_PRESETS,
+  defaultSelection,
+  itemsFromSelections,
+  type PresetSelection,
+} from "@/lib/estimator/presets";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Check } from "lucide-react";
 import type { Project } from "@/lib/estimator/types";
 
 export const Route = createFileRoute("/")({
@@ -154,6 +162,24 @@ function NewProjectForm({
     notes: "",
   });
   const set = (p: Partial<typeof form>) => setForm({ ...form, ...p });
+  const [selections, setSelections] = useState<PresetSelection[]>([]);
+
+  const presetItems = itemsFromSelections(selections);
+  const customItems = splitJenisPekerjaan(form.jenis_pekerjaan).map((label) => ({
+    category: label,
+    name: label,
+  }));
+  const allItems = [...presetItems, ...customItems];
+  const jenisText = allItems.map((i) => i.name).join(", ");
+
+  const togglePreset = (id: string) =>
+    setSelections((prev) =>
+      prev.some((s) => s.presetId === id)
+        ? prev.filter((s) => s.presetId !== id)
+        : [...prev, defaultSelection(id)],
+    );
+  const updateSel = (id: string, fn: (s: PresetSelection) => PresetSelection) =>
+    setSelections((prev) => prev.map((s) => (s.presetId === id ? fn(s) : s)));
 
   const submit = (source: "baru" | "ro_memory") => {
     const base =
@@ -162,14 +188,12 @@ function NewProjectForm({
             workshop: form.workshop,
             project: form.name,
             lokasi: form.location,
-            jenis_pekerjaan: form.jenis_pekerjaan,
+            jenis_pekerjaan: jenisText,
             tanggal_visit: form.visit_date,
             catatan: form.notes,
           })
-        : newProject({ ...form, source: "baru" });
-    const items = splitJenisPekerjaan(form.jenis_pekerjaan).map((label) =>
-      newFurnitureItem(label, label),
-    );
+        : newProject({ ...form, jenis_pekerjaan: jenisText, source: "baru" });
+    const items = allItems.map((it) => newFurnitureItem(it.category, it.name));
     onCreated({ ...base, items });
   };
 
@@ -188,18 +212,109 @@ function NewProjectForm({
           />
         </div>
       </div>
-      <Field
-        label="Jenis pekerjaan (pisahkan dengan koma)"
-        value={form.jenis_pekerjaan}
-        onChange={(v) => set({ jenis_pekerjaan: v })}
-      />
+
+      <div className="space-y-2">
+        <Label className="text-xs text-muted-foreground">Jenis pekerjaan (tap untuk pilih)</Label>
+        <div className="grid grid-cols-2 gap-2">
+          {WORK_PRESETS.map((p) => {
+            const on = selections.some((s) => s.presetId === p.id);
+            return (
+              <button
+                key={p.id}
+                type="button"
+                aria-pressed={on}
+                onClick={() => togglePreset(p.id)}
+                className={`rounded-lg border p-2.5 text-left transition-colors ${
+                  on ? "border-primary bg-primary/10" : "bg-background hover:bg-accent"
+                }`}
+              >
+                <span className="flex items-center gap-1.5 text-sm font-medium">
+                  {on ? <Check className="size-4 text-primary" /> : null}
+                  {p.label}
+                </span>
+                <span className="block text-[11px] text-muted-foreground">{p.hint}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {selections.map((sel) => {
+          const p = WORK_PRESETS.find((x) => x.id === sel.presetId);
+          if (!p) return null;
+          return (
+            <div key={sel.presetId} className="space-y-2 rounded-lg border bg-background p-2.5">
+              <p className="text-sm font-medium">{p.label}</p>
+              {p.hasShape ? (
+                <div className="grid grid-cols-2 gap-2">
+                  {(
+                    [
+                      ["single", "Lurus (1 sisi)"],
+                      ["L", "Bentuk L (2 sisi)"],
+                    ] as const
+                  ).map(([val, label]) => (
+                    <button
+                      key={val}
+                      type="button"
+                      aria-pressed={sel.shape === val}
+                      onClick={() => updateSel(sel.presetId, (s) => ({ ...s, shape: val }))}
+                      className={`rounded-md border px-2 py-2 text-xs ${
+                        sel.shape === val ? "border-primary bg-primary/10 font-medium" : ""
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              <div className="space-y-1.5">
+                {p.options.map((o) => (
+                  <label key={o.id} className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={sel.options.includes(o.id)}
+                      onCheckedChange={(c) =>
+                        updateSel(sel.presetId, (s) => ({
+                          ...s,
+                          options: c
+                            ? [...s.options, o.id]
+                            : s.options.filter((x) => x !== o.id),
+                        }))
+                      }
+                    />
+                    {o.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+
+        <Field
+          label="Pekerjaan lain (opsional, pisahkan dengan koma)"
+          value={form.jenis_pekerjaan}
+          onChange={(v) => set({ jenis_pekerjaan: v })}
+        />
+      </div>
+
+      {allItems.length > 0 ? (
+        <div className="rounded-lg border bg-background p-2.5">
+          <p className="mb-1 text-xs font-medium text-muted-foreground">
+            Item yang akan dibuat ({allItems.length})
+          </p>
+          <ol className="list-decimal space-y-0.5 pl-5 text-sm">
+            {allItems.map((it, i) => (
+              <li key={`${it.name}-${i}`}>{it.name}</li>
+            ))}
+          </ol>
+        </div>
+      ) : null}
+
       <Textarea
         placeholder="Catatan"
         value={form.notes}
         onChange={(e) => set({ notes: e.target.value })}
       />
       <p className="text-[11px] text-muted-foreground">
-        Setiap jenis pekerjaan menjadi furniture item terpisah dengan perhitungan sendiri.
+        Setiap item dihitung terpisah dengan perhitungan sendiri.
       </p>
       <div className="flex flex-wrap gap-2">
         <Button size="sm" disabled={!form.name} onClick={() => submit("baru")}>

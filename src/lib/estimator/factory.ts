@@ -157,12 +157,14 @@ export function planBays(width_mm: number, doors: number): number[] {
  * MODULE COMPOSER deterministik. Nilai user (dimensi, pintu, laci, shelf)
  * adalah SOURCE OF TRUTH dan tidak boleh diubah diam-diam.
  */
-export function composeModules(category: string, briefInput: Brief): ModuleSpec[] {
+export function composeModules(category: string, briefInput: Brief, itemName = ""): ModuleSpec[] {
   const brief = briefInput;
   const { width_mm: W, height_mm: H, depth_mm: D } = brief;
   switch (normalizeCategory(category)) {
     case "Kitchen Set": {
-      const part = kitchenPart(category);
+      // Nama item ("Kitchenset bawah") ikut menentukan bagian, meski kategori umum "Kitchen Set".
+      const fromCat = kitchenPart(category);
+      const part = fromCat !== "lengkap" ? fromCat : kitchenPart(itemName);
       if (part === "atas") {
         // Item khusus Kabinet Atas: ukuran user = ukuran kabinet gantung.
         const bays = planBays(W, brief.doors > 0 ? Math.ceil(brief.doors / 2) : 0);
