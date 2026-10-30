@@ -12,6 +12,8 @@ export const KIS_ORIGIN = "https://kerjaku-design-forge.lovable.app";
 export interface KisLink {
   projectId: string;
   workspaceId: string;
+  leadId?: string | undefined;
+  shape?: "single" | "L" | "U" | undefined;
   clientName: string;
   phone: string;
   jobType: string;
@@ -130,17 +132,66 @@ export function itemsForJobType(jobType: string): PresetItem[] {
   return itemsFromSelections([defaultSelection(preset)]);
 }
 
+function decodeRaw(search: Record<string, unknown>): Record<string, unknown> {
+  const enc = search["specHints"];
+  if (typeof enc === "string" && enc) {
+    try {
+      return JSON.parse(fromBase64Url(enc)) as Record<string, unknown>;
+    } catch {
+      try {
+        return JSON.parse(enc) as Record<string, unknown>;
+      } catch {
+        return {};
+      }
+    }
+  }
+  return enc && typeof enc === "object" ? (enc as Record<string, unknown>) : {};
+}
+
+const WING: Record<string, string> = { wing: "Sayap L", wing2: "Sayap U", left: "Sayap Kiri", right: "Sayap Kanan" };
+
+/** Modul kabinet dari KIS (specHints.modules) → item terpisah per kabinet. */
+export function itemsFromKisModules(raw: Record<string, unknown>): PresetItem[] {
+  const mods = raw["modules"];
+  if (!Array.isArray(mods)) return [];
+  const out: PresetItem[] = [];
+  for (const m of mods) {
+    if (!m || typeof m !== "object") continue;
+    const r = m as Record<string, unknown>;
+    const level = r["level"] === "upper" ? "Atas" : r["level"] === "lower" ? "Bawah" : r["level"] === "tall" ? "tall" : null;
+    if (!level) continue;
+    if (level === "tall") {
+      out.push({ category: "Kabinet", name: str(r["label"]) || "Tall Unit / Kabinet Kulkas" });
+      continue;
+    }
+    const side = str(r["side"]);
+    const suffix = side && side !== "main" ? ` - ${WING[side] ?? side}` : "";
+    const full = r["fullCeiling"] === true && level === "Atas" ? " (Full Plafon)" : "";
+    let name = `Kitchen Set ${level}${suffix}${full}`;
+    let n = 2;
+    while (out.some((o) => o.name === name)) name = `Kitchen Set ${level}${suffix}${full} ${n++}`;
+    out.push({ category: `Kitchen Set ${level}${suffix}`, name });
+  }
+  return out;
+}
+
 export function parseKisSearch(search: Record<string, unknown>): KisImport | null {
   const projectId = str(search["projectId"]);
   if (!projectId) return null;
   const jobType = str(search["jobType"]) || "custom";
   const clientName = str(search["clientName"]);
   const hints = parseSpecHints(search);
+  const raw = decodeRaw(search);
+  const shapeRaw = str(raw["shape"]) || str(search["shape"]);
+  const shape = (["single", "L", "U"] as const).find((s) => s === shapeRaw);
+  const modItems = itemsFromKisModules(raw);
   return {
     specHint: hints.spec,
     link: {
       projectId,
       workspaceId: str(search["workspaceId"]),
+      leadId: str(search["leadId"]) || undefined,
+      shape,
       clientName,
       phone: str(search["phone"]),
       jobType,
@@ -155,7 +206,7 @@ export function parseKisSearch(search: Record<string, unknown>): KisImport | nul
       str(search["projectName"]) || [jobType.replace(/_/g, " "), clientName].filter(Boolean).join(" "),
     location: str(search["location"]),
     notes: str(search["notes"]),
-    items: itemsForJobType(jobType),
+    items: modItems.length ? modItems : itemsForJobType(jobType),
   };
 }
 
