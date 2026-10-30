@@ -275,6 +275,10 @@ describe("regresi jalur manual / tanpa gambar kerja", () => {
 
     await goTo(user, "Material");
     await screen.findByText(/material & konstruksi/i);
+    // Spek cepat tampil default; detail per modul disembunyikan.
+    expect(document.body.textContent).toContain("Bahan bodi kabinet");
+    expect(latest.modules.every((m) => m.bodyMaterialId === "pvc18")).toBe(true);
+    await user.click(screen.getByRole("button", { name: /tampilkan/i }));
     const text = document.body.textContent ?? "";
     expect(text).toContain("Construction template");
     expect(text).toContain("Qty modul");
