@@ -44,7 +44,7 @@ export function KisPanel({
   };
 
   return (
-    <SectionCard title="Dari Kerjaku Interior Studio" description={kis.clientName || undefined}>
+    <SectionCard title="Dari Kerjaku Interior Studio" description={kis.clientName || "Data klien & visual"}>
       {before || render ? (
         <div className="grid grid-cols-2 gap-2">
           {[["Sebelum", before], ["Render 3D", render]].map(([label, src]) => (

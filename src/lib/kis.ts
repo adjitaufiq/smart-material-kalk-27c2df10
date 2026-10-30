@@ -60,26 +60,26 @@ export function itemsForJobType(jobType: string): PresetItem[] {
 }
 
 export function parseKisSearch(search: Record<string, unknown>): KisImport | null {
-  const projectId = str(search.projectId);
+  const projectId = str(search["projectId"]);
   if (!projectId) return null;
-  const jobType = str(search.jobType) || "custom";
-  const clientName = str(search.clientName);
+  const jobType = str(search["jobType"]) || "custom";
+  const clientName = str(search["clientName"]);
   return {
     link: {
       projectId,
-      workspaceId: str(search.workspaceId),
+      workspaceId: str(search["workspaceId"]),
       clientName,
-      phone: str(search.phone),
+      phone: str(search["phone"]),
       jobType,
-      beforeUrl: str(search.beforeUrl),
-      renderUrl: str(search.renderUrl),
-      returnUrl: safeReturnUrl(str(search.returnUrl)),
+      beforeUrl: str(search["beforeUrl"]),
+      renderUrl: str(search["renderUrl"]),
+      returnUrl: safeReturnUrl(str(search["returnUrl"])),
       importedAt: new Date().toISOString(),
     },
     projectName:
-      str(search.projectName) || [jobType.replace(/_/g, " "), clientName].filter(Boolean).join(" "),
-    location: str(search.location),
-    notes: str(search.notes),
+      str(search["projectName"]) || [jobType.replace(/_/g, " "), clientName].filter(Boolean).join(" "),
+    location: str(search["location"]),
+    notes: str(search["notes"]),
     items: itemsForJobType(jobType),
   };
 }
