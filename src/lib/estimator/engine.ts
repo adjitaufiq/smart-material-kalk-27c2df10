@@ -183,7 +183,7 @@ export function calculateHardware(
         const perDoor = override ?? rule.count;
         addHw(
           map,
-          "engsel-sendok",
+          mod.hingeId ?? "engsel-sendok",
           perDoor * mod.doors * factor,
           `${mod.name}: ${override !== null ? `override user ${override} engsel/pintu` : rule.reason} × ${mod.doors} pintu × ${factor} modul`,
         );
@@ -199,7 +199,7 @@ export function calculateHardware(
     if (mod.drawers > 0) {
       addHw(
         map,
-        "rel-laci",
+        mod.drawerSlideId ?? "rel-laci",
         mod.drawers * factor,
         `${mod.name}: 1 set rel per laci × ${mod.drawers} × ${factor}`,
       );
@@ -209,6 +209,13 @@ export function calculateHardware(
         mod.drawers * factor,
         `${mod.name}: 1 handle per front laci × ${mod.drawers} × ${factor}`,
       );
+    }
+    for (const hwId of mod.extraHardware ?? []) {
+      addHw(map, hwId, factor, `${mod.name}: aksesori dipilih user × ${factor} modul`);
+    }
+    if (mod.ducoFinish) {
+      const m2 = Math.ceil((mod.width_mm * mod.height_mm * factor) / 1_000_000);
+      addHw(map, "cat-duco", m2, `${mod.name}: bidang depan ${mod.width_mm}×${mod.height_mm} mm × ${factor} ≈ ${m2} m²`);
     }
     if (mod.hangingRod) {
       addHw(map, "hanger-rod", factor, `${mod.name}: 1 hanger rod per hanging section`);
