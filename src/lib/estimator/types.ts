@@ -185,6 +185,25 @@ export interface ModuleSpec {
   /** jumlah kaki adjuster (base kitchen / plinth / meja) */
   adjusterFeet?: number | undefined;
   led?: { enabled: boolean; length_mm: number; watt_per_m: number; segments: number } | undefined;
+  /** id hardware engsel (default engsel-sendok) */
+  hingeId?: string | undefined;
+  /** id hardware rel laci (default rel-laci) */
+  drawerSlideId?: string | undefined;
+  /** aksesori tambahan (id hardware), 1 pcs per id per modul */
+  extraHardware?: string[] | undefined;
+  /** bidang luar difinishing cat duco (bukan HPL) */
+  ducoFinish?: boolean | undefined;
+}
+
+/** Jawaban kuesioner spek cepat (step Material). */
+export interface QuickSpec {
+  body: "ply" | "pvc" | "hybrid";
+  top: "none" | "double";
+  outside: "hpl" | "hpl_premium" | "duco";
+  inside: "blockmin" | "tacosheet" | "hpl";
+  hinge: "slowmo" | "biasa";
+  slide: "dt_slowmo" | "dt_biasa" | "push" | "tandem";
+  accessories: string[];
 }
 
 export interface Part {
@@ -316,6 +335,8 @@ export interface FurnitureItem {
   drawingSnapshot?: ConfirmedExtractionSnapshot | null | undefined;
   /** mirror 1:1 snapshot -> model/material, dengan provenance per field */
   drawingComponents?: DrawingComponent[] | null | undefined;
+  /** jawaban spek cepat terakhir */
+  quickSpec?: QuickSpec | undefined;
 }
 
 /** Input user. null = BELUM DIISI (bukan 0). */
