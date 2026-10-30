@@ -770,7 +770,7 @@ function ModelStep({
                 return;
               }
               setConfirmDefault(false);
-              patch({ modules: composeModules(item.category, resolveBrief(brief)) });
+              patch({ modules: composeModules(item.category, resolveBrief(brief), item.name) });
             }}
             disabled={!brief.width_mm}
           >
