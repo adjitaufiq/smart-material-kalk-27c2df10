@@ -808,8 +808,21 @@ function ModelStep({
                 <span>
                   {m.name} <span className="text-muted-foreground">({templateName(m)})</span>
                 </span>
-                <span className="num text-xs text-muted-foreground">
-                  {cmDim(m.width_mm, m.height_mm, m.depth_mm)} · {m.doors} pintu · {m.drawers} laci
+                <span className="flex items-start gap-2">
+                  <span className="num text-xs text-muted-foreground">
+                    {cmDim(m.width_mm, m.height_mm, m.depth_mm)} · {m.doors} pintu · {m.drawers} laci
+                  </span>
+                  <button
+                    type="button"
+                    aria-label={`Hapus ${m.name}`}
+                    className="rounded border px-2 text-xs text-destructive"
+                    onClick={() => {
+                      if (window.confirm(`Hapus ${m.name}?`))
+                        patch({ modules: item.modules.filter((x) => x.id !== m.id) });
+                    }}
+                  >
+                    Hapus
+                  </button>
                 </span>
               </li>
             ))}

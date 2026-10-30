@@ -164,7 +164,10 @@ export function composeModules(category: string, briefInput: Brief, itemName = "
     case "Kitchen Set": {
       // Nama item ("Kitchenset bawah") ikut menentukan bagian, meski kategori umum "Kitchen Set".
       const fromCat = kitchenPart(category);
-      const part = fromCat !== "lengkap" ? fromCat : kitchenPart(itemName);
+      let part = fromCat !== "lengkap" ? fromCat : kitchenPart(itemName);
+      // Tinggi total <= 1200 mm = ukuran kabinet bawah saja; kabinet atas
+      // tidak boleh ditambahkan diam-diam (buat item Kabinet Atas terpisah).
+      if (part === "lengkap" && (H || 0) > 0 && H <= 1200) part = "bawah";
       if (part === "atas") {
         // Item khusus Kabinet Atas: ukuran user = ukuran kabinet gantung.
         const bays = planBays(W, brief.doors > 0 ? Math.ceil(brief.doors / 2) : 0);

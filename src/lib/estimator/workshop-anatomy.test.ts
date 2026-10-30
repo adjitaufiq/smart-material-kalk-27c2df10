@@ -110,3 +110,10 @@ describe("Kitchen Set bawah / atas terpisah", () => {
     expect(mods.every((m) => m.height_mm === 700 && m.depth_mm === 350)).toBe(true);
   });
 });
+
+describe("Kitchen Set umum tidak menambah kabinet atas diam-diam", () => {
+  it("Kitchen Set 240×85×60 cm tanpa kata bawah/atas = hanya kabinet bawah", () => {
+    const mods = composeModules("Kitchen Set", brief(2400, 850, 600, 4, 2), "Kitchen Set");
+    expect(mods.some((m) => m.kind === "wall_cabinet")).toBe(false);
+  });
+});
