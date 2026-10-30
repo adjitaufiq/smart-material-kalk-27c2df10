@@ -73,7 +73,7 @@ export const WORK_PRESETS: WorkPreset[] = [
 export interface PresetSelection {
   presetId: string;
   options: string[];
-  shape?: KitchenShape;
+  shape?: KitchenShape | undefined;
 }
 
 export interface PresetItem {

@@ -13,9 +13,9 @@ describe("work presets", () => {
   it("kitchen L bawah+atas = 4 items", () => {
     const items = itemsFromSelections([{ presetId: "kitchen", options: ["bawah", "atas"], shape: "L" }]);
     expect(items).toHaveLength(4);
-    expect(items[1].name).toBe("Kitchen Set Bawah - Sayap L");
-    expect(kitchenPart(items[1].category)).toBe("bawah");
-    expect(kitchenPart(items[3].category)).toBe("atas");
+    expect(items[1]?.name).toBe("Kitchen Set Bawah - Sayap L");
+    expect(kitchenPart(items[1]?.category ?? "")).toBe("bawah");
+    expect(kitchenPart(items[3]?.category ?? "")).toBe("atas");
   });
 
   it("bawah item never gets wall cabinets, even if category is generic", () => {
