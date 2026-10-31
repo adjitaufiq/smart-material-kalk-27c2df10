@@ -5,6 +5,7 @@
  */
 import { defaultSelection, itemsFromSelections, type PresetItem } from "./estimator/presets";
 import { DEFAULT_QUICK_SPEC } from "./estimator/quick-spec";
+import { TACO_HET_DATE, TACO_PVC_HET_DATE } from "./estimator/taco-pricing";
 import type { BomItem, CalculationResult, CalculationStatus, QuickSpec } from "./estimator/types";
 
 export const KIS_ORIGIN = "https://kerjaku-design-forge.lovable.app";
@@ -297,14 +298,26 @@ export function buildKisEstimate(input: {
   const totalHw = Object.values(hardwareCount).reduce((a, v) => a + v, 0);
   // Estimasi hari kerja WS: ±4 lembar/hari potong-rakit-finishing + 2 hari pasang & finishing.
   const estimatedDays = totalSheets ? Math.ceil(totalSheets / 4) + 2 : 0;
+  // Daftar belanja per baris: kuantitas + harga acuan TACO (HPP). KIS menambah margin.
+  const bom = input.bom.map((b) => ({
+    group: b.group,
+    name: b.name,
+    qty: b.qty,
+    unit: b.unit,
+    unitPrice: b.unitPrice,
+    total: b.total,
+    needsConfirmation: b.unitPrice == null,
+  }));
   return {
     projectId: input.kisProjectId,
     estimateId: input.estimateId,
     status: lowest ? STATUS[lowest] : "draft",
     estimatedMaterialCost: input.grandTotal ?? 0,
+    priceBasis: `HET TACO ${TACO_HET_DATE} (PVC Board ${TACO_PVC_HET_DATE}) — HPP sebelum margin workshop`,
     sheetCount: totalSheets,
     hardwareCount: totalHw,
     estimatedDays,
+    bom,
     summary: {
       estimatedDays,
       sheetCount,

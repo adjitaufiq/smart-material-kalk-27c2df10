@@ -667,16 +667,18 @@ export function calculateItem(item: FurnitureItem): CalculationResult {
   }
   for (const e of edgingMeters) {
     const master = findEdging(e.edgingId);
+    // TACO edging dibeli per meter (bukan roll): dibulatkan ke atas ke meter penuh.
+    const beli = Math.ceil(e.meters - 1e-9);
     bom.push({
       id: `edg-${e.edgingId}`,
       group: "edging",
       name: e.name,
-      qty: e.meters,
+      qty: beli,
       unit: "meter",
       unitPrice: master?.harga_per_meter ?? null,
-      total: master?.harga_per_meter != null ? master.harga_per_meter * e.meters : null,
+      total: master?.harga_per_meter != null ? master.harga_per_meter * beli : null,
       trace: e.trace,
-      explanation: "Total panjang sisi part yang di-edging.",
+      explanation: `Total panjang sisi part yang di-edging ${e.meters.toFixed(2)} m, dibeli per meter penuh.`,
     });
   }
   hardware.push(...calculateHplGlue(parts, item.modules.find((m) => m.glueType)?.glueType ?? "active"));
