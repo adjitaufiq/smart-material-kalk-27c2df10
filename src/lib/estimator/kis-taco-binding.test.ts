@@ -38,5 +38,14 @@ describe("Payload balikan ke KIS", () => {
     expect(p.bom).toHaveLength(2);
     expect(p.bom[0]).toMatchObject({ qty: 13, unit: "meter", unitPrice: 3000, total: 39000, needsConfirmation: false });
     expect(p.bom[1]!.needsConfirmation).toBe(true);
+    expect(p.materialCost).toBe(39000);
+    expect(p.shoppingList[0]).toMatchObject({ name: "Edging PVC TACO", qty: 13, unitPrice: 3000, subtotal: 39000 });
+  });
+  it("kode HPL dari KIS terbawa ke shoppingList", () => {
+    const p = buildKisEstimate({
+      kisProjectId: "p1", estimateId: "e1", results: [], grandTotal: 468000, deepLinkUrl: "https://x",
+      bom: [{ id: "taco:solid:TH 825 NT|TH 825 NT", group: "finishing", name: "HPL TACO TH 825 NT", qty: 2, unit: "lembar", unitPrice: 234000, total: 468000, trace: [], explanation: "" }],
+    });
+    expect(p.shoppingList[0]!.code).toBe("TH 825 NT");
   });
 });
