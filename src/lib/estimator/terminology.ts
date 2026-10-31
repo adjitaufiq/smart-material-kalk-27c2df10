@@ -12,7 +12,7 @@ const SPECIFIC_MATERIALS: { match: RegExp; label: string }[] = [
   { match: /\bmulti\s*-?\s*board\b/i, label: "Multiboard" },
   { match: /\bmdf\b/i, label: "MDF" },
   { match: /\bparticle\s*-?\s*board\b|\bpartikel\b/i, label: "Particle Board" },
-  { match: /\bpvc\b/i, label: "PVC Board" },
+  { match: /\bpvc(\s*-?\s*board)?\b/i, label: "PVC Board" },
   { match: /\bacrylic\b|\bakrilik\b/i, label: "Acrylic" },
   { match: /\b(kayu\s*solid|solid\s*wood)\b/i, label: "Kayu Solid" },
   { match: /\bhpl\b/i, label: "HPL" },

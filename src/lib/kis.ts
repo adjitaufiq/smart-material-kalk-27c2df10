@@ -48,8 +48,10 @@ export function fromBase64Url(b64: string): string {
 const OPTS = {
   outside: ["hpl", "hpl_premium", "duco"],
   inside: ["blockmin", "tacosheet", "hpl"],
-  hinge: ["slowmo", "biasa"],
-  slide: ["dt_slowmo", "dt_biasa", "push", "tandem"],
+  hinge: ["slowmo", "slowmo_stainless", "biasa"],
+  slide: ["dt_slowmo", "dt_biasa", "dt_eco", "push", "tandem", "roller"],
+  glue: ["active", "starmax"],
+  body: ["ply", "pvc", "pvc_eco", "hybrid"],
 } as const;
 // KIS punya rak-gelas terpisah; di SME gabung dengan rak-piring.
 const ACC_MAP: Record<string, string> = {

@@ -16,6 +16,9 @@ const LABEL: Record<string, string> = {
   biasa: "Biasa",
   dt_slowmo: "Double track slowmo",
   dt_biasa: "Double track biasa",
+  dt_eco: "Double track ekonomis",
+  roller: "Roller",
+  slowmo_stainless: "Slowmo stainless",
   push: "Push open",
   tandem: "Tandem",
 };

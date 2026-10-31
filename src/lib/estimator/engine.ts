@@ -1,6 +1,8 @@
+import { GLUE_M2_PER_KG, SLIDE_REAR_CLEARANCE_MM, TACO_GLUE, glueOrder, slideLengthCm, type GlueType } from "./taco-pricing";
 import { materialLabel } from "./terminology";
 import { calculateSheets, nestParts } from "./cutlist";
 import {
+  HARDWARE_MASTER,
   findEdging,
   findHardware,
   findHpl,
@@ -197,11 +199,14 @@ export function calculateHardware(
       );
     }
     if (mod.drawers > 0) {
+      const series = mod.drawerSlideId ?? "rel-laci";
+      const cm = slideLengthCm(mod.depth_mm);
+      const slideId = HARDWARE_MASTER.some((h) => h.id === series) ? series : `${series.split(":")[0]}:${cm}`;
       addHw(
         map,
-        mod.drawerSlideId ?? "rel-laci",
+        slideId,
         mod.drawers * factor,
-        `${mod.name}: 1 set rel per laci × ${mod.drawers} × ${factor}`,
+        `${mod.name}: 1 set rel per laci × ${mod.drawers} × ${factor} (dalam ${mod.depth_mm} mm − ${SLIDE_REAR_CLEARANCE_MM} mm → rel ${cm} cm)`,
       );
       addHw(
         map,
@@ -270,27 +275,36 @@ export function calculateHardware(
 }
 
 /** Lem HPL: 1 kaleng per ± 4 m² bidang HPL (dari face yang di-HPL). */
-export const HPL_GLUE_M2_PER_CAN = 4;
-export function calculateHplGlue(parts: Part[]): BomItem | null {
+export const HPL_GLUE_M2_PER_CAN = GLUE_M2_PER_KG;
+export function calculateHplGlue(parts: Part[], glue: GlueType = "active"): BomItem[] {
   let area = 0;
   for (const faceParts of hplFaceParts(parts).values()) {
     for (const p of faceParts) area += (p.length_mm * p.width_mm * p.qty) / 1e6;
   }
-  if (area <= 0) return null;
-  const master = findHardware("lem-hpl");
-  if (!master) return null;
-  const qty = Math.ceil(area / HPL_GLUE_M2_PER_CAN);
-  return {
-    id: "lem-hpl",
-    group: "hardware",
-    name: `${master.nama} (${master.brand})`,
-    qty,
-    unit: master.unit,
-    unitPrice: master.harga,
-    total: master.harga !== null ? master.harga * qty : null,
-    trace: [`Bidang HPL ${area.toFixed(2)} m² ÷ ${HPL_GLUE_M2_PER_CAN} m²/kaleng = ${qty} kaleng`],
-    explanation: master.rule_default,
+  if (area <= 0) return [];
+  const g = TACO_GLUE[glue];
+  const kg = area / GLUE_M2_PER_KG;
+  const order = glueOrder(kg, glue);
+  const trace = `Bidang HPL ${area.toFixed(2)} m² ÷ ${GLUE_M2_PER_KG} m²/kg = ${kg.toFixed(2)} kg → ${order.blek} blek 10 kg + ${order.galon} galon 2,5 kg (kombinasi termurah)`;
+  const out: BomItem[] = [];
+  const add = (pack: "blek" | "galon", qty: number) => {
+    if (qty <= 0) return;
+    const p = g[pack];
+    out.push({
+      id: `lem-${glue}-${pack}`,
+      group: "hardware",
+      name: `${g.nama} ${pack === "blek" ? "blek 10 kg" : "galon 2,5 kg"} (${p.kode})`,
+      qty,
+      unit: pack,
+      unitPrice: p.harga,
+      total: p.harga * qty,
+      trace: [trace],
+      explanation: "± 1 kg lem per 4 m² bidang HPL. Hanya kemasan workshop (galon / blek).",
+    });
   };
+  add("blek", order.blek);
+  add("galon", order.galon);
+  return out;
 }
 
 export function calculateElectrical(modules: ModuleSpec[]): BomItem[] {
@@ -542,7 +556,7 @@ export function collectAssumptions(item: FurnitureItem): Assumption[] {
       });
     }
     if (mod.drawers > 0) {
-      const rel = findHardware("rel-laci");
+      const rel = findHardware(mod.drawerSlideId ?? "rel-laci");
       out.push({
         key: `${mod.id}-drawer`,
         label: `${mod.name} — Konstruksi laci`,
@@ -664,8 +678,7 @@ export function calculateItem(item: FurnitureItem): CalculationResult {
       explanation: "Total panjang sisi part yang di-edging.",
     });
   }
-  const glue = calculateHplGlue(parts);
-  if (glue) hardware.push(glue);
+  hardware.push(...calculateHplGlue(parts, item.modules.find((m) => m.glueType)?.glueType ?? "active"));
   bom.push(...hardware, ...electrical);
 
   const cost = summarizeCost(bom);
