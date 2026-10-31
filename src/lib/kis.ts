@@ -46,13 +46,22 @@ export function fromBase64Url(b64: string): string {
   return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
 }
 
+const BODY_ALIAS: Record<string, string> = {
+  "pvc-board-18": "pvc", "eco-pvc-18": "pvc_eco", "multiplek-18": "ply", "blockboard-18": "blockboard",
+  "blockmin-1s-18": "blockmin_1s", "blockmin-2s-18": "blockmin_2s",
+};
+/** Nilai body/material KIS (key pendek atau alias "xxx-18") → key SME. */
+export function normBody(v: unknown): unknown {
+  return typeof v === "string" ? (BODY_ALIAS[v.trim().toLowerCase()] ?? v.trim().toLowerCase()) : v;
+}
+
 const OPTS = {
   outside: ["hpl", "hpl_premium", "duco"],
   inside: ["blockmin", "tacosheet", "hpl"],
   hinge: ["slowmo", "slowmo_stainless", "biasa"],
   slide: ["dt_slowmo", "dt_biasa", "dt_eco", "push", "tandem", "roller"],
   glue: ["active", "starmax"],
-  body: ["ply", "pvc", "pvc_eco", "hybrid"],
+  body: ["ply", "pvc", "pvc_eco", "hybrid", "blockboard", "blockmin_1s", "blockmin_2s"],
 } as const;
 // KIS punya rak-gelas terpisah; di SME gabung dengan rak-piring.
 const ACC_MAP: Record<string, string> = {
@@ -87,7 +96,8 @@ export function parseSpecHints(search: Record<string, unknown>): {
   let found = false;
   for (const [k, allowed] of Object.entries(OPTS)) {
     const v = raw[k];
-    if (typeof v === "string" && (allowed as readonly string[]).includes(v)) {
+    const v2 = k === "body" ? normBody(v ?? raw["material"]) : v;
+    if (typeof v2 === "string" && (allowed as readonly string[]).includes(v2)) {
       (spec as unknown as Record<string, string>)[k] = v;
       found = true;
     }
