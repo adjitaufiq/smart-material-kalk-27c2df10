@@ -98,7 +98,7 @@ export function parseSpecHints(search: Record<string, unknown>): {
     const v = raw[k];
     const v2 = k === "body" ? normBody(v ?? raw["material"]) : v;
     if (typeof v2 === "string" && (allowed as readonly string[]).includes(v2)) {
-      (spec as unknown as Record<string, string>)[k] = v;
+      (spec as unknown as Record<string, string>)[k] = v2;
       found = true;
     }
   }
@@ -198,7 +198,7 @@ function moduleSpec(r: Record<string, unknown>): Partial<QuickSpec> | undefined 
     out.inside = "hpl";
   }
   for (const [k, allowed] of Object.entries(OPTS)) {
-    const v = r[k];
+    const v = k === "body" ? normBody(r[k] ?? r["material"]) : r[k];
     if (typeof v === "string" && (allowed as readonly string[]).includes(v)) (out as Record<string, string>)[k] = v;
   }
   return Object.keys(out).length ? out : undefined;
