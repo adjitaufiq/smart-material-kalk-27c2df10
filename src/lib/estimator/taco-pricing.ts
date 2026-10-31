@@ -161,6 +161,95 @@ export const TACO_PVC_BOARD: { kode: string; tebal: number; harga: number; eco: 
   { kode: "ECB-18", tebal: 18, harga: 520000, eco: true },
 ];
 
+/* ---------------- TACO SHEET / ECO SHEET (HET 1 Sep 2026) — dijual PER METER ---------------- */
+export interface MeterItem { id: string; kategori: string; nama: string; kode: string; harga_per_m: number }
+export const TACO_SHEET: MeterItem[] = [
+  { id: "ts-p", kategori: "TACO Sheet 0.3mm", nama: "Solid Color Plain", kode: "Tipe P", harga_per_m: 41500 },
+  { id: "ts-pg", kategori: "TACO Sheet 0.3mm", nama: "Solid Color Plain & Glossy", kode: "P-002G, P-003G", harga_per_m: 60000 },
+  { id: "ts-x", kategori: "TACO Sheet 0.3mm", nama: "Solid Color Soft Touch", kode: "TS 117X, 118X, 119X, 228M", harga_per_m: 88000 },
+  { id: "ts-mirror", kategori: "TACO Sheet 0.3mm", nama: "Solid Color Mirror", kode: "TS-501-G s/d TS-504-G", harga_per_m: 112000 },
+  { id: "ts-premium", kategori: "TACO Sheet 0.3mm", nama: "Woodgrain / Pattern Premium", kode: "Premium", harga_per_m: 50500 },
+  { id: "ts-pattern-m", kategori: "TACO Sheet 0.3mm", nama: "Pattern", kode: "TS-233-M s/d TS-236-M", harga_per_m: 88000 },
+  { id: "ts-ap", kategori: "TACO Sheet New Motif", nama: "Price Group P", kode: "AP", harga_per_m: 41500 },
+  { id: "ts-fq", kategori: "TACO Sheet New Motif", nama: "Price Group Q", kode: "FQ", harga_per_m: 50500 },
+  { id: "ts-r", kategori: "TACO Sheet New Motif", nama: "Price Group R", kode: "DR, FR, WR", harga_per_m: 60000 },
+  { id: "ts-ws", kategori: "TACO Sheet New Motif", nama: "Price Group S", kode: "WS", harga_per_m: 72000 },
+  { id: "ts-t", kategori: "TACO Sheet New Motif", nama: "Price Group T", kode: "DT, MT", harga_per_m: 88000 },
+  { id: "es-ac", kategori: "ECO Sheet 0.2mm", nama: "Solid", kode: "ES A/C", harga_per_m: 24000 },
+  { id: "es-g", kategori: "ECO Sheet 0.2mm", nama: "Solid Glossy", kode: "ES G", harga_per_m: 35000 },
+  { id: "es-wm", kategori: "ECO Sheet 0.2mm", nama: "Woodgrain / Pattern", kode: "ES W/M", harga_per_m: 35000 },
+];
+
+/* ---------------- TACO EDGING — dijual PER METER ---------------- */
+export type EdgingMotif = "solid" | "woodgrain";
+export const TACO_EDGING: { motif: EdgingMotif; tebal: 1 | 2; lebar: 22 | 42; harga_per_m: number }[] = [
+  { motif: "solid", tebal: 1, lebar: 22, harga_per_m: 2500 },
+  { motif: "solid", tebal: 1, lebar: 42, harga_per_m: 5000 },
+  { motif: "solid", tebal: 2, lebar: 22, harga_per_m: 2500 },
+  { motif: "solid", tebal: 2, lebar: 42, harga_per_m: 5000 },
+  { motif: "woodgrain", tebal: 1, lebar: 22, harga_per_m: 3000 },
+  { motif: "woodgrain", tebal: 1, lebar: 42, harga_per_m: 6000 },
+  { motif: "woodgrain", tebal: 2, lebar: 22, harga_per_m: 3000 },
+  { motif: "woodgrain", tebal: 2, lebar: 42, harga_per_m: 6000 },
+];
+/** Lebar edging: ≤22 mm (board 18 mm) → 22, selain itu 42. Woodgrain/glossy/pattern pakai harga woodgrain. */
+export function edgingPrice(motif: EdgingMotif, tebal: 1 | 2, boardThickness_mm: number): number {
+  const lebar = boardThickness_mm <= 20 ? 22 : 42;
+  return TACO_EDGING.find((e) => e.motif === motif && e.tebal === tebal && e.lebar === lebar)!.harga_per_m;
+}
+/** Pembelian per meter (dibulatkan ke atas meter penuh), bukan per roll. */
+export function meterOrder(meter: number, harga_per_m: number) {
+  const m = Math.ceil(meter - 1e-9);
+  return { meter: m, total: m * harga_per_m };
+}
+
+/* ---------------- ECO HPL 4×8 ---------------- */
+export const TACO_ECO_HPL: { kode: string; nama: string; harga: number }[] = [
+  { kode: "SW001/SW002/SW016", nama: "ECO HPL Super White", harga: 105000 },
+  { kode: "ECO-SLD", nama: "ECO HPL Solid", harga: 140000 },
+  { kode: "ECO-SLD-G", nama: "ECO HPL Solid Glossy", harga: 160000 },
+  { kode: "ECO-SLD-M", nama: "ECO HPL Solid Matt", harga: 160000 },
+  { kode: "ECO", nama: "ECO HPL Woodgrain / Pattern", harga: 166000 },
+  { kode: "ECO-P", nama: "ECO HPL Woodgrain", harga: 166000 },
+  { kode: "ECO-G", nama: "ECO HPL Woodgrain / Pattern G", harga: 184000 },
+  { kode: "ECO 2000-SILVER", nama: "ECO HPL Aluminium", harga: 461000 },
+];
+
+/* ---------------- SPECIAL COLLECTION (MOQ 300 pcs) ---------------- */
+export const TACO_SPECIAL_COLLECTION = {
+  moq: 300,
+  lab_grade: { white: 150000, solid_aa: 180000, solid_gd: 230000, wood_aabh: 218000, wood_jfc: 254000, wood_gljgdp: 307000 },
+  post_forming: { white: 150000, solid_aa: 180000, solid_014g: 230000, wood_aabh: 218000, wood_jfc: 254000 },
+  fire_retardant: { white: 180000, solid_aa: 210000, solid_014g: 260000, wood_aabh: 248000, wood_jfc: 284000 },
+} as const;
+
+/* ---------------- TACOMPACT / COMPACT BOARD ---------------- */
+export const TACO_COMPACT_4X8: { core: "MC" | "BL"; motif: "solid" | "woodgrain"; tebal: 3 | 10 | 12 | 18; harga: number }[] = [
+  { core: "MC", motif: "solid", tebal: 3, harga: 420000 }, { core: "MC", motif: "solid", tebal: 10, harga: 1245000 },
+  { core: "MC", motif: "solid", tebal: 12, harga: 1400000 }, { core: "MC", motif: "solid", tebal: 18, harga: 1830000 },
+  { core: "MC", motif: "woodgrain", tebal: 3, harga: 460000 }, { core: "MC", motif: "woodgrain", tebal: 10, harga: 1300000 },
+  { core: "MC", motif: "woodgrain", tebal: 12, harga: 1480000 }, { core: "MC", motif: "woodgrain", tebal: 18, harga: 1935000 },
+  { core: "BL", motif: "solid", tebal: 3, harga: 550000 }, { core: "BL", motif: "solid", tebal: 10, harga: 1895000 },
+  { core: "BL", motif: "solid", tebal: 12, harga: 2150000 }, { core: "BL", motif: "solid", tebal: 18, harga: 2925000 },
+  { core: "BL", motif: "woodgrain", tebal: 3, harga: 590000 }, { core: "BL", motif: "woodgrain", tebal: 10, harga: 1950000 },
+  { core: "BL", motif: "woodgrain", tebal: 12, harga: 2230000 }, { core: "BL", motif: "woodgrain", tebal: 18, harga: 3030000 },
+];
+export const TACO_COMPACT_MOQ = 2;
+export const TACO_COMPACT_6X6 = { core: "BL", motif: "wood & solid", tebal: 12, panjang_mm: 1830, lebar_mm: 1830, harga: 2350000 } as const;
+
+/** Katalog lengkap harga TACO (untuk disinkron ke KIS). */
+export function tacoCatalog() {
+  return {
+    het_date: TACO_HET_DATE,
+    pvc_het_date: TACO_PVC_HET_DATE,
+    hpl: TACO_HPL_TIERS, long_hpl: TACO_LONG_HPL_TIERS, eco_hpl: TACO_ECO_HPL,
+    special_collection: TACO_SPECIAL_COLLECTION,
+    sheet_per_meter: TACO_SHEET, edging_per_meter: TACO_EDGING,
+    pvc_board: TACO_PVC_BOARD, compact_4x8: TACO_COMPACT_4X8, compact_6x6: TACO_COMPACT_6X6,
+    slides: TACO_SLIDES, glue: TACO_GLUE,
+  };
+}
+
 /* ---------------- RELL LACI (harga per set, panjang cm) ---------------- */
 export interface SlideSeries {
   id: string;
