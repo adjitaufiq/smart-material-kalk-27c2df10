@@ -128,15 +128,21 @@ export function tacoHplMaster(code: string, opts: { nama?: string; group?: HplGr
 }
 
 /** ID dinamis: "taco:TH 002 AA" atau "taco:woodgrain:TH 002 AA" */
-export function tacoHplId(code: string, group?: HplGroup): string {
-  return `taco:${group ? `${group}:` : ""}${code.trim().toUpperCase()}`;
+export function tacoHplId(code: string, group?: HplGroup, nama?: string): string {
+  const n = nama?.trim() ? `|${nama.trim()}` : "";
+  return `taco:${group ? `${group}:` : ""}${code.trim().toUpperCase()}${n}`;
 }
+
+export const HPL_GROUPS: HplGroup[] = ["white", "solid", "woodgrain", "ultimate", "long"];
 
 export function hplFromDynamicId(id: string): HplMaster | null {
   if (!id.startsWith("taco:")) return null;
-  const rest = id.slice(5);
+  const [rest = "", nama] = id.slice(5).split("|");
   const m = /^(white|solid|woodgrain|ultimate|long):(.+)$/.exec(rest);
-  return m ? tacoHplMaster(m[2]!, { group: m[1] as HplGroup }) : tacoHplMaster(rest);
+  const hpl = m
+    ? tacoHplMaster(m[2]!, { group: m[1] as HplGroup, nama })
+    : tacoHplMaster(rest, { nama });
+  return { ...hpl, id };
 }
 
 /* ---------------- PVC BOARD (HET 15 Apr 2026) ---------------- */

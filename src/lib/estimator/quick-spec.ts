@@ -1,9 +1,10 @@
 import { makeModule } from "./factory";
+import { tacoHplId } from "./taco-pricing";
 import type { ModuleSpec, QuickSpec } from "./types";
 
 /** Daftar pertanyaan spek cepat — dipakai UI, satu sumber label. */
 export const QUICK_QUESTIONS: {
-  key: Exclude<keyof QuickSpec, "accessories">;
+  key: Exclude<keyof QuickSpec, "accessories" | "hplOutside" | "hplInside">;
   title: string;
   options: { value: string; label: string; hint?: string }[];
 }[] = [
@@ -126,9 +127,12 @@ export const QUICK_TOP_PREFIX = "Top Table Kitchen";
  */
 export function applyQuickSpec(modules: ModuleSpec[], spec: QuickSpec): ModuleSpec[] {
   const base = modules.filter((m) => m.name !== QUICK_TOP_PREFIX);
-  const outsideHpl = spec.outside === "duco" ? null : spec.outside === "hpl" ? "taco-002aa" : "aica-hg";
+  const kisOut = spec.hplOutside?.code ? tacoHplId(spec.hplOutside.code, spec.hplOutside.group, spec.hplOutside.name) : null;
+  const kisIn = spec.hplInside?.code ? tacoHplId(spec.hplInside.code, spec.hplInside.group, spec.hplInside.name) : null;
+  const outsideHpl =
+    spec.outside === "duco" ? null : (kisOut ?? (spec.outside === "hpl" ? "taco-002aa" : "aica-hg"));
   const insideHpl =
-    spec.inside === "hpl" ? "taco-001" : spec.inside === "tacosheet" ? "tacosheet-white" : null;
+    spec.inside === "hpl" ? (kisIn ?? "taco-001") : spec.inside === "tacosheet" ? "tacosheet-white" : null;
   let accessoriesPlaced = false;
 
   const out = base.map((m) => {

@@ -91,6 +91,17 @@ export function parseSpecHints(search: Record<string, unknown>): {
       found = true;
     }
   }
+  const gOut = hplRef(raw["hplOutside"]);
+  const gIn = hplRef(raw["hplInside"]);
+  if (gOut) {
+    spec.hplOutside = gOut;
+    found = true;
+  }
+  if (gIn) {
+    spec.hplInside = gIn;
+    spec.inside = "hpl";
+    found = true;
+  }
   const positions: Record<string, string> = {};
   if (Array.isArray(raw["accessories"])) {
     for (const a of raw["accessories"]) {
@@ -150,6 +161,38 @@ function decodeRaw(search: Record<string, unknown>): Record<string, unknown> {
   return enc && typeof enc === "object" ? (enc as Record<string, unknown>) : {};
 }
 
+type HplRef = NonNullable<QuickSpec["hplOutside"]>;
+const GROUPS = ["white", "solid", "woodgrain", "ultimate", "long"] as const;
+/** "TH 002 AA" | { code, name, group } → HplRef. Kode dipakai apa adanya (tidak diganti default SME). */
+export function hplRef(v: unknown): HplRef | undefined {
+  if (typeof v === "string" && v.trim()) return { code: v.trim() };
+  if (!v || typeof v !== "object") return undefined;
+  const o = v as Record<string, unknown>;
+  const code = str(o["code"]) || str(o["kode"]) || str(o["hplCode"]);
+  if (!code) return undefined;
+  const g = str(o["group"]) || str(o["category"]);
+  const group = GROUPS.find((x) => x === g.toLowerCase());
+  const name = str(o["name"]) || str(o["nama"]);
+  return { code, ...(name ? { name } : {}), ...(group ? { group } : {}) };
+}
+
+function moduleSpec(r: Record<string, unknown>): Partial<QuickSpec> | undefined {
+  const f = r["finish"] && typeof r["finish"] === "object" ? (r["finish"] as Record<string, unknown>) : {};
+  const out: Partial<QuickSpec> = {};
+  const outside = hplRef(f["outside"] ?? f["hplOutside"] ?? r["hplOutside"] ?? r["hplCode"] ?? (typeof r["finish"] === "string" ? r["finish"] : undefined));
+  const inside = hplRef(f["inside"] ?? f["hplInside"] ?? r["hplInside"]);
+  if (outside) out.hplOutside = outside;
+  if (inside) {
+    out.hplInside = inside;
+    out.inside = "hpl";
+  }
+  for (const [k, allowed] of Object.entries(OPTS)) {
+    const v = r[k];
+    if (typeof v === "string" && (allowed as readonly string[]).includes(v)) (out as Record<string, string>)[k] = v;
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
 const WING: Record<string, string> = { wing: "Sayap L", wing2: "Sayap U", left: "Sayap Kiri", right: "Sayap Kanan" };
 
 /** Modul kabinet dari KIS (specHints.modules) → item terpisah per kabinet. */
@@ -163,7 +206,8 @@ export function itemsFromKisModules(raw: Record<string, unknown>): PresetItem[] 
     const level = r["level"] === "upper" ? "Atas" : r["level"] === "lower" ? "Bawah" : r["level"] === "tall" ? "tall" : null;
     if (!level) continue;
     if (level === "tall") {
-      out.push({ category: "Kabinet", name: str(r["label"]) || "Tall Unit / Kabinet Kulkas" });
+      const specOverride = moduleSpec(r);
+      out.push({ category: "Kabinet", name: str(r["label"]) || "Tall Unit / Kabinet Kulkas", ...(specOverride ? { specOverride } : {}) });
       continue;
     }
     const side = str(r["side"]);
@@ -172,7 +216,8 @@ export function itemsFromKisModules(raw: Record<string, unknown>): PresetItem[] 
     let name = `Kitchen Set ${level}${suffix}${full}`;
     let n = 2;
     while (out.some((o) => o.name === name)) name = `Kitchen Set ${level}${suffix}${full} ${n++}`;
-    out.push({ category: `Kitchen Set ${level}${suffix}`, name });
+    const specOverride = moduleSpec(r);
+    out.push({ category: `Kitchen Set ${level}${suffix}`, name, ...(specOverride ? { specOverride } : {}) });
   }
   return out;
 }
