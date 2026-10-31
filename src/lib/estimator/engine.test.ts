@@ -193,7 +193,7 @@ describe("6. table with HPL only on the tabletop", () => {
 describe("7. drawers drive hardware quantity", () => {
   it("produces one rail set per drawer", () => {
     const hw = calculateHardware([cabinet({ doors: 0, drawers: 4, shelves: 0 })]);
-    expect(hw.find((h) => h.id === "rel-laci")?.qty).toBe(4);
+    expect(hw.find((h) => h.id.startsWith("taco-us001sc:"))?.qty).toBe(4);
     expect(hw.find((h) => h.id === "handle")?.qty).toBe(4);
   });
 });
@@ -456,7 +456,7 @@ describe("mock drawing flow 2400 × 2600 × 600, 4 doors, 3 drawers", () => {
     const result = calculateItem(item);
     expect(result.parts.length).toBeGreaterThan(0);
     expect(result.sheets.reduce((a, s) => a + s.sheets, 0)).toBeGreaterThan(0);
-    expect(result.hardware.find((h) => h.id === "rel-laci")?.qty).toBe(3);
+    expect(result.hardware.find((h) => h.id.startsWith("taco-us001sc:"))?.qty).toBe(3);
     expect(result.bom.some((b) => b.group === "material")).toBe(true);
     expect(result.status).not.toBe("estimasi_awal");
   });

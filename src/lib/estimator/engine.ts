@@ -133,6 +133,7 @@ function addHw(
 ) {
   const master = findHardware(hardwareId);
   if (!master || qty <= 0) return;
+  hardwareId = master.id;
   const existing = map.get(hardwareId);
   if (existing) {
     existing.qty += qty;

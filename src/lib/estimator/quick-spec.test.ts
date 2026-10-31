@@ -29,7 +29,7 @@ describe("spek cepat", () => {
   it("rel tandem & engsel biasa masuk ke daftar belanja", () => {
     const out = applyQuickSpec(base(), { ...DEFAULT_QUICK_SPEC, slide: "tandem", hinge: "biasa" });
     const hw = calculateHardware(out);
-    expect(hw.find((h) => h.id === "rel-laci")?.qty).toBe(2);
+    expect(hw.find((h) => h.id.startsWith("taco-us001sc:"))?.qty).toBe(2);
     expect(hw.some((h) => h.id === "engsel-biasa")).toBe(true);
     expect(hw.some((h) => h.id === "engsel-sendok")).toBe(false);
   });

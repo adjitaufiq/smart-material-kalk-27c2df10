@@ -8,3 +8,4 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+- TACO price data lives only in src/lib/estimator/taco-pricing.ts; masters/engine read from it so price updates touch one file. Dynamic HPL ids `taco:<group>:<code>|<name>` keep KIS codes verbatim.

@@ -110,7 +110,7 @@ export function tacoHplPrice(code: string, group?: HplGroup): HplPriceResult {
 }
 
 /** Bangun HplMaster dinamis dari kode TACO apa pun yang dikirim KIS/workshop. */
-export function tacoHplMaster(code: string, opts: { nama?: string; group?: HplGroup; grain?: GrainDirection } = {}): HplMaster {
+export function tacoHplMaster(code: string, opts: { nama?: string | undefined; group?: HplGroup | undefined; grain?: GrainDirection | undefined } = {}): HplMaster {
   const r = tacoHplPrice(code, opts.group);
   const grain: GrainDirection =
     opts.grain ?? (opts.group === "woodgrain" || opts.group === "long" ? "length" : "none");

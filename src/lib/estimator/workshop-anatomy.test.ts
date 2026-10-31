@@ -87,7 +87,7 @@ describe("Consumables", () => {
     if (top) top.finish.bodyOutside = { hplId: "taco-002aa" };
     const r = calculateItem(item(mods));
     // 2 layers × 1.6 × 0.7 = 2.24 m² → 1 kaleng
-    expect(r.bom.find((b) => b.id === "lem-hpl")?.qty).toBe(1);
+    expect(r.bom.find((b) => b.id === "lem-active-galon")?.qty).toBe(1);
   });
   it("screws are counted in boxes of 100 (40 per cabinet module)", () => {
     const mods = composeModules("Lemari Baju", brief(2400, 2000, 600, 4, 0));
