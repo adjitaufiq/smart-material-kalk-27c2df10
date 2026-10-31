@@ -1,5 +1,8 @@
 import { makeModule } from "./factory";
 import { tacoHplId } from "./taco-pricing";
+
+/** HPL luar saat KIS belum mengirim kode — harga kosong, ditandai perlu konfirmasi. */
+export const TACO_HPL_PENDING = tacoHplId("TH-BELUM-DIPILIH", undefined, "HPL TACO — kode belum dipilih di KIS");
 import type { ModuleSpec, QuickSpec } from "./types";
 
 /** Daftar pertanyaan spek cepat — dipakai UI, satu sumber label. */
@@ -129,8 +132,8 @@ export function applyQuickSpec(modules: ModuleSpec[], spec: QuickSpec): ModuleSp
   const base = modules.filter((m) => m.name !== QUICK_TOP_PREFIX);
   const kisOut = spec.hplOutside?.code ? tacoHplId(spec.hplOutside.code, spec.hplOutside.group, spec.hplOutside.name) : null;
   const kisIn = spec.hplInside?.code ? tacoHplId(spec.hplInside.code, spec.hplInside.group, spec.hplInside.name) : null;
-  const outsideHpl =
-    spec.outside === "duco" ? null : (kisOut ?? (spec.outside === "hpl" ? "taco-002aa" : "aica-hg"));
+  // Tanpa kode dari KIS: HPL TACO "kode belum dipilih" (harga kosong → perlu konfirmasi), bukan motif tebakan.
+  const outsideHpl = spec.outside === "duco" ? null : (kisOut ?? TACO_HPL_PENDING);
   const insideHpl =
     spec.inside === "hpl" ? (kisIn ?? "taco-001") : spec.inside === "tacosheet" ? "tacosheet-white" : null;
   let accessoriesPlaced = false;
@@ -184,7 +187,7 @@ export function applyQuickSpec(modules: ModuleSpec[], spec: QuickSpec): ModuleSp
       bodyMaterialId: spec.body === "ply" ? "ply18" : PVC_ID(spec),
       finish: {
         ...top.finish,
-        bodyOutside: { hplId: outsideHpl ?? "taco-002aa" },
+        bodyOutside: { hplId: outsideHpl ?? TACO_HPL_PENDING },
         bodyInside: { hplId: null },
       },
     });
