@@ -19,6 +19,9 @@ export const QUICK_QUESTIONS: {
       { value: "pvc_eco", label: "ECO PVC Board 18 mm (ECB-18)", hint: "PVC Board versi ekonomis" },
       { value: "ply", label: "Multiplek 18 mm", hint: "Kuat & hemat" },
       { value: "hybrid", label: "Hybrid", hint: "Modul sink PVC Board, lainnya multiplek" },
+      { value: "blockboard", label: "Blockboard 18 mm" },
+      { value: "blockmin_1s", label: "Blockmin Putih 1 Sisi 18 mm", hint: "Sisi dalam sudah putih" },
+      { value: "blockmin_2s", label: "Blockmin Putih 2 Sisi 18 mm", hint: "Kedua sisi sudah putih" },
     ],
   },
   {
