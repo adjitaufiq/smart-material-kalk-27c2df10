@@ -191,18 +191,25 @@ export interface ModuleSpec {
   drawerSlideId?: string | undefined;
   /** aksesori tambahan (id hardware), 1 pcs per id per modul */
   extraHardware?: string[] | undefined;
+  /** lem kuning HPL yang dipakai */
+  glueType?: "active" | "starmax" | undefined;
   /** bidang luar difinishing cat duco (bukan HPL) */
   ducoFinish?: boolean | undefined;
 }
 
 /** Jawaban kuesioner spek cepat (step Material). */
 export interface QuickSpec {
-  body: "ply" | "pvc" | "hybrid";
+  body: "ply" | "pvc" | "pvc_eco" | "hybrid";
   top: "none" | "double";
   outside: "hpl" | "hpl_premium" | "duco";
   inside: "blockmin" | "tacosheet" | "hpl";
-  hinge: "slowmo" | "biasa";
-  slide: "dt_slowmo" | "dt_biasa" | "push" | "tandem";
+  hinge: "slowmo" | "slowmo_stainless" | "biasa";
+  slide: "dt_slowmo" | "dt_biasa" | "dt_eco" | "push" | "tandem" | "roller";
+  /** kode HPL TACO dari KIS untuk bidang luar / dalam (mis. "TH 002 AA") — dipakai apa adanya */
+  hplOutside?: { code: string; name?: string | undefined; group?: "white" | "solid" | "woodgrain" | "ultimate" | "long" | undefined } | undefined;
+  hplInside?: { code: string; name?: string | undefined; group?: "white" | "solid" | "woodgrain" | "ultimate" | "long" | undefined } | undefined;
+  /** lem kuning HPL (default TACO Active) */
+  glue?: "active" | "starmax" | undefined;
   accessories: string[];
 }
 

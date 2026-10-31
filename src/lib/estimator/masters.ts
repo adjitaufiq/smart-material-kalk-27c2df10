@@ -1,3 +1,4 @@
+import { TACO_PVC_BOARD, findSlide, hplFromDynamicId, tacoHplPrice } from "./taco-pricing";
 import type {
   ConstructionTemplate,
   EdgingMaster,
@@ -132,7 +133,7 @@ export const HPL_MASTER: HplMaster[] = [
     panjang_mm: 2440,
     lebar_mm: 1220,
     arah_serat: "none",
-    harga: 175000,
+    harga: 130000,
     aktif: true,
   },
   {
@@ -143,7 +144,7 @@ export const HPL_MASTER: HplMaster[] = [
     panjang_mm: 2440,
     lebar_mm: 1220,
     arah_serat: "length",
-    harga: 195000,
+    harga: tacoHplPrice("TH-002 AA").harga,
     aktif: true,
   },
   {
@@ -185,18 +186,32 @@ export const HPL_MASTER: HplMaster[] = [
 MATERIAL_MASTER.push(
   {
     id: "pvc18",
-    nama_material: "PVC Board 18 mm",
+    nama_material: "TACO PVC Board 18 mm (TPB-18)",
     kategori: "pvc_board",
     panjang_mm: 2440,
     lebar_mm: 1220,
     ketebalan_mm: 18,
-    harga: 650000,
+    harga: 699000,
     satuan: "lembar",
     grain_direction: "none",
     kerf_mm: 3,
     waste_default: 0.1,
     aktif: true,
   },
+  ...TACO_PVC_BOARD.filter((b) => b.kode !== "TPB-18").map((b) => ({
+    id: b.eco ? `ecb${b.tebal}` : `pvc${b.tebal}`,
+    nama_material: `${b.eco ? "ECO PVC Board" : "TACO PVC Board"} ${b.tebal} mm (${b.kode})`,
+    kategori: "pvc_board" as const,
+    panjang_mm: 2440,
+    lebar_mm: 1220,
+    ketebalan_mm: b.tebal,
+    harga: b.harga,
+    satuan: "lembar",
+    grain_direction: "none" as const,
+    kerf_mm: 3,
+    waste_default: 0.1,
+    aktif: true,
+  })),
   {
     id: "blockmin18",
     nama_material: "Multiplek Blockmin Putih 18 mm (lapis melamin)",
@@ -222,8 +237,8 @@ export const EDGING_MASTER: EdgingMaster[] = [
     ketebalan_mm: 1,
     lebar_mm: 22,
     panjang_roll_m: 50,
-    harga: 145000,
-    harga_per_meter: 2900,
+    harga: 125000,
+    harga_per_meter: 2500,
     aktif: true,
   },
   {
@@ -234,20 +249,20 @@ export const EDGING_MASTER: EdgingMaster[] = [
     ketebalan_mm: 1,
     lebar_mm: 22,
     panjang_roll_m: 50,
-    harga: 160000,
-    harga_per_meter: 3200,
+    harga: 150000,
+    harga_per_meter: 3000,
     aktif: true,
   },
   {
     id: "pvc2-white",
     nama: "Edging PVC 2 mm Putih",
-    brand: "HUBEN",
+    brand: "TACO",
     warna: "Putih",
     ketebalan_mm: 2,
     lebar_mm: 22,
     panjang_roll_m: 50,
-    harga: 210000,
-    harga_per_meter: 4200,
+    harga: 125000,
+    harga_per_meter: 2500,
     aktif: true,
   },
 ];
@@ -256,25 +271,13 @@ export const HARDWARE_MASTER: HardwareMaster[] = [
   {
     id: "engsel-sendok",
     kategori: "engsel",
-    brand: "HUBEN",
-    nama: "Engsel Sendok Soft Close",
-    model: "HC-35",
+    brand: "TACO",
+    nama: "Engsel Sendok Slowmotion ET-01 (zinc)",
+    model: "ET-01",
     unit: "pcs",
     pack_size: 1,
-    harga: 22000,
+    harga: 18000,
     rule_default: "Berdasarkan tinggi daun pintu",
-    aktif: true,
-  },
-  {
-    id: "rel-laci",
-    kategori: "rel_laci",
-    brand: "HUBEN",
-    nama: "Rel Laci Undermount Soft Close",
-    model: "UM-450",
-    unit: "set",
-    pack_size: 1,
-    harga: 145000,
-    rule_default: "1 set per laci",
     aktif: true,
   },
   {
@@ -424,62 +427,38 @@ export const HARDWARE_MASTER: HardwareMaster[] = [
   {
     id: "lem-hpl",
     kategori: "aksesori",
-    brand: "AICA AIBON",
-    nama: "Lem Kuning HPL (kaleng 1 kg)",
-    model: "AB-1",
-    unit: "kaleng",
+    brand: "TACO",
+    nama: "Lem Kuning TACO Active (galon 2,5 kg)",
+    model: "TA-1025-KB",
+    unit: "galon",
     pack_size: 1,
-    harga: 85000,
-    rule_default: "1 kaleng per ± 4 m² bidang HPL",
+    harga: 187300,
+    rule_default: "± 1 kg per 4 m² bidang HPL; dibeli galon 2,5 kg / blek 10 kg",
     aktif: true,
   },
 
   {
     id: "engsel-biasa",
     kategori: "engsel",
-    brand: "HUBEN",
-    nama: "Engsel Sendok Biasa (non slowmo)",
-    model: "HB-35",
+    brand: "TACO",
+    nama: "Engsel Sendok Biasa ET-06 (non slowmo)",
+    model: "ET-06",
     unit: "pcs",
     pack_size: 1,
-    harga: 9000,
+    harga: 7600,
     rule_default: "Berdasarkan tinggi daun pintu",
     aktif: true,
   },
   {
-    id: "rel-dt-slowmo",
-    kategori: "rel_laci",
-    brand: "HUBEN",
-    nama: "Rel Laci Double Track Slowmotion 45 cm",
-    model: "DT-SC45",
-    unit: "set",
+    id: "engsel-et02",
+    kategori: "engsel",
+    brand: "TACO",
+    nama: "Engsel Sendok Slowmotion ET-02 (stainless)",
+    model: "ET-02",
+    unit: "pcs",
     pack_size: 1,
-    harga: 75000,
-    rule_default: "1 set per laci",
-    aktif: true,
-  },
-  {
-    id: "rel-dt-biasa",
-    kategori: "rel_laci",
-    brand: "HUBEN",
-    nama: "Rel Laci Double Track Biasa 45 cm",
-    model: "DT-45",
-    unit: "set",
-    pack_size: 1,
-    harga: 40000,
-    rule_default: "1 set per laci",
-    aktif: true,
-  },
-  {
-    id: "rel-push",
-    kategori: "rel_laci",
-    brand: "HUBEN",
-    nama: "Rel Laci Double Track Push-to-Open 45 cm",
-    model: "DT-PO45",
-    unit: "set",
-    pack_size: 1,
-    harga: 85000,
-    rule_default: "1 set per laci (tanpa handle)",
+    harga: 33600,
+    rule_default: "Berdasarkan tinggi daun pintu — anti karat, cocok area sink",
     aktif: true,
   },
   {
@@ -836,13 +815,48 @@ export function findMaterial(id: string | null | undefined) {
   return MATERIAL_MASTER.find((m) => m.id === id) ?? null;
 }
 export function findHpl(id: string | null | undefined) {
-  return HPL_MASTER.find((m) => m.id === id) ?? null;
+  if (!id) return null;
+  return HPL_MASTER.find((m) => m.id === id) ?? hplFromDynamicId(id);
 }
 export function findEdging(id: string | null | undefined) {
   return EDGING_MASTER.find((m) => m.id === id) ?? null;
 }
-export function findHardware(id: string) {
-  return HARDWARE_MASTER.find((m) => m.id === id) ?? null;
+/** ID lama → seri rel laci TACO. */
+const SLIDE_ALIAS: Record<string, string> = {
+  "rel-laci": "taco-us001sc",
+  "rel-dt-slowmo": "taco-bbs008sc",
+  "rel-dt-biasa": "taco-bbs006fe",
+  "rel-push": "taco-bbs009po",
+};
+export const DEFAULT_SLIDE_LENGTH_CM = 45;
+
+/**
+ * Hardware statis, atau rel laci TACO dengan panjang: "taco-bbs008sc:45".
+ * Tanpa panjang dipakai 45 cm. Panjang yang tidak ada di daftar harga → harga null.
+ */
+export function findHardware(id: string): HardwareMaster | null {
+  const direct = HARDWARE_MASTER.find((m) => m.id === id);
+  if (direct) return direct;
+  const [rawSeries = "", len] = id.split(":");
+  const series = findSlide(SLIDE_ALIAS[rawSeries] ?? rawSeries);
+  if (!series) return null;
+  const cm = len ? Number(len) : DEFAULT_SLIDE_LENGTH_CM;
+  const harga = series.harga[cm] ?? null;
+  return {
+    id: `${series.id}:${cm}`,
+    kategori: "rel_laci",
+    brand: "TACO",
+    nama: `${series.nama} ${series.kode} ${cm} cm`,
+    model: series.kode,
+    unit: "set",
+    pack_size: 1,
+    harga,
+    rule_default:
+      harga === null
+        ? `${series.rule} — panjang ${cm} cm belum ada di daftar harga ${series.kode}, perlu konfirmasi`
+        : series.rule,
+    aktif: true,
+  };
 }
 export function findTemplate(id: string | null | undefined) {
   return CONSTRUCTION_TEMPLATES.find((t) => t.id === id) ?? null;

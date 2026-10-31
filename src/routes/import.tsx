@@ -1,3 +1,4 @@
+import { DEFAULT_QUICK_SPEC } from "@/lib/estimator/quick-spec";
 import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 
@@ -52,7 +53,10 @@ function ImportPage() {
         source: "kis",
         items: data.items.map((i) => ({
           ...newFurnitureItem(i.category, i.name),
-          quickSpecHint: data.specHint ?? undefined,
+          quickSpecHint:
+            data.specHint || i.specOverride
+              ? { ...(data.specHint ?? DEFAULT_QUICK_SPEC), ...(i.specOverride ?? {}) }
+              : undefined,
         })),
       });
       const [before, render, interior] = await Promise.all([

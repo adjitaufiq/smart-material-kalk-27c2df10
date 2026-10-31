@@ -79,6 +79,8 @@ export interface PresetSelection {
 export interface PresetItem {
   category: string;
   name: string;
+  /** spek khusus kabinet ini dari KIS (kode HPL dll.) — menimpa spek global */
+  specOverride?: Partial<import("./types").QuickSpec> | undefined;
 }
 
 export function defaultSelection(presetId: string): PresetSelection {

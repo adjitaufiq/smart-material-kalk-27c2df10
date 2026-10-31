@@ -1,9 +1,10 @@
 import { makeModule } from "./factory";
+import { tacoHplId } from "./taco-pricing";
 import type { ModuleSpec, QuickSpec } from "./types";
 
 /** Daftar pertanyaan spek cepat — dipakai UI, satu sumber label. */
 export const QUICK_QUESTIONS: {
-  key: Exclude<keyof QuickSpec, "accessories">;
+  key: Exclude<keyof QuickSpec, "accessories" | "hplOutside" | "hplInside">;
   title: string;
   options: { value: string; label: string; hint?: string }[];
 }[] = [
@@ -11,7 +12,8 @@ export const QUICK_QUESTIONS: {
     key: "body",
     title: "Bahan bodi kabinet",
     options: [
-      { value: "pvc", label: "PVC Board 18 mm", hint: "Anti air & rayap — umum kelas medium–high" },
+      { value: "pvc", label: "TACO PVC Board 18 mm (TPB-18)", hint: "Anti air & rayap — umum kelas medium–high" },
+      { value: "pvc_eco", label: "ECO PVC Board 18 mm (ECB-18)", hint: "PVC Board versi ekonomis" },
       { value: "ply", label: "Multiplek 18 mm", hint: "Kuat & hemat" },
       { value: "hybrid", label: "Hybrid", hint: "Modul sink PVC Board, lainnya multiplek" },
     ],
@@ -46,18 +48,29 @@ export const QUICK_QUESTIONS: {
     key: "hinge",
     title: "Engsel pintu",
     options: [
-      { value: "slowmo", label: "Slowmotion (soft close)" },
-      { value: "biasa", label: "Engsel biasa" },
+      { value: "slowmo", label: "Slowmotion TACO ET-01", hint: "Zinc — standar kabinet" },
+      { value: "slowmo_stainless", label: "Slowmotion TACO ET-02", hint: "Stainless anti karat — area sink" },
+      { value: "biasa", label: "Engsel biasa TACO ET-06" },
     ],
   },
   {
     key: "slide",
     title: "Rel laci",
     options: [
-      { value: "dt_slowmo", label: "Double track slowmo" },
-      { value: "dt_biasa", label: "Double track biasa" },
-      { value: "push", label: "Push to open" },
-      { value: "tandem", label: "Tandem / undermount" },
+      { value: "dt_slowmo", label: "Double track slowmo (BBS 008 SC)" },
+      { value: "dt_biasa", label: "Double track biasa (BBS 006 FE)" },
+      { value: "dt_eco", label: "Double track ekonomis (FE BBS 010)" },
+      { value: "push", label: "Push to open (BBS 009 PO)" },
+      { value: "tandem", label: "Tandem / undermount (US 001 SC)" },
+      { value: "roller", label: "Roller putih (RLT)" },
+    ],
+  },
+  {
+    key: "glue",
+    title: "Lem kuning HPL",
+    options: [
+      { value: "active", label: "TACO Active", hint: "Galon 2,5 kg / blek 10 kg" },
+      { value: "starmax", label: "TACO Starmax", hint: "Galon 2,5 kg / blek 10 kg" },
     ],
   },
 ];
@@ -76,15 +89,25 @@ export const DEFAULT_QUICK_SPEC: QuickSpec = {
   inside: "blockmin",
   hinge: "slowmo",
   slide: "dt_slowmo",
+  glue: "active",
   accessories: [],
 };
 
 const SLIDE_ID: Record<QuickSpec["slide"], string> = {
-  dt_slowmo: "rel-dt-slowmo",
-  dt_biasa: "rel-dt-biasa",
-  push: "rel-push",
-  tandem: "rel-laci",
+  dt_slowmo: "taco-bbs008sc",
+  dt_biasa: "taco-bbs006fe",
+  dt_eco: "taco-bbs010fe",
+  push: "taco-bbs009po",
+  tandem: "taco-us001sc",
+  roller: "taco-rlt",
 };
+const HINGE_ID: Record<QuickSpec["hinge"], string> = {
+  slowmo: "engsel-sendok",
+  slowmo_stainless: "engsel-et02",
+  biasa: "engsel-biasa",
+};
+const PVC_ID = (spec: QuickSpec) => (spec.body === "pvc_eco" ? "ecb18" : "pvc18");
+const isPvcBody = (spec: QuickSpec) => spec.body === "pvc" || spec.body === "pvc_eco";
 
 const CABINET_KINDS = new Set([
   "base_cabinet",
@@ -104,20 +127,23 @@ export const QUICK_TOP_PREFIX = "Top Table Kitchen";
  */
 export function applyQuickSpec(modules: ModuleSpec[], spec: QuickSpec): ModuleSpec[] {
   const base = modules.filter((m) => m.name !== QUICK_TOP_PREFIX);
-  const outsideHpl = spec.outside === "duco" ? null : spec.outside === "hpl" ? "taco-002aa" : "aica-hg";
+  const kisOut = spec.hplOutside?.code ? tacoHplId(spec.hplOutside.code, spec.hplOutside.group, spec.hplOutside.name) : null;
+  const kisIn = spec.hplInside?.code ? tacoHplId(spec.hplInside.code, spec.hplInside.group, spec.hplInside.name) : null;
+  const outsideHpl =
+    spec.outside === "duco" ? null : (kisOut ?? (spec.outside === "hpl" ? "taco-002aa" : "aica-hg"));
   const insideHpl =
-    spec.inside === "hpl" ? "taco-001" : spec.inside === "tacosheet" ? "tacosheet-white" : null;
+    spec.inside === "hpl" ? (kisIn ?? "taco-001") : spec.inside === "tacosheet" ? "tacosheet-white" : null;
   let accessoriesPlaced = false;
 
   const out = base.map((m) => {
     if (!CABINET_KINDS.has(m.kind)) {
       // plinth dll: hanya bahan bodi
-      if (m.kind === "plinth") return { ...m, bodyMaterialId: spec.body === "pvc" ? "pvc18" : "ply18" };
+      if (m.kind === "plinth") return { ...m, bodyMaterialId: isPvcBody(spec) || spec.body === "hybrid" ? PVC_ID(spec) : "ply18" };
       return m;
     }
     const isSink = /sink|cuci/i.test(m.name);
-    const usePvc = spec.body === "pvc" || (spec.body === "hybrid" && isSink);
-    const body = usePvc ? "pvc18" : spec.inside === "blockmin" ? "blockmin18" : "ply18";
+    const usePvc = isPvcBody(spec) || (spec.body === "hybrid" && isSink);
+    const body = usePvc ? PVC_ID(spec) : spec.inside === "blockmin" ? "blockmin18" : "ply18";
     let extra: string[] | undefined = m.extraHardware;
     if (!accessoriesPlaced && (m.kind === "base_cabinet" || m.kind === "drawer_module")) {
       extra = [...spec.accessories];
@@ -129,15 +155,16 @@ export function applyQuickSpec(modules: ModuleSpec[], spec: QuickSpec): ModuleSp
       ...m,
       bodyMaterialId: body,
       doorMaterialId: body,
-      backMaterialId: m.hasBack ? (usePvc ? "pvc18" : "ply9") : m.backMaterialId,
+      backMaterialId: m.hasBack ? (usePvc ? PVC_ID(spec) : "ply9") : m.backMaterialId,
       finish: {
         bodyOutside: { hplId: outsideHpl },
         bodyInside: { hplId: insideHpl },
         doorFaceA: { hplId: outsideHpl },
         doorFaceB: { hplId: insideHpl },
       },
-      hingeId: spec.hinge === "slowmo" ? "engsel-sendok" : "engsel-biasa",
-      drawerSlideId: SLIDE_ID[spec.slide],
+      hingeId: HINGE_ID[spec.hinge] ?? "engsel-sendok",
+      drawerSlideId: SLIDE_ID[spec.slide] ?? "taco-bbs008sc",
+      glueType: spec.glue ?? "active",
       ducoFinish: spec.outside === "duco",
       extraHardware: extra,
     };
@@ -154,7 +181,7 @@ export function applyQuickSpec(modules: ModuleSpec[], spec: QuickSpec): ModuleSp
     out.push({
       ...top,
       topLayers: 2,
-      bodyMaterialId: spec.body === "ply" ? "ply18" : "pvc18",
+      bodyMaterialId: spec.body === "ply" ? "ply18" : PVC_ID(spec),
       finish: {
         ...top.finish,
         bodyOutside: { hplId: outsideHpl ?? "taco-002aa" },
