@@ -89,7 +89,7 @@ describe("Lem kuning TACO galon / blek", () => {
   it("lem masuk BOM sesuai pilihan Starmax", () => {
     const m = makeModule({ kind: "base_cabinet", name: "K1", width_mm: 800, height_mm: 720, depth_mm: 560, doors: 2, drawers: 0 });
     const modules = applyQuickSpec([m], { ...DEFAULT_QUICK_SPEC, glue: "starmax" });
-    const r = calculateItem({ ...({} as never), id: "i", name: "t", category: "Kitchen", modules, sheetMode: "potong", wasteFactor: 0.1 } as never);
+    const r = calculateItem({ id: "i", name: "t", category: "Kitchen", modules, sheetMode: "potong", wasteFactor: 0.1 } as never);
     expect(r.bom.some((b) => b.id.startsWith("lem-starmax-"))).toBe(true);
   });
 });
