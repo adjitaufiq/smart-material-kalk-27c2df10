@@ -308,10 +308,18 @@ export function buildKisEstimate(input: {
     total: b.total,
     needsConfirmation: b.unitPrice == null,
   }));
+  // Kontrak 1 jalur KIS: shoppingList { name, code, qty, unit, unitPrice, subtotal }.
+  const shoppingList = input.bom.map((b) => {
+    const code = b.id.startsWith("taco:") ? (b.id.slice(b.id.indexOf(":", 5) + 1).split("|")[0] ?? b.id) : b.id;
+    return { name: b.name, code, qty: b.qty, unit: b.unit, unitPrice: b.unitPrice, subtotal: b.total, needsConfirmation: b.unitPrice == null };
+  });
   return {
     projectId: input.kisProjectId,
     estimateId: input.estimateId,
     status: lowest ? STATUS[lowest] : "draft",
+    materialCost: input.grandTotal ?? 0,
+    workdays: estimatedDays,
+    shoppingList,
     estimatedMaterialCost: input.grandTotal ?? 0,
     priceBasis: `HET TACO ${TACO_HET_DATE} (PVC Board ${TACO_PVC_HET_DATE}) — HPP sebelum margin workshop`,
     sheetCount: totalSheets,
