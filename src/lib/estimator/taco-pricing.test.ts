@@ -93,3 +93,21 @@ describe("Lem kuning TACO galon / blek", () => {
     expect(r.bom.some((b) => b.id.startsWith("lem-starmax-"))).toBe(true);
   });
 });
+
+import { edgingPrice, meterOrder, TACO_SHEET, TACO_COMPACT_4X8, TACO_ECO_HPL } from "./taco-pricing";
+describe("TACO sheet/edging/compact HET 1 Sep 2026", () => {
+  it("edging woodgrain 1x22 = Rp3.000/m, solid 1x42 = Rp5.000/m", () => {
+    expect(edgingPrice("woodgrain", 1, 18)).toBe(3000);
+    expect(edgingPrice("solid", 1, 36)).toBe(5000);
+  });
+  it("beli per meter, dibulatkan ke atas", () => {
+    expect(meterOrder(12.3, 3000)).toEqual({ meter: 13, total: 39000 });
+  });
+  it("TACO Sheet Mirror Rp112.000/m", () => {
+    expect(TACO_SHEET.find((s) => s.id === "ts-mirror")!.harga_per_m).toBe(112000);
+  });
+  it("Compact BL woodgrain 18mm Rp3.030.000; ECO Super White Rp105.000", () => {
+    expect(TACO_COMPACT_4X8.find((c) => c.core === "BL" && c.motif === "woodgrain" && c.tebal === 18)!.harga).toBe(3030000);
+    expect(TACO_ECO_HPL[0]!.harga).toBe(105000);
+  });
+});
