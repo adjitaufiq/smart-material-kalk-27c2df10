@@ -143,7 +143,8 @@ export function applyQuickSpec(modules: ModuleSpec[], spec: QuickSpec): ModuleSp
   const kisIn = spec.hplInside?.code ? tacoHplId(spec.hplInside.code, spec.hplInside.group, spec.hplInside.name) : null;
   // Tanpa kode dari KIS: HPL TACO "kode belum dipilih" (harga kosong → perlu konfirmasi), bukan motif tebakan.
   const outsideHpl = spec.outside === "duco" ? null : (kisOut ?? TACO_HPL_PENDING);
-  const insideHpl =
+  // Blockmin sudah putih di sisi dalam: tidak perlu HPL/TACO Sheet dalam.
+  const insideHpl = spec.body === "blockmin_1s" || spec.body === "blockmin_2s" ? null :
     spec.inside === "hpl" ? (kisIn ?? "taco-001") : spec.inside === "tacosheet" ? "tacosheet-white" : null;
   let accessoriesPlaced = false;
 
