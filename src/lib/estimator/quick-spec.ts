@@ -19,6 +19,9 @@ export const QUICK_QUESTIONS: {
       { value: "pvc_eco", label: "ECO PVC Board 18 mm (ECB-18)", hint: "PVC Board versi ekonomis" },
       { value: "ply", label: "Multiplek 18 mm", hint: "Kuat & hemat" },
       { value: "hybrid", label: "Hybrid", hint: "Modul sink PVC Board, lainnya multiplek" },
+      { value: "blockboard", label: "Blockboard 18 mm" },
+      { value: "blockmin_1s", label: "Blockmin Putih 1 Sisi 18 mm", hint: "Sisi dalam sudah putih" },
+      { value: "blockmin_2s", label: "Blockmin Putih 2 Sisi 18 mm", hint: "Kedua sisi sudah putih" },
     ],
   },
   {
@@ -110,6 +113,12 @@ const HINGE_ID: Record<QuickSpec["hinge"], string> = {
   biasa: "engsel-biasa",
 };
 const PVC_ID = (spec: QuickSpec) => (spec.body === "pvc_eco" ? "ecb18" : "pvc18");
+/** Papan olahan non-PVC dari KIS → master bahan bodi. */
+const BOARD_ID: Partial<Record<QuickSpec["body"], string>> = {
+  blockboard: "blockboard18",
+  blockmin_1s: "blockmin18",
+  blockmin_2s: "blockmin2s18",
+};
 const isPvcBody = (spec: QuickSpec) => spec.body === "pvc" || spec.body === "pvc_eco";
 
 const CABINET_KINDS = new Set([
@@ -134,7 +143,8 @@ export function applyQuickSpec(modules: ModuleSpec[], spec: QuickSpec): ModuleSp
   const kisIn = spec.hplInside?.code ? tacoHplId(spec.hplInside.code, spec.hplInside.group, spec.hplInside.name) : null;
   // Tanpa kode dari KIS: HPL TACO "kode belum dipilih" (harga kosong → perlu konfirmasi), bukan motif tebakan.
   const outsideHpl = spec.outside === "duco" ? null : (kisOut ?? TACO_HPL_PENDING);
-  const insideHpl =
+  // Blockmin sudah putih di sisi dalam: tidak perlu HPL/TACO Sheet dalam.
+  const insideHpl = spec.body === "blockmin_1s" || spec.body === "blockmin_2s" ? null :
     spec.inside === "hpl" ? (kisIn ?? "taco-001") : spec.inside === "tacosheet" ? "tacosheet-white" : null;
   let accessoriesPlaced = false;
 
@@ -146,7 +156,7 @@ export function applyQuickSpec(modules: ModuleSpec[], spec: QuickSpec): ModuleSp
     }
     const isSink = /sink|cuci/i.test(m.name);
     const usePvc = isPvcBody(spec) || (spec.body === "hybrid" && isSink);
-    const body = usePvc ? PVC_ID(spec) : spec.inside === "blockmin" ? "blockmin18" : "ply18";
+    const body = usePvc ? PVC_ID(spec) : BOARD_ID[spec.body] ?? (spec.inside === "blockmin" ? "blockmin18" : "ply18");
     let extra: string[] | undefined = m.extraHardware;
     if (!accessoriesPlaced && (m.kind === "base_cabinet" || m.kind === "drawer_module")) {
       extra = [...spec.accessories];
@@ -184,7 +194,7 @@ export function applyQuickSpec(modules: ModuleSpec[], spec: QuickSpec): ModuleSp
     out.push({
       ...top,
       topLayers: 2,
-      bodyMaterialId: spec.body === "ply" ? "ply18" : PVC_ID(spec),
+      bodyMaterialId: isPvcBody(spec) || spec.body === "hybrid" ? PVC_ID(spec) : BOARD_ID[spec.body] ?? "ply18",
       finish: {
         ...top.finish,
         bodyOutside: { hplId: outsideHpl ?? TACO_HPL_PENDING },

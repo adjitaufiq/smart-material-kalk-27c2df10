@@ -49,3 +49,22 @@ describe("Payload balikan ke KIS", () => {
     expect(p.shoppingList[0]!.code).toBe("TH 825 NT");
   });
 });
+
+import { parseSpecHints as _psh } from "@/lib/kis";
+import { applyQuickSpec as _aqs, DEFAULT_QUICK_SPEC as _dqs } from "@/lib/estimator/quick-spec";
+import { makeModule as _mm } from "@/lib/estimator/factory";
+import { describe as _d, it as _it, expect as _e } from "vitest";
+_d("KIS body papan olahan", () => {
+  _it("alias blockmin-1s-18 → blockmin_1s, tanpa HPL dalam", () => {
+    const r = _psh({ body: "blockmin-1s-18" });
+    _e(r.spec?.body).toBe("blockmin_1s");
+    const [m] = _aqs([_mm({ kind: "base_cabinet", name: "B", width_mm: 800, height_mm: 800, depth_mm: 550 })], { ..._dqs, body: "blockmin_1s", inside: "hpl" });
+    _e(m!.bodyMaterialId).toBe("blockmin18");
+    _e(m!.finish.bodyInside.hplId).toBeNull();
+  });
+  _it("blockboard-18 → blockboard18", () => {
+    _e(_psh({ body: "blockboard-18" }).spec?.body).toBe("blockboard");
+    const [m] = _aqs([_mm({ kind: "base_cabinet", name: "B", width_mm: 800, height_mm: 800, depth_mm: 550 })], { ..._dqs, body: "blockboard" });
+    _e(m!.bodyMaterialId).toBe("blockboard18");
+  });
+});

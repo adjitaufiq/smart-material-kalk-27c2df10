@@ -199,7 +199,7 @@ export interface ModuleSpec {
 
 /** Jawaban kuesioner spek cepat (step Material). */
 export interface QuickSpec {
-  body: "ply" | "pvc" | "pvc_eco" | "hybrid";
+  body: "ply" | "pvc" | "pvc_eco" | "hybrid" | "blockboard" | "blockmin_1s" | "blockmin_2s";
   top: "none" | "double";
   outside: "hpl" | "hpl_premium" | "duco";
   inside: "blockmin" | "tacosheet" | "hpl";
