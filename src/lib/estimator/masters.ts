@@ -231,7 +231,7 @@ MATERIAL_MASTER.push(
 export const EDGING_MASTER: EdgingMaster[] = [
   {
     id: "pvc1-white",
-    nama: "Edging PVC 1 mm Putih",
+    nama: "Edging PVC TACO 1×22 mm Solid Putih",
     brand: "TACO",
     warna: "Putih",
     ketebalan_mm: 1,
@@ -243,7 +243,7 @@ export const EDGING_MASTER: EdgingMaster[] = [
   },
   {
     id: "pvc1-oak",
-    nama: "Edging PVC 1 mm Oak",
+    nama: "Edging PVC TACO 1×22 mm Woodgrain Oak",
     brand: "TACO",
     warna: "Oak",
     ketebalan_mm: 1,
@@ -255,7 +255,7 @@ export const EDGING_MASTER: EdgingMaster[] = [
   },
   {
     id: "pvc2-white",
-    nama: "Edging PVC 2 mm Putih",
+    nama: "Edging PVC TACO 2×22 mm Solid Putih",
     brand: "TACO",
     warna: "Putih",
     ketebalan_mm: 2,
@@ -272,7 +272,7 @@ export const HARDWARE_MASTER: HardwareMaster[] = [
     id: "engsel-sendok",
     kategori: "engsel",
     brand: "TACO",
-    nama: "Engsel Sendok Slowmotion ET-01 (zinc)",
+    nama: "Engsel Sendok Slow Motion TACO ET-01 (zinc)",
     model: "ET-01",
     unit: "pcs",
     pack_size: 1,
@@ -441,7 +441,7 @@ export const HARDWARE_MASTER: HardwareMaster[] = [
     id: "engsel-biasa",
     kategori: "engsel",
     brand: "TACO",
-    nama: "Engsel Sendok Biasa ET-06 (non slowmo)",
+    nama: "Engsel Sendok TACO ET-06 (non slowmo)",
     model: "ET-06",
     unit: "pcs",
     pack_size: 1,
@@ -453,7 +453,7 @@ export const HARDWARE_MASTER: HardwareMaster[] = [
     id: "engsel-et02",
     kategori: "engsel",
     brand: "TACO",
-    nama: "Engsel Sendok Slowmotion ET-02 (stainless)",
+    nama: "Engsel Sendok Slow Motion TACO ET-02 (stainless)",
     model: "ET-02",
     unit: "pcs",
     pack_size: 1,
