@@ -31,7 +31,6 @@ export function KisPanel({
   grandTotal: number | null;
 }) {
   const kis = project.kis!;
-  const before = useBlob(kis.beforeBlobKey, kis.beforeUrl);
   const render = useBlob(kis.renderBlobKey, kis.renderUrl);
   const interior = useBlob(kis.interiorBlobKey, kis.interiorUrl ?? "");
   const interiorSide = useBlob(kis.interiorSideBlobKey, kis.interiorSideUrl ?? "");
@@ -45,7 +44,7 @@ export function KisPanel({
       bom,
       grandTotal,
       extras: kis.finishExtras,
-      audit: auditSpec({ results, bom, extras: kis.finishExtras, visual: kis.qcVisual, ai: kis.qcAi }),
+      audit: auditSpec({ results, bom, extras: kis.finishExtras, quick: project.items[0]?.quickSpecHint, ai: kis.qcAi }),
       deepLinkUrl: `${window.location.origin}/project/${project.id}`,
     });
     window.location.href = kisReturnLink(kis.returnUrl, payload);
@@ -53,22 +52,43 @@ export function KisPanel({
 
   return (
     <SectionCard title="Dari Kerjaku Interior Studio" description={kis.clientName || "Data klien & visual"}>
-      {before || render || interior || interiorSide ? (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {[["Sebelum", before], ["Tampak Luar", render], ...(kis.interiorUrl ? [["Tampak Dalam Depan", interior]] : []), ...(kis.interiorSideUrl ? [["Tampak Dalam Samping", interiorSide]] : [])].map(([label, src]) => (
-            <figure key={label}>
+      <div className="grid grid-cols-3 gap-2">
+        {([
+          ["Tampak Luar", render, "renderBlobKey"],
+          ["Dalam Depan", interior, "interiorBlobKey"],
+          ["Dalam Samping", interiorSide, "interiorSideBlobKey"],
+        ] as const).map(([label, src, keyName]) => (
+          <figure key={label}>
+            <label className="block cursor-pointer">
               {src ? (
                 <img src={src} alt={label} className="aspect-[4/3] w-full rounded-md border object-cover" />
               ) : (
-                <div className="flex aspect-[4/3] items-center justify-center rounded-md border text-xs text-muted-foreground">
-                  Tidak ada foto
+                <div className="flex aspect-[4/3] items-center justify-center rounded-md border border-dashed text-center text-xs text-muted-foreground">
+                  + Upload foto
                 </div>
               )}
-              <figcaption className="mt-1 text-xs text-muted-foreground">{label}</figcaption>
-            </figure>
-          ))}
-        </div>
-      ) : null}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async (e) => {
+                  const f = e.target.files?.[0];
+                  if (!f) return;
+                  const data = await new Promise<string>((res) => {
+                    const r = new FileReader();
+                    r.onload = () => res(String(r.result));
+                    r.readAsDataURL(f);
+                  });
+                  const key = `kis-${keyName}-${project.id}-${Date.now()}`;
+                  await putDrawingBlob(key, data);
+                  onKis({ ...kis, [keyName]: key, qcAi: undefined });
+                }}
+              />
+            </label>
+            <figcaption className="mt-1 text-xs text-muted-foreground">{label} · ganti</figcaption>
+          </figure>
+        ))}
+      </div>
       {positions.length ? (
         <div className="mt-3 rounded-md border p-2 text-xs">
           <p className="font-medium">Posisi aksesori dari KIS</p>
@@ -80,11 +100,6 @@ export function KisPanel({
             ))}
           </ul>
         </div>
-      ) : null}
-      {!kis.beforeBlobKey && kis.beforeUrl ? (
-        <p className="mt-2 text-xs text-muted-foreground">
-          Foto belum tersalin; link dari KIS hanya aktif 1 jam.
-        </p>
       ) : null}
       <div className="mt-3 flex flex-wrap gap-2">
         {kis.returnUrl ? (
