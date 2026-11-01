@@ -39,7 +39,29 @@ function ImportPage() {
     // Project KIS yang sama → buka yang sudah ada, jangan dobel.
     const existing = loadProjects().find((p) => p.kis?.projectId === data.link.projectId);
     if (existing) {
-      void navigate({ to: "/project/$id", params: { id: existing.id }, replace: true });
+      // Perbarui foto/link baru dari KIS (mis. foto tampak dalam samping) tanpa hapus meteran.
+      void (async () => {
+        const link = { ...existing.kis!, ...data.link, qcAi: existing.kis!.qcAi };
+        const slots = [
+          ["renderUrl", "renderBlobKey"],
+          ["interiorUrl", "interiorBlobKey"],
+          ["interiorSideUrl", "interiorSideBlobKey"],
+        ] as const;
+        for (const [u, k] of slots) {
+          const url = data.link[u];
+          link[k] = existing.kis![k];
+          if (url && url !== existing.kis![u]) {
+            const d = await fetchAsDataUrl(url);
+            if (d) {
+              link[k] = `kis-${k}-${existing.id}-${Date.now()}`;
+              await putDrawingBlob(link[k]!, d);
+              link.qcAi = undefined;
+            }
+          }
+        }
+        upsertProject({ ...existing, kis: link });
+        void navigate({ to: "/project/$id", params: { id: existing.id }, replace: true });
+      })();
       return;
     }
     void (async () => {

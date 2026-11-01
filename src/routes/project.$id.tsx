@@ -127,6 +127,7 @@ function ProjectPage() {
               results={results}
               bom={projectBom}
               grandTotal={projectCost.grandTotal}
+              onKis={(kis) => save({ ...project, kis })}
               ready={project.items.length > 0 && project.items.every((i) => surveyComplete(surveyOf(i)))}
             />
           ) : null}
@@ -136,7 +137,7 @@ function ProjectPage() {
               kis={project.kis}
               results={results}
               bom={projectBom}
-              onChange={(qcVisual) => save({ ...project, kis: { ...project.kis!, qcVisual } })}
+              quick={project.items[0]?.quickSpecHint}
               onAi={(qcAi) => save({ ...project, kis: { ...project.kis!, qcAi, qcVisual: {} } })}
             />
           ) : null}
