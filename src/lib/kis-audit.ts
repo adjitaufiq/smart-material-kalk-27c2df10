@@ -49,7 +49,7 @@ export function auditSpec(input: {
   const out: AuditFinding[] = [];
   const parts = input.results.flatMap((r) => r.parts);
   const doors = parts.filter((p) => /pintu|door/i.test(p.part_name)).reduce((a, p) => a + p.qty, 0);
-  const drawers = parts.filter((p) => /depan laci|muka laci|drawer front/i.test(p.part_name)).reduce((a, p) => a + p.qty, 0);
+  const drawers = parts.filter((p) => /front laci|depan laci|muka laci|drawer front/i.test(p.part_name)).reduce((a, p) => a + p.qty, 0);
   const hinge = input.bom.some((b) => b.group === "hardware" && /engsel|hinge|fitting/i.test(b.name));
   const slide = input.bom.some((b) => b.group === "hardware" && /rel|slide|tandem/i.test(b.name));
   if (doors > 0 && !hinge) out.push({ type: "kurang", item: "Engsel", note: `${doors} daun pintu tanpa engsel di daftar bahan` });
