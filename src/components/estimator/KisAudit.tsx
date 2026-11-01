@@ -64,6 +64,9 @@ export function KisAudit({
     if (quick?.outside === "duco") z.unshift(`kabinet: cat DUCO${quick.ducoHex ? ` warna ${quick.ducoHex}` : ""} (bukan zona HPL)`);
     if (quick?.outside === "tacosheet") z.push("bodi luar memakai TACO Sheet (PVC), dihitung sebagai zona motif");
     if (/granit/.test(quick?.topMaterial ?? "")) z.push("top table: GRANIT (bukan zona HPL, non-workshop)");
+    else if (quick?.topMaterial === "hpl") z.push(`top table: HPL WORKSHOP (multiplek + HPL TACO${quick.top === "double" ? ", 2 lapis ±36mm" : ""}). Walau tampak marmer/granit/batu/hitam, ini HPL — JANGAN masukkan ke nonWorkshop`);
+    if (kis.finishExtras?.glassFrame === "wood_hpl") z.push(`bingkai pintu kaca: kayu multiplek lapis HPL${kis.finishExtras.hplAccent ? ` TACO ${kis.finishExtras.hplAccent.code}` : ""} (bukan profil aluminium — jangan laporkan kurang frame aluminium)`);
+    if (kis.finishExtras?.lighting === "spot" || kis.finishExtras?.lighting === "led_spot") z.push("lampu sorot: ADA di spek, jumlah titik hitung dari foto");
     if (quick?.inside === "blockmin" || quick?.body?.startsWith("blockmin")) z.push("bagian dalam: Blockmin putih (BUKAN zona HPL)");
     return z;
   };
@@ -139,10 +142,10 @@ export function KisAudit({
             {ai.notes.map((n, i) => <li key={i}>{n}</li>)}
           </ul>
         ) : null}
-        {nonWorkshopNotes(ai).length ? (
+        {nonWorkshopNotes(ai, quick).length ? (
           <div className="mt-3 rounded-md border p-2 text-xs">
             <p className="font-semibold">Catatan Non-Workshop / Pekerjaan Luar (bukan GAP)</p>
-            <p className="text-muted-foreground">{nonWorkshopNotes(ai).join(", ")} — cukup siapkan coakan/penyesuaian meja.</p>
+            <p className="text-muted-foreground">{nonWorkshopNotes(ai, quick).join(", ")} — cukup siapkan coakan/penyesuaian meja.</p>
           </div>
         ) : null}
         {ai && !applied ? (

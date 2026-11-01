@@ -116,7 +116,8 @@ export function specCounts(results: CalculationResult[], bom: BomItem[], ex?: Ki
     hidrolik: lift != null ? lift * 2 : applied ? kisGas : null,
     ambalan: seen("ambalan"),
     led: ex?.lighting === "led" || ex?.lighting === "led_spot" || /led strip/i.test(bom.map((b) => b.name).join("|")) ? 1 : 0,
-    sorot: ex?.spotQty ?? (ex?.lighting === "spot" || ex?.lighting === "led_spot" ? Math.max(1, sumQty(bom, /sorot|spot/i)) : sumQty(bom, /sorot|spot/i)),
+    // titik sorot: angka KIS / hasil audit; bila KIS null → menunggu hitung foto (bukan 0)
+    sorot: ex?.spotQty ?? (ex?.lighting === "spot" || ex?.lighting === "led_spot" ? null : sumQty(bom, /sorot|spot/i)),
     "rak-piring": sumQty(bom, /rak piring|dish/i),
     "rak-bumbu": sumQty(bom, /rak bumbu/i),
     "rak-sayur": sumQty(bom, /rak sayur/i),
@@ -156,14 +157,17 @@ export function auditSpec(input: {
     if (r.status === "kurang") out.push({ type: "kurang", item: r.label, note: `Gambar ${r.seen} ${r.unit}, spek ${r.spec ?? 0}` });
     if (r.status === "lebih") out.push({ type: "lebih", item: r.label, note: `Spek ${r.spec ?? 0} ${r.unit}, gambar ${r.seen}` });
   }
-  for (const x of input.ai?.extra ?? []) if (!isNonWorkshop(x)) out.push({ type: "kurang", item: x, note: "Terlihat di gambar (AI), tidak ada di daftar bahan" });
+  const woodFrame = input.extras?.glassFrame === "wood_hpl";
+  for (const x of input.ai?.extra ?? []) if (!isNonWorkshop(x) && !(woodFrame && /alumin|frame|bingkai|profil/i.test(x))) out.push({ type: "kurang", item: x, note: "Terlihat di gambar (AI), tidak ada di daftar bahan" });
   return out;
 }
 
 /** Item AI "extra" yang termasuk pekerjaan luar (granit, sink, kran, dll). */
-export function nonWorkshopNotes(ai: AiQcResult | undefined): string[] {
+export function nonWorkshopNotes(ai: AiQcResult | undefined, quick?: QuickSpec | null): string[] {
   const s = new Set([...(ai?.nonWorkshop ?? []), ...(ai?.extra ?? []).filter(isNonWorkshop)]);
-  return [...s];
+  // top HPL = workshop walau motif marmer/granit/batu
+  const hplTop = quick?.topMaterial === "hpl";
+  return [...s].filter((x) => !(hplTop && /granit|marmer|batu|stone|solid surface|top/i.test(x)));
 }
 
 export const SHOP_CATEGORIES = [

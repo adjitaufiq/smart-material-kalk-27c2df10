@@ -506,6 +506,8 @@ export interface KisFinishExtras {
   handle?: "none" | "handle" | undefined;
   /** jumlah titik lampu sorot (hasil audit foto) */
   spotQty?: number | undefined;
+  /** bingkai pintu kaca: wood_hpl = kayu lapis HPL (tanpa profil aluminium) */
+  glassFrame?: "wood_hpl" | "aluminium" | undefined;
 }
 
 const GLASS_PRICE = { dark: 175000, clear: 140000, fluted: 295000 } as const;
@@ -527,16 +529,19 @@ export function parseFinishExtras(raw: Record<string, unknown>): KisFinishExtras
   const gas = obj(fe["gasSprings"]);
   const spotQty = Number(spots?.["qty"]);
   let lightingRaw = raw["lighting"];
-  if (lightingRaw === undefined && (ledRun || spotQty > 0)) lightingRaw = ledRun ? (spotQty > 0 ? "led_spot" : "led") : "spot";
+  if (lightingRaw === undefined && (ledRun || spots)) lightingRaw = ledRun ? (spots ? "led_spot" : "led") : "spot";
   const out: KisFinishExtras = {
     glass: pick(alias(raw["glass"] ?? glassDoors?.["type"], { buram: "fluted", frosted: "fluted", moru: "fluted", riben: "dark", gelap: "dark", bening: "clear" }), ["dark", "clear", "fluted"] as const),
     edge: pick(alias(raw["edge"] ?? raw["edging"], { tusiran: "tusir", gold: "list_gold", black: "list_black", hitam: "list_black", pvc: "edging" }), ["list_gold", "list_black", "edging", "tusir"] as const),
     lighting: pick(alias(lightingRaw, { led_strip: "led", "led-strip": "led", sorot: "spot", "led+spot": "led_spot" }), ["led", "spot", "led_spot"] as const),
   };
   if (spotQty > 0) out.spotQty = spotQty;
+  const fr = String(glassDoors?.["frame"] ?? raw["glassFrame"] ?? "").toLowerCase();
+  if (/wood|kayu|hpl/.test(fr)) out.glassFrame = "wood_hpl";
+  else if (/alu/.test(fr)) out.glassFrame = "aluminium";
   const h = raw["handle"];
   if (typeof h === "string" && h.trim()) out.handle = /tanpa|none|bevel|handleless|gola|^no$/i.test(h) ? "none" : "handle";
-  const acc = withHplInfo(hplRef(raw["hplAccent"]) ?? hplMotifs(raw).accent, raw);
+  const acc = withHplInfo(hplRef(raw["hplAccent"]) ?? hplMotifs(raw).accent ?? hplRef(glassDoors?.["hplCode"]), raw);
   if (acc) out.hplAccent = { code: acc.code, ...(acc.name ? { name: acc.name } : {}), ...(acc.texture ? { texture: acc.texture } : {}) };
   const others: { id: string; qty: number }[] = [];
   if (Array.isArray(raw["accessories"])) {
@@ -556,7 +561,7 @@ export function parseFinishExtras(raw: Record<string, unknown>): KisFinishExtras
     else others.push({ id: "hidrolik", qty: gasQty });
   }
   if (others.length) out.otherAccessories = others;
-  return out.glass || out.edge || out.lighting || out.otherAccessories || out.hplAccent || out.handle ? out : undefined;
+  return out.glass || out.edge || out.lighting || out.otherAccessories || out.hplAccent || out.handle || out.glassFrame ? out : undefined;
 }
 
 const UPPER = /atas|upper|wall|gantung/i;
@@ -573,8 +578,8 @@ export function finishExtraLines(extras: KisFinishExtras | undefined, results: C
     const m2 = Math.round(doors.reduce((a, p) => a + (p.length_mm * p.width_mm * p.qty) / 1e6, 0) * 100) / 100;
     const frame = Math.ceil(doors.reduce((a, p) => a + (2 * (p.length_mm + p.width_mm) * p.qty) / 1000, 0));
     add.push(line(`kaca-${extras.glass}`, "finishing", GLASS_NAME[extras.glass], m2, "m²", GLASS_PRICE[extras.glass], `Luas daun pintu kabinet atas (${doors.length} jenis daun)`));
-    add.push(line("frame-alu-kaca", "hardware", "Frame / Profil Aluminium Pintu Kaca (batang 3 m)", Math.ceil(frame / 3), "batang", 195000, `Keliling daun pintu kabinet atas ${frame} m'`));
-    add.push(line("fitting-pintu-kaca", "hardware", "Fitting / Engsel Pintu Frame Aluminium", doors.reduce((a, p) => a + p.qty, 0), "set", 43000, "1 set per daun pintu kaca"));
+    if (extras.glassFrame !== "wood_hpl") add.push(line("frame-alu-kaca", "hardware", "Frame / Profil Aluminium Pintu Kaca (batang 3 m)", Math.ceil(frame / 3), "batang", 195000, `Keliling daun pintu kabinet atas ${frame} m'`));
+    if (extras.glassFrame !== "wood_hpl") add.push(line("fitting-pintu-kaca", "hardware", "Fitting / Engsel Pintu Frame Aluminium", doors.reduce((a, p) => a + p.qty, 0), "set", 43000, "1 set per daun pintu kaca"));
   }
   let dropEdging = false;
   if (extras.edge === "list_gold" || extras.edge === "list_black" || extras.edge === "tusir") {
