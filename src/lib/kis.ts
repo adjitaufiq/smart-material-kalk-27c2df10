@@ -502,7 +502,7 @@ export function parseFinishExtras(raw: Record<string, unknown>): KisFinishExtras
     lighting: pick(alias(raw["lighting"], { led_strip: "led", "led-strip": "led", sorot: "spot", "led+spot": "led_spot" }), ["led", "spot", "led_spot"] as const),
   };
   const h = raw["handle"];
-  if (typeof h === "string" && h.trim()) out.handle = /tanpa|none|bevel|handleless|gola|no/i.test(h) ? "none" : "handle";
+  if (typeof h === "string" && h.trim()) out.handle = /tanpa|none|bevel|handleless|gola|^no$/i.test(h) ? "none" : "handle";
   const acc = hplRef(raw["hplAccent"]) ?? hplMotifs(raw).accent;
   if (acc) out.hplAccent = { code: acc.code, ...(acc.name ? { name: acc.name } : {}) };
   const others: { id: string; qty: number }[] = [];
