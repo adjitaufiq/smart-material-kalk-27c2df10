@@ -507,14 +507,25 @@ const EXTRA_ACC: Record<string, { name: string; unit: string; qty: number; price
 export function parseFinishExtras(raw: Record<string, unknown>): KisFinishExtras | undefined {
   const pick = <T extends string>(v: unknown, ok: readonly T[]) => (typeof v === "string" && (ok as readonly string[]).includes(v) ? (v as T) : undefined);
   const alias = (v: unknown, map: Record<string, string>) => (typeof v === "string" ? (map[v.trim().toLowerCase()] ?? v.trim().toLowerCase()) : v);
+  const obj = (v: unknown) => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : undefined);
+  // Skema bertingkat KIS: finishExtras { glassDoors, gasSprings, ledRun, spotlights }
+  const fe = obj(raw["finishExtras"]) ?? {};
+  const glassDoors = obj(fe["glassDoors"]);
+  const ledRun = obj(fe["ledRun"]);
+  const spots = obj(fe["spotlights"]);
+  const gas = obj(fe["gasSprings"]);
+  const spotQty = Number(spots?.["qty"]);
+  let lightingRaw = raw["lighting"];
+  if (lightingRaw === undefined && (ledRun || spotQty > 0)) lightingRaw = ledRun ? (spotQty > 0 ? "led_spot" : "led") : "spot";
   const out: KisFinishExtras = {
-    glass: pick(alias(raw["glass"], { buram: "fluted", frosted: "fluted", moru: "fluted", riben: "dark", gelap: "dark", bening: "clear" }), ["dark", "clear", "fluted"] as const),
+    glass: pick(alias(raw["glass"] ?? glassDoors?.["type"], { buram: "fluted", frosted: "fluted", moru: "fluted", riben: "dark", gelap: "dark", bening: "clear" }), ["dark", "clear", "fluted"] as const),
     edge: pick(alias(raw["edge"] ?? raw["edging"], { tusiran: "tusir", gold: "list_gold", black: "list_black", hitam: "list_black", pvc: "edging" }), ["list_gold", "list_black", "edging", "tusir"] as const),
-    lighting: pick(alias(raw["lighting"], { led_strip: "led", "led-strip": "led", sorot: "spot", "led+spot": "led_spot" }), ["led", "spot", "led_spot"] as const),
+    lighting: pick(alias(lightingRaw, { led_strip: "led", "led-strip": "led", sorot: "spot", "led+spot": "led_spot" }), ["led", "spot", "led_spot"] as const),
   };
+  if (spotQty > 0) out.spotQty = spotQty;
   const h = raw["handle"];
   if (typeof h === "string" && h.trim()) out.handle = /tanpa|none|bevel|handleless|gola|^no$/i.test(h) ? "none" : "handle";
-  const acc = hplRef(raw["hplAccent"]) ?? hplMotifs(raw).accent;
+  const acc = withHplInfo(hplRef(raw["hplAccent"]) ?? hplMotifs(raw).accent, raw);
   if (acc) out.hplAccent = { code: acc.code, ...(acc.name ? { name: acc.name } : {}), ...(acc.texture ? { texture: acc.texture } : {}) };
   const others: { id: string; qty: number }[] = [];
   if (Array.isArray(raw["accessories"])) {
