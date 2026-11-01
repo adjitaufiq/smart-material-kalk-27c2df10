@@ -9,7 +9,7 @@ import { KisSurvey } from "@/components/estimator/KisSurvey";
 import { KisAudit } from "@/components/estimator/KisAudit";
 import { applySurvey, surveyComplete, surveyOf } from "@/lib/estimator/kis-survey";
 import { kisProjectBom } from "@/lib/kis";
-import { applyQcToItems } from "@/lib/kis-audit";
+import { applyAuditToExtras, applyQcToItems, auditAdjustBom } from "@/lib/kis-audit";
 import { SectionCard, StatusBadge } from "@/components/estimator/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -87,7 +87,8 @@ function ProjectPage() {
   }
 
   const activeItem = project.items.find((i) => i.id === activeItemId) ?? null;
-  const baseBom = mergeProjectBom(results);
+  const kisApplied = !!project.kis?.qcAi && project.kis.qcApplied === project.kis.qcAi.scannedAt;
+  const baseBom = kisApplied ? auditAdjustBom(mergeProjectBom(results), project.kis!.qcAi, project.kis!.finishExtras) : mergeProjectBom(results);
   // Proyek KIS: 1 jalur — BOM hitungan + bahan ekstra spek KIS (kaca, lampu, tusir, HPL aksen, hidrolik).
   const projectBom = project.kis ? kisProjectBom(baseBom, results, project.kis.finishExtras) : baseBom;
   const projectCost = summarizeCost(projectBom);
@@ -99,6 +100,14 @@ function ProjectPage() {
       ...(project.kis ? { kis: { ...project.kis, calculatedAt: undefined } } : {}),
     });
   const surveyDone = project.items.length > 0 && project.items.every((i) => surveyComplete(surveyOf(i)));
+  const applyAudit = () => {
+    if (!project.kis?.qcAi) return;
+    const ai = project.kis.qcAi;
+    const { items, skipped } = applyQcToItems(project.items, ai);
+    save({ ...project, items: items.map((i) => applySurvey(i, surveyOf(i))), kis: { ...project.kis, finishExtras: applyAuditToExtras(project.kis.finishExtras, ai), qcApplied: ai.scannedAt, calculatedAt: undefined } });
+    toast.success("Hasil audit foto diterapkan ke spek & daftar bahan.");
+    if (skipped.length) toast.warning(`Jumlah pintu/laci belum bisa dibagi otomatis untuk: ${skipped.join(", ")}`);
+  };
   const calculateKis = () => {
     if (!project.kis) return;
     const { items, skipped } = applyQcToItems(project.items, project.kis.qcAi);
@@ -156,6 +165,8 @@ function ProjectPage() {
               onAi={(qcAi) => save({ ...project, kis: { ...project.kis!, qcAi, qcVisual: {}, calculatedAt: undefined } })}
               surveyDone={surveyDone}
               onCalculate={calculateKis}
+              applied={kisApplied}
+              onApply={applyAudit}
             />
           ) : null}
           {!project.kis ? (

@@ -40,6 +40,8 @@ export interface KisLink {
   qcAi?: import("./kis-audit").AiQcResult | undefined;
   /** Diisi saat user klik "Hitung" setelah scan QC; dikosongkan bila meteran/spek berubah */
   calculatedAt?: string | undefined;
+  /** scannedAt hasil AI yang sudah diterapkan lewat "Terapkan Hasil Audit" */
+  qcApplied?: string | undefined;
 }
 
 export interface KisImport {
