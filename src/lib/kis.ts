@@ -24,6 +24,8 @@ export interface KisLink {
   returnUrl: string;
   /** Posisi aksesori dari KIS, mis. { "rak-sayur": "kabinet ke-2 dari kiri" } */
   accessoryPositions?: Record<string, string> | undefined;
+  /** Kaca, list, lampu, aksesori tambahan dari specHints KIS */
+  finishExtras?: KisFinishExtras | undefined;
   /** Foto tersalin ke IndexedDB (key) — link KIS hanya aktif 1 jam */
   beforeBlobKey?: string | undefined;
   renderBlobKey?: string | undefined;
@@ -257,6 +259,7 @@ export function parseKisSearch(search: Record<string, unknown>): KisImport | nul
       renderUrl: str(search["renderUrl"]),
       interiorUrl: str(search["interiorUrl"]),
       accessoryPositions: Object.keys(hints.positions).length ? hints.positions : undefined,
+      finishExtras: parseFinishExtras(raw),
       returnUrl: safeReturnUrl(str(search["returnUrl"])),
       importedAt: new Date().toISOString(),
     },
@@ -285,7 +288,14 @@ export function buildKisEstimate(input: {
   bom: BomItem[];
   grandTotal: number | null;
   deepLinkUrl: string;
+  extras?: KisFinishExtras | undefined;
 }) {
+  const ex = finishExtraLines(input.extras, input.results, input.bom);
+  const baseBom = ex.dropEdging ? input.bom.filter((b) => b.group !== "edging") : input.bom;
+  const fullBom = [...baseBom, ...ex.add];
+  const edgingCost = ex.dropEdging ? input.bom.filter((b) => b.group === "edging").reduce((a, b) => a + (b.total ?? 0), 0) : 0;
+  const extraCost = ex.add.reduce((a, b) => a + (b.total ?? 0), 0);
+  const materialCost = input.grandTotal == null ? 0 : input.grandTotal - edgingCost + extraCost;
   const order: CalculationStatus[] = ["estimasi_awal", "estimasi_terverifikasi", "bom_siap_belanja"];
   // Status project = status item terendah.
   const lowest = input.results.length
@@ -296,7 +306,7 @@ export function buildKisEstimate(input: {
     : null;
   const sheetCount: Record<string, number> = {};
   const hardwareCount: Record<string, number> = {};
-  for (const b of input.bom) {
+  for (const b of fullBom) {
     if (b.group === "hardware") hardwareCount[slug(b.name)] = b.qty;
     else if (b.unit.toLowerCase().startsWith("lembar") || b.unit.toLowerCase() === "lbr")
       sheetCount[slug(b.name)] = b.qty;
@@ -309,7 +319,7 @@ export function buildKisEstimate(input: {
   // Estimasi hari kerja WS: ±4 lembar/hari potong-rakit-finishing + 2 hari pasang & finishing.
   const estimatedDays = totalSheets ? Math.ceil(totalSheets / 4) + 2 : 0;
   // Daftar belanja per baris: kuantitas + harga acuan TACO (HPP). KIS menambah margin.
-  const bom = input.bom.map((b) => ({
+  const bom = fullBom.map((b) => ({
     group: b.group,
     name: b.name,
     qty: b.qty,
@@ -319,7 +329,7 @@ export function buildKisEstimate(input: {
     needsConfirmation: b.unitPrice == null,
   }));
   // Kontrak 1 jalur KIS: shoppingList { name, code, qty, unit, unitPrice, subtotal }.
-  const shoppingList = input.bom.map((b) => {
+  const shoppingList = fullBom.map((b) => {
     const code = b.id.startsWith("taco:") ? (b.id.slice(b.id.indexOf(":", 5) + 1).split("|")[0] ?? b.id) : b.id;
     return { name: b.name, code, qty: b.qty, unit: b.unit, unitPrice: b.unitPrice, subtotal: b.total, needsConfirmation: b.unitPrice == null };
   });
@@ -327,10 +337,10 @@ export function buildKisEstimate(input: {
     projectId: input.kisProjectId,
     estimateId: input.estimateId,
     status: lowest ? STATUS[lowest] : "draft",
-    materialCost: input.grandTotal ?? 0,
+    materialCost: materialCost,
     workdays: estimatedDays,
     shoppingList,
-    estimatedMaterialCost: input.grandTotal ?? 0,
+    estimatedMaterialCost: materialCost,
     priceBasis: `HET TACO ${TACO_HET_DATE} (PVC Board ${TACO_PVC_HET_DATE}) — HPP sebelum margin workshop`,
     sheetCount: totalSheets,
     hardwareCount: totalHw,
@@ -376,4 +386,81 @@ export async function fetchAsDataUrl(url: string): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+/** Spek tambahan KIS (kaca, list, lampu, aksesori di luar master). */
+export interface KisFinishExtras {
+  glass?: "dark" | "clear" | "fluted" | undefined;
+  edge?: "list_gold" | "list_black" | "edging" | "tusir" | undefined;
+  lighting?: "led" | "spot" | "led_spot" | undefined;
+  /** Aksesori KIS yang belum ada di master SME, mis. ventilasi, hidrolik. */
+  otherAccessories?: { id: string; qty: number }[] | undefined;
+}
+
+const GLASS_NAME = { dark: "Kaca Riben / Gelap 5 mm", clear: "Kaca Bening 5 mm", fluted: "Kaca Fluted / Moru 5 mm" } as const;
+const EXTRA_ACC: Record<string, { name: string; unit: string; qty: number }> = {
+  ventilasi: { name: "Ventilasi Kisi-kisi Aluminium", unit: "pcs", qty: 2 },
+  hidrolik: { name: "Engsel Hidrolik / Gas Spring Pintu Angkat", unit: "pcs", qty: 2 },
+};
+
+export function parseFinishExtras(raw: Record<string, unknown>): KisFinishExtras | undefined {
+  const pick = <T extends string>(v: unknown, ok: readonly T[]) => (typeof v === "string" && (ok as readonly string[]).includes(v) ? (v as T) : undefined);
+  const out: KisFinishExtras = {
+    glass: pick(raw["glass"], ["dark", "clear", "fluted"] as const),
+    edge: pick(raw["edge"], ["list_gold", "list_black", "edging", "tusir"] as const),
+    lighting: pick(raw["lighting"], ["led", "spot", "led_spot"] as const),
+  };
+  const others: { id: string; qty: number }[] = [];
+  if (Array.isArray(raw["accessories"])) {
+    for (const a of raw["accessories"]) {
+      const id = typeof a === "string" ? a : a && typeof a === "object" ? (a as { id?: unknown }).id : null;
+      if (typeof id !== "string" || ACC_MAP[id] || !id.trim()) continue;
+      const q = a && typeof a === "object" ? Number((a as { qty?: unknown }).qty) : NaN;
+      others.push({ id, qty: q > 0 ? q : (EXTRA_ACC[id]?.qty ?? 1) });
+    }
+  }
+  if (others.length) out.otherAccessories = others;
+  return out.glass || out.edge || out.lighting || out.otherAccessories ? out : undefined;
+}
+
+const UPPER = /atas|upper|wall|gantung/i;
+/** Baris belanja tambahan dari spek KIS. Harga tanpa price list resmi = null (perlu konfirmasi). */
+export function finishExtraLines(extras: KisFinishExtras | undefined, results: CalculationResult[], bom: BomItem[]): { add: BomItem[]; dropEdging: boolean } {
+  const add: BomItem[] = [];
+  if (!extras) return { add, dropEdging: false };
+  const line = (id: string, group: BomItem["group"], name: string, qty: number, unit: string, unitPrice: number | null, explanation: string): BomItem => ({
+    id, group, name, qty, unit, unitPrice, total: unitPrice == null ? null : Math.round(unitPrice * qty), trace: [], explanation,
+  });
+  const parts = results.flatMap((r) => r.parts);
+  if (extras.glass) {
+    const doors = parts.filter((p) => UPPER.test(p.module_name) && /pintu|door/i.test(p.part_name));
+    const m2 = Math.round(doors.reduce((a, p) => a + (p.length_mm * p.width_mm * p.qty) / 1e6, 0) * 100) / 100;
+    const frame = Math.ceil(doors.reduce((a, p) => a + (2 * (p.length_mm + p.width_mm) * p.qty) / 1000, 0));
+    add.push(line(`kaca-${extras.glass}`, "finishing", GLASS_NAME[extras.glass], m2, "m²", null, `Luas daun pintu kabinet atas (${doors.length} jenis daun)`));
+    add.push(line("frame-alu-kaca", "hardware", "Frame / Profil Aluminium Pintu Kaca", frame, "m'", null, "Keliling daun pintu kabinet atas"));
+  }
+  let dropEdging = false;
+  if (extras.edge === "list_gold" || extras.edge === "list_black" || extras.edge === "tusir") {
+    const meters = Math.ceil(results.reduce((a, r) => a + r.edgingMeters.reduce((b, e) => b + e.meters, 0), 0));
+    dropEdging = true;
+    const name = extras.edge === "list_gold" ? "Profil List Gold / T-Profile Aluminium Gold" : extras.edge === "list_black" ? "Profil List Hitam / T-Profile Aluminium Black" : "Tusir (cat tepi panel)";
+    add.push(line(extras.edge, "edging", name, meters, "m'", null, "Pengganti edging PVC — panjang tepi sama dengan hitungan edging"));
+  }
+  if (extras.lighting) {
+    const hasLed = bom.some((b) => b.id === "led-strip");
+    if ((extras.lighting === "led" || extras.lighting === "led_spot") && !hasLed) {
+      const bottoms = parts.filter((p) => UPPER.test(p.module_name) && /bawah|bottom|alas/i.test(p.part_name));
+      const m = Math.ceil(bottoms.reduce((a, p) => a + (p.length_mm * p.qty) / 1000, 0));
+      add.push(line("led-strip", "elektrik", "LED Strip 12V Warm White", m, "m'", 45000, "Panjang bawah kabinet atas"));
+    }
+    if (extras.lighting === "spot" || extras.lighting === "led_spot")
+      add.push(line("lampu-spot", "elektrik", "Lampu Spot LED Kabinet", 1, "set", null, "Jumlah titik spot perlu konfirmasi"));
+    if (!bom.some((b) => b.id === "driver-led")) add.push(line("driver-led", "elektrik", "Trafo / Adaptor LED 12V", 1, "pcs", 165000, "1 trafo per sistem lampu"));
+    add.push(line("kabel-saklar", "elektrik", "Kabel & Sakelar Sensor Lampu", 1, "set", null, "Paket instalasi lampu kabinet"));
+  }
+  for (const a of extras.otherAccessories ?? []) {
+    const m = EXTRA_ACC[a.id];
+    add.push(line(a.id, "hardware", m?.name ?? a.id.replace(/-/g, " "), a.qty, m?.unit ?? "pcs", null, "Aksesori dipilih di KIS"));
+  }
+  return { add, dropEdging };
 }
