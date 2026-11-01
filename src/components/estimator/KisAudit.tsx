@@ -8,7 +8,7 @@ import { scanKisQc } from "@/lib/kis-qc.functions";
 import { SectionCard } from "@/components/estimator/shared";
 import { Button } from "@/components/ui/button";
 import type { KisLink } from "@/lib/kis";
-import { auditSpec, auditTable, shoppingBreakdown, type AiQcResult } from "@/lib/kis-audit";
+import { AUDIT_GROUPS, auditSpec, auditTable, shoppingBreakdown, type AiQcResult } from "@/lib/kis-audit";
 
 async function toDataUrl(key: string | undefined, url: string | undefined) {
   const cached = key ? await getDrawingBlob(key) : null;
@@ -38,6 +38,8 @@ export function KisAudit({
   onAi,
   surveyDone,
   onCalculate,
+  applied,
+  onApply,
 }: {
   kis: KisLink;
   results: CalculationResult[];
@@ -46,10 +48,14 @@ export function KisAudit({
   onAi: (r: AiQcResult) => void;
   surveyDone: boolean;
   onCalculate: () => void;
+  applied: boolean;
+  onApply: () => void;
 }) {
   const ai = kis.qcAi;
-  const findings = auditSpec({ results, bom, extras: kis.finishExtras, quick, ai });
-  const rows = auditTable({ results, bom, extras: kis.finishExtras, quick, ai });
+  const findings = auditSpec({ results, bom, extras: kis.finishExtras, quick, ai, applied });
+  const rows = auditTable({ results, bom, extras: kis.finishExtras, quick, ai, applied });
+  const gaps = rows.filter((r) => r.status === "kurang" || r.status === "lebih").length;
+  const allPass = !!ai && applied && findings.length === 0;
   const scan = useServerFn(scanKisQc);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -66,7 +72,7 @@ export function KisAudit({
       if (files.length === 0) throw new Error("Foto render dari KIS tidak tersedia. Buka ulang proyek dari KIS.");
       const r = await scan({ data: { files, specList: bom.map((b) => `${b.name} (${b.qty} ${b.unit})`) } });
       if (!r.ok) throw new Error(r.error);
-      onAi({ scannedAt: new Date().toISOString(), counts: r.counts, doors: r.doors, drawers: r.drawers, levels: r.levels, notes: r.notes, extra: r.extra });
+      onAi({ scannedAt: new Date().toISOString(), counts: r.counts, doors: r.doors, drawers: r.drawers, levels: r.levels, notes: r.notes, extra: r.extra, nonWorkshop: r.nonWorkshop });
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Scan AI QC gagal.");
     } finally {
@@ -98,27 +104,43 @@ export function KisAudit({
                 <th className="pl-1 text-right font-medium">Status</th>
               </tr>
             </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.id} className="border-b align-top last:border-0">
-                  <td className="py-1.5 pr-2">
-                    {r.label}
-                    {r.evidence ? <span className="block text-xs text-muted-foreground">{r.evidence}</span> : null}
-                  </td>
-                  <td className="px-1 text-center">{r.spec ?? "—"}</td>
-                  <td className="px-1 text-center">{r.seen ?? "?"}</td>
-                  <td className={`pl-1 text-right text-xs font-semibold ${r.status === "pass" ? "text-primary" : r.status === "tidak_jelas" ? "text-muted-foreground" : "text-destructive"}`}>
-                    {r.status === "pass" ? "PASS" : r.status === "kurang" ? "GAP: kurang" : r.status === "lebih" ? "GAP: lebih" : ai ? "Tidak jelas" : "Belum scan"}
-                  </td>
+            {AUDIT_GROUPS.map((g) => (
+              <tbody key={g}>
+                <tr>
+                  <td colSpan={4} className="pt-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{g}</td>
                 </tr>
-              ))}
-            </tbody>
+                {rows.filter((r) => r.group === g).map((r) => (
+                  <tr key={r.id} className="border-b align-top last:border-0">
+                    <td className="py-1.5 pr-2">
+                      {r.label} <span className="text-xs text-muted-foreground">({r.unit})</span>
+                      {r.evidence ? <span className="block text-xs text-muted-foreground">{r.evidence}</span> : null}
+                    </td>
+                    <td className="px-1 text-center">{r.spec ?? "—"}</td>
+                    <td className="px-1 text-center">{r.seen ?? "?"}</td>
+                    <td className={`pl-1 text-right text-xs font-semibold ${r.status === "pass" ? "text-primary" : r.status === "tidak_jelas" ? "text-muted-foreground" : "text-destructive"}`}>
+                      {r.status === "pass" ? "PASS" : r.status === "kurang" ? "GAP: kurang" : r.status === "lebih" ? "GAP: lebih" : ai ? "Tidak jelas" : "Belum scan"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            ))}
           </table>
         </div>
         {ai?.notes?.length ? (
           <ul className="mt-2 list-disc pl-4 text-xs text-muted-foreground">
             {ai.notes.map((n, i) => <li key={i}>{n}</li>)}
           </ul>
+        ) : null}
+        {ai?.nonWorkshop?.length ? (
+          <div className="mt-3 rounded-md border p-2 text-xs">
+            <p className="font-semibold">Info lapangan (non-workshop, bukan kekurangan bahan)</p>
+            <p className="text-muted-foreground">{ai.nonWorkshop.join(", ")} — cukup siapkan coakan/penyesuaian meja.</p>
+          </div>
+        ) : null}
+        {ai && !applied ? (
+          <Button className="mt-3 w-full" variant="secondary" onClick={onApply}>
+            Terapkan Hasil Audit ({gaps} gap) — pintu, laci, engsel, hidrolik, sorot, handle
+          </Button>
         ) : null}
         {!ai ? null : findings.length === 0 ? (
           <p className="mt-3 flex items-center gap-2 rounded-md border p-2 text-sm text-primary">
@@ -144,9 +166,10 @@ export function KisAudit({
         <ol className="mb-3 space-y-1 text-sm">
           <li>{surveyDone ? "✓" : "1."} Meteran lapangan {surveyDone ? "lengkap" : "belum lengkap"}</li>
           <li>{ai ? "✓" : "2."} Scan AI Audit {ai ? "sudah" : "belum"} (jumlah pintu & laci dari foto dipakai untuk engsel & rel)</li>
-          <li>{kis.calculatedAt ? "✓" : "3."} {kis.calculatedAt ? `Dihitung ${new Date(kis.calculatedAt).toLocaleString("id-ID")}` : "Belum dihitung"}</li>
+          <li>{allPass ? "✓" : "3."} Audit 100% PASS {allPass ? "" : applied ? "— masih ada gap, cek tabel / scan ulang" : "— klik Terapkan Hasil Audit"}</li>
+          <li>{kis.calculatedAt ? "✓" : "4."} {kis.calculatedAt ? `Dihitung ${new Date(kis.calculatedAt).toLocaleString("id-ID")}` : "Belum dihitung"}</li>
         </ol>
-        <Button className="w-full" onClick={onCalculate} disabled={!surveyDone || !ai}>
+        <Button className="w-full" onClick={onCalculate} disabled={!surveyDone || !allPass}>
           {kis.calculatedAt ? "Hitung ulang" : "Hitung Estimasi Material"}
         </Button>
       </SectionCard>
