@@ -130,9 +130,9 @@ export function parseSpecHints(search: Record<string, unknown>): {
     }
   }
   const motifs = hplMotifs(raw);
-  const gOut = hplRef(raw["hplOutside"]) ?? motifs.outside;
-  const gIn = hplRef(raw["hplInside"]);
-  const gTop = hplRef(raw["hplTop"]) ?? motifs.top;
+  const gOut = withHplInfo(hplRef(raw["hplOutside"]) ?? motifs.outside, raw);
+  const gIn = withHplInfo(hplRef(raw["hplInside"]), raw);
+  const gTop = withHplInfo(hplRef(raw["hplTop"]) ?? motifs.top, raw);
   if (gTop) {
     spec.hplTop = gTop;
     found = true;
@@ -242,6 +242,17 @@ export function normTop(v: unknown): QuickSpec["top"] | undefined {
   if (/double|dobel|2[\s_-]*lapis|36/.test(t)) return "double";
   if (/none|tanpa|granit|solid surface/.test(t)) return "none";
   return undefined;
+}
+
+/** Lengkapi kode HPL dengan nama/tekstur resmi dari kamus KIS `hplInfo` (kode tetap apa adanya). */
+export function withHplInfo(ref: HplRef | undefined, raw: Record<string, unknown>): HplRef | undefined {
+  if (!ref) return ref;
+  const info = raw["hplInfo"];
+  if (!info || typeof info !== "object") return ref;
+  const key = Object.keys(info).find((k) => k.replace(/\s+/g, "").toUpperCase() === ref.code.replace(/\s+/g, "").toUpperCase());
+  const e = key ? hplRef({ code: ref.code, ...((info as Record<string, unknown>)[key] as object) }) : undefined;
+  if (!e) return ref;
+  return { ...ref, ...(ref.name ? {} : e.name ? { name: e.name } : {}), ...(ref.texture ? {} : e.texture ? { texture: e.texture } : {}) };
 }
 
 /** Array motif HPL KIS: [{ code, usage }] — usage "top" | "aksen"/"accent" | lainnya = luar. */
@@ -537,6 +548,12 @@ export function parseFinishExtras(raw: Record<string, unknown>): KisFinishExtras
       const q = a && typeof a === "object" ? Number((a as { qty?: unknown }).qty) : NaN;
       others.push({ id: norm, qty: q > 0 ? q : (EXTRA_ACC[norm]?.qty ?? 1) });
     }
+  }
+  const gasQty = Number(gas?.["qty"]);
+  if (gasQty > 0) {
+    const g = others.find((o) => o.id === "hidrolik");
+    if (g) g.qty = gasQty;
+    else others.push({ id: "hidrolik", qty: gasQty });
   }
   if (others.length) out.otherAccessories = others;
   return out.glass || out.edge || out.lighting || out.otherAccessories || out.hplAccent || out.handle ? out : undefined;
