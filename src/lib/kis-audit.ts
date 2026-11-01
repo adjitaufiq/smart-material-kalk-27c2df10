@@ -19,6 +19,14 @@ export type VisualCheckId = (typeof VISUAL_CHECKS)[number]["id"];
 /** true = terlihat di gambar, false = tidak ada, undefined = belum dicek */
 export type VisualQc = Partial<Record<VisualCheckId, boolean>>;
 
+export interface AiQcResult {
+  scannedAt: string;
+  items: { id: VisualCheckId; status: "ada" | "tidak" | "tidak_jelas"; evidence: string }[];
+  doors: number | null;
+  drawers: number | null;
+  extra: string[];
+}
+
 export interface AuditFinding {
   type: "kurang" | "lebih";
   item: string;
@@ -45,6 +53,7 @@ export function auditSpec(input: {
   bom: BomItem[];
   extras?: KisFinishExtras | undefined;
   visual?: VisualQc | undefined;
+  ai?: AiQcResult | undefined;
 }): AuditFinding[] {
   const out: AuditFinding[] = [];
   const parts = input.results.flatMap((r) => r.parts);
@@ -56,8 +65,13 @@ export function auditSpec(input: {
   if (drawers > 0 && !slide) out.push({ type: "kurang", item: "Rel laci", note: `${drawers} laci tanpa rel di daftar bahan` });
   if (hinge && doors === 0) out.push({ type: "lebih", item: "Engsel", note: "Engsel ada tapi modul tidak punya pintu" });
   if (slide && drawers === 0) out.push({ type: "lebih", item: "Rel laci", note: "Rel laci ada tapi modul tidak punya laci" });
+  const ai = input.ai;
+  if (ai?.doors != null && ai.doors !== doors) out.push({ type: ai.doors > doors ? "kurang" : "lebih", item: "Daun pintu", note: `AI melihat ${ai.doors} pintu di gambar, modul punya ${doors}` });
+  if (ai?.drawers != null && ai.drawers !== drawers) out.push({ type: ai.drawers > drawers ? "kurang" : "lebih", item: "Laci", note: `AI melihat ${ai.drawers} laci di gambar, modul punya ${drawers}` });
+  for (const x of ai?.extra ?? []) out.push({ type: "kurang", item: x, note: "Terlihat di gambar (AI), tidak ada di daftar bahan" });
   for (const c of VISUAL_CHECKS) {
-    const seen = input.visual?.[c.id];
+    const st = ai?.items.find((i) => i.id === c.id)?.status;
+    const seen = input.visual?.[c.id] ?? (st === "ada" ? true : st === "tidak" ? false : undefined);
     if (seen === undefined) continue;
     const spec = inSpec(c.id, input.bom, input.extras);
     if (seen && !spec) out.push({ type: "kurang", item: c.label, note: "Terlihat di gambar, belum ada di spek KIS" });
