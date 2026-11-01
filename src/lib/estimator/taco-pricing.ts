@@ -334,7 +334,7 @@ export const GLUE_BLEK_FROM_GALON = 3;
 export function glueOrder(kg: number, type: GlueType) {
   const g = TACO_GLUE[type];
   let blek = Math.floor(kg / GLUE_BLEK_KG);
-  let galon = Math.ceil(Math.max(0, kg - blek * GLUE_BLEK_KG) / GLUE_GALON_KG - 1e-9);
+  let galon = Math.max(0, Math.ceil((kg - blek * GLUE_BLEK_KG) / GLUE_GALON_KG - 1e-9));
   if (galon >= GLUE_BLEK_FROM_GALON || galon * g.galon.harga > g.blek.harga) {
     blek += 1;
     galon = 0;
