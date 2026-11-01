@@ -506,6 +506,8 @@ export interface KisFinishExtras {
   handle?: "none" | "handle" | undefined;
   /** jumlah titik lampu sorot (hasil audit foto) */
   spotQty?: number | undefined;
+  /** bingkai pintu kaca: wood_hpl = kayu lapis HPL (tanpa profil aluminium) */
+  glassFrame?: "wood_hpl" | "aluminium" | undefined;
 }
 
 const GLASS_PRICE = { dark: 175000, clear: 140000, fluted: 295000 } as const;
