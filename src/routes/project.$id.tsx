@@ -127,6 +127,7 @@ function ProjectPage() {
               results={results}
               bom={projectBom}
               grandTotal={projectCost.grandTotal}
+              onKis={(kis) => save({ ...project, kis })}
               ready={project.items.length > 0 && project.items.every((i) => surveyComplete(surveyOf(i)))}
             />
           ) : null}

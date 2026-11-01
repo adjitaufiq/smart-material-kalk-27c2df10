@@ -3,8 +3,8 @@ import { ExternalLink, Send } from "lucide-react";
 
 import { SectionCard } from "@/components/estimator/shared";
 import { Button } from "@/components/ui/button";
-import { getDrawingBlob } from "@/lib/drawing-blobs";
-import { buildKisEstimate, kisReturnLink } from "@/lib/kis";
+import { getDrawingBlob, putDrawingBlob } from "@/lib/drawing-blobs";
+import { buildKisEstimate, kisReturnLink, type KisLink } from "@/lib/kis";
 import { auditSpec } from "@/lib/kis-audit";
 import type { BomItem, CalculationResult, Project } from "@/lib/estimator/types";
 
@@ -23,8 +23,10 @@ export function KisPanel({
   bom,
   grandTotal,
   ready = true,
+  onKis,
 }: {
   ready?: boolean;
+  onKis: (k: KisLink) => void;
   project: Project;
   results: CalculationResult[];
   bom: BomItem[];
