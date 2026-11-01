@@ -20,3 +20,15 @@ describe("audit spek QC", () => {
     expect(shopCategory(b("paku-f30", "hardware", "Paku F30"))).toBe("Perintilan Workshop");
   });
 });
+
+describe("AI QC layer", () => {
+  it("melaporkan item terlihat AI yang tidak ada di BOM dan selisih pintu", () => {
+    const f = auditSpec({
+      results: [],
+      bom: [],
+      ai: { scannedAt: "", items: [{ id: "lampu", status: "ada", evidence: "LED bawah kabinet" }], doors: 4, drawers: null, extra: ["Rak sepatu"] },
+    });
+    expect(f.map((x) => x.item)).toEqual(["Daun pintu", "Rak sepatu", "Lampu LED / sorot"]);
+    expect(f.every((x) => x.type === "kurang")).toBe(true);
+  });
+});
