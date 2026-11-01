@@ -8,7 +8,7 @@ import { scanKisQc } from "@/lib/kis-qc.functions";
 import { SectionCard } from "@/components/estimator/shared";
 import { Button } from "@/components/ui/button";
 import type { KisLink } from "@/lib/kis";
-import { AUDIT_GROUPS, auditSpec, auditTable, shoppingBreakdown, type AiQcResult } from "@/lib/kis-audit";
+import { AUDIT_GROUPS, hplZones, auditSpec, auditTable, shoppingBreakdown, type AiQcResult } from "@/lib/kis-audit";
 
 async function toDataUrl(key: string | undefined, url: string | undefined) {
   const cached = key ? await getDrawingBlob(key) : null;
@@ -59,6 +59,14 @@ export function KisAudit({
   const scan = useServerFn(scanKisQc);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const zoneList = () => {
+    const z = hplZones(quick, kis.finishExtras).map((m) => `${m.usage}: TACO ${m.code}${m.name ? ` — ${m.name}` : ""}${m.texture ? ` (${m.texture})` : ""}`);
+    if (quick?.outside === "duco") z.unshift(`kabinet: cat DUCO${quick.ducoHex ? ` warna ${quick.ducoHex}` : ""} (bukan zona HPL)`);
+    if (quick?.outside === "tacosheet") z.push("bodi luar memakai TACO Sheet (PVC), dihitung sebagai zona motif");
+    if (/granit/.test(quick?.topMaterial ?? "")) z.push("top table: GRANIT (bukan zona HPL, non-workshop)");
+    if (quick?.inside === "blockmin" || quick?.body?.startsWith("blockmin")) z.push("bagian dalam: Blockmin putih (BUKAN zona HPL)");
+    return z;
+  };
   const runScan = async () => {
     setBusy(true);
     setErr(null);
@@ -70,7 +78,7 @@ export function KisAudit({
       ] as const;
       const files = imgs.flatMap(([name, d]) => (d && d.startsWith("data:") ? [{ name, mime: d.slice(5, d.indexOf(";")), dataUrl: d }] : []));
       if (files.length === 0) throw new Error("Foto render dari KIS tidak tersedia. Buka ulang proyek dari KIS.");
-      const r = await scan({ data: { files, specList: bom.map((b) => `${b.name} (${b.qty} ${b.unit})`) } });
+      const r = await scan({ data: { files, specList: bom.map((b) => `${b.name} (${b.qty} ${b.unit})`), zones: zoneList() } });
       if (!r.ok) throw new Error(r.error);
       onAi({ scannedAt: new Date().toISOString(), counts: r.counts, doors: r.doors, drawers: r.drawers, levels: r.levels, notes: r.notes, extra: r.extra, nonWorkshop: r.nonWorkshop });
     } catch (e) {
