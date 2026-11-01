@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { finishExtraLines, parseKisSearch, toBase64Url } from "./kis";
 import { calculateHardware } from "./estimator/engine";
-import { makeModule } from "./estimator/modules";
+import { makeModule } from "./estimator/factory";
 
 const hints = (o: object) => toBase64Url(JSON.stringify(o));
 
