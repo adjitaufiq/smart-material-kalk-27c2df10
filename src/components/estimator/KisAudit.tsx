@@ -8,7 +8,7 @@ import { scanKisQc } from "@/lib/kis-qc.functions";
 import { SectionCard } from "@/components/estimator/shared";
 import { Button } from "@/components/ui/button";
 import type { KisLink } from "@/lib/kis";
-import { AUDIT_GROUPS, hplZones, auditSpec, auditTable, shoppingBreakdown, type AiQcResult } from "@/lib/kis-audit";
+import { AUDIT_GROUPS, hplZones, auditSpec, nonWorkshopNotes, auditTable, shoppingBreakdown, type AiQcResult } from "@/lib/kis-audit";
 
 async function toDataUrl(key: string | undefined, url: string | undefined) {
   const cached = key ? await getDrawingBlob(key) : null;
@@ -123,10 +123,10 @@ export function KisAudit({
                       {r.label} <span className="text-xs text-muted-foreground">({r.unit})</span>
                       {r.evidence ? <span className="block text-xs text-muted-foreground">{r.evidence}</span> : null}
                     </td>
-                    <td className="px-1 text-center">{r.spec ?? "—"}</td>
+                    <td className="px-1 text-center">{r.spec ?? (applied ? "?" : "—")}</td>
                     <td className="px-1 text-center">{r.seen ?? "?"}</td>
                     <td className={`pl-1 text-right text-xs font-semibold ${r.status === "pass" ? "text-primary" : r.status === "tidak_jelas" ? "text-muted-foreground" : "text-destructive"}`}>
-                      {r.status === "pass" ? "PASS" : r.status === "kurang" ? "GAP: kurang" : r.status === "lebih" ? "GAP: lebih" : ai ? "Tidak jelas" : "Belum scan"}
+                      {r.status === "pass" ? "PASS" : r.status === "kurang" ? "GAP: kurang" : r.status === "lebih" ? "GAP: lebih" : r.spec == null ? (ai ? "Klik Terapkan" : "Menunggu scan") : ai ? "Tidak jelas" : "Belum scan"}
                     </td>
                   </tr>
                 ))}
@@ -139,10 +139,10 @@ export function KisAudit({
             {ai.notes.map((n, i) => <li key={i}>{n}</li>)}
           </ul>
         ) : null}
-        {ai?.nonWorkshop?.length ? (
+        {nonWorkshopNotes(ai).length ? (
           <div className="mt-3 rounded-md border p-2 text-xs">
-            <p className="font-semibold">Info lapangan (non-workshop, bukan kekurangan bahan)</p>
-            <p className="text-muted-foreground">{ai.nonWorkshop.join(", ")} — cukup siapkan coakan/penyesuaian meja.</p>
+            <p className="font-semibold">Catatan Non-Workshop / Pekerjaan Luar (bukan GAP)</p>
+            <p className="text-muted-foreground">{nonWorkshopNotes(ai).join(", ")} — cukup siapkan coakan/penyesuaian meja.</p>
           </div>
         ) : null}
         {ai && !applied ? (
