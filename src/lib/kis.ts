@@ -38,6 +38,8 @@ export interface KisLink {
   qcVisual?: import("./kis-audit").VisualQc | undefined;
   /** Hasil scan AI QC (layer 2) atas foto render luar & dalam */
   qcAi?: import("./kis-audit").AiQcResult | undefined;
+  /** Diisi saat user klik "Hitung" setelah scan QC; dikosongkan bila meteran/spek berubah */
+  calculatedAt?: string | undefined;
 }
 
 export interface KisImport {

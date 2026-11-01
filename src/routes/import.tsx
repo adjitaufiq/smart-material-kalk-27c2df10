@@ -5,6 +5,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { newFurnitureItem } from "@/lib/estimator/factory";
 import { putDrawingBlob } from "@/lib/drawing-blobs";
 import { fetchAsDataUrl, parseKisSearch } from "@/lib/kis";
+import { applySurvey, surveyOf } from "@/lib/estimator/kis-survey";
 import { loadProjects, newProject, upsertProject } from "@/lib/store";
 
 export const Route = createFileRoute("/import")({
@@ -59,7 +60,14 @@ function ImportPage() {
             }
           }
         }
-        upsertProject({ ...existing, kis: link });
+        link.calculatedAt = undefined;
+        // Spek KIS terbaru (3 motif HPL, top, hardware) menimpa spek lama; meteran tetap.
+        const items = existing.items.map((it) => {
+          const src = data.items.find((i) => i.name === it.name);
+          const hint = data.specHint || src?.specOverride ? { ...(data.specHint ?? DEFAULT_QUICK_SPEC), ...(src?.specOverride ?? {}) } : it.quickSpecHint;
+          return applySurvey({ ...it, quickSpecHint: hint, quickSpec: undefined }, surveyOf(it));
+        });
+        upsertProject({ ...existing, items, kis: link });
         void navigate({ to: "/project/$id", params: { id: existing.id }, replace: true });
       })();
       return;
