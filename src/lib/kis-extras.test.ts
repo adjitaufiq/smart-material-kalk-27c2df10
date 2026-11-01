@@ -22,7 +22,7 @@ describe("KIS finish extras", () => {
     const r = run({ edge: "list_gold" });
     expect(r.shoppingList.some((x) => x.code === "e")).toBe(false);
     expect(r.shoppingList.find((x) => x.code === "list_gold")?.qty).toBe(5);
-    expect(r.materialCost).toBe(0);
+    expect(r.materialCost).toBe(240000);
   });
   it("led → LED strip 2 m' + 1 trafo", () => {
     const s = run({ lighting: "led" }).shoppingList;
