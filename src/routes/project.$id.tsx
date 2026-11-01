@@ -130,6 +130,7 @@ function ProjectPage() {
             />
           ) : null}
           {project.kis ? <KisSurvey items={project.items} onChange={updateItem} /> : null}
+          {!project.kis ? (
           <SectionCard
             title="Furniture Item"
             description="Setiap item dihitung terpisah lalu digabung di level project."
@@ -172,6 +173,7 @@ function ProjectPage() {
               }
             />
           </SectionCard>
+          ) : null}
 
           {projectBom.length > 0 ? (
             <SectionCard
@@ -198,6 +200,7 @@ function ProjectPage() {
             </SectionCard>
           ) : null}
 
+          {!project.kis ? (
           <SectionCard title="Riwayat Revisi" description="Snapshot input tersimpan utuh.">
             {project.revisions.length === 0 ? (
               <p className="text-sm text-muted-foreground">Belum ada revisi tersimpan.</p>
@@ -220,6 +223,7 @@ function ProjectPage() {
               </ul>
             )}
           </SectionCard>
+          ) : null}
         </div>
       )}
     </main>
