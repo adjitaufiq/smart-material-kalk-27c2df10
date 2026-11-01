@@ -515,7 +515,7 @@ export function parseFinishExtras(raw: Record<string, unknown>): KisFinishExtras
   const h = raw["handle"];
   if (typeof h === "string" && h.trim()) out.handle = /tanpa|none|bevel|handleless|gola|^no$/i.test(h) ? "none" : "handle";
   const acc = hplRef(raw["hplAccent"]) ?? hplMotifs(raw).accent;
-  if (acc) out.hplAccent = { code: acc.code, ...(acc.name ? { name: acc.name } : {}) };
+  if (acc) out.hplAccent = { code: acc.code, ...(acc.name ? { name: acc.name } : {}), ...(acc.texture ? { texture: acc.texture } : {}) };
   const others: { id: string; qty: number }[] = [];
   if (Array.isArray(raw["accessories"])) {
     for (const a of raw["accessories"]) {
