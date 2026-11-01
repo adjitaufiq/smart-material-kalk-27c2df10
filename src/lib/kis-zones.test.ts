@@ -52,3 +52,21 @@ describe("KIS payload bertingkat finishExtras + hplInfo (Adji v2)", () => {
     expect(f.otherAccessories?.find((o) => o.id === "hidrolik")?.qty).toBe(4);
   });
 });
+
+import { parseFinishExtras as _pfe } from "./kis";
+import { nonWorkshopNotes as _nwn, specCounts as _sc } from "./kis-audit";
+describe("SOP KIS: top HPL, bingkai kayu HPL, sorot null", () => {
+  const ex = _pfe({ finishExtras: { glassDoors: { type: "fluted", frame: "wood_hpl", hplCode: "TH 001 AA", qty: null }, spotlights: { qty: null } } })!;
+  it("frame wood_hpl terbaca + kode aksen", () => {
+    expect(ex.glassFrame).toBe("wood_hpl");
+    expect(ex.hplAccent?.code).toBe("TH 001 AA");
+  });
+  it("spotlights qty null → sorot menunggu foto, bukan 0", () => {
+    expect(ex.lighting).toBe("spot");
+    expect(_sc([], [], ex, null).sorot).toBeNull();
+  });
+  it("top HPL motif granit tidak masuk non-workshop", () => {
+    const ai = { scannedAt: "", doors: null, drawers: null, extra: [], nonWorkshop: ["top granit hitam", "sink"] };
+    expect(_nwn(ai, { topMaterial: "hpl" } as never)).toEqual(["sink"]);
+  });
+});
