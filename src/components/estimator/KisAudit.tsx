@@ -142,10 +142,10 @@ export function KisAudit({
             {ai.notes.map((n, i) => <li key={i}>{n}</li>)}
           </ul>
         ) : null}
-        {nonWorkshopNotes(ai).length ? (
+        {nonWorkshopNotes(ai, quick).length ? (
           <div className="mt-3 rounded-md border p-2 text-xs">
             <p className="font-semibold">Catatan Non-Workshop / Pekerjaan Luar (bukan GAP)</p>
-            <p className="text-muted-foreground">{nonWorkshopNotes(ai).join(", ")} — cukup siapkan coakan/penyesuaian meja.</p>
+            <p className="text-muted-foreground">{nonWorkshopNotes(ai, quick).join(", ")} — cukup siapkan coakan/penyesuaian meja.</p>
           </div>
         ) : null}
         {ai && !applied ? (
