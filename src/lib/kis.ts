@@ -278,6 +278,11 @@ const STATUS: Record<CalculationStatus, string> = {
   bom_siap_belanja: "production_ready",
 };
 
+/** Perintilan workshop: dihitung & dibelanjakan di SME, TIDAK dikirim ke KIS. */
+export const WORKSHOP_MINOR_IDS = new Set([
+  "sekrup", "sekrup-sambung", "paku-f30", "pin-ambalan", "fischer-s8", "lem-putih", "minifix", "dynabolt",
+]);
+
 function slug(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
 }
@@ -293,7 +298,10 @@ export function buildKisEstimate(input: {
 }) {
   const ex = finishExtraLines(input.extras, input.results, input.bom);
   const baseBom = ex.dropEdging ? input.bom.filter((b) => b.group !== "edging") : input.bom;
-  const fullBom = [...baseBom, ...ex.add];
+  const allBom = [...baseBom, ...ex.add];
+  const minorBom = allBom.filter((b) => WORKSHOP_MINOR_IDS.has(b.id));
+  const fullBom = allBom.filter((b) => !WORKSHOP_MINOR_IDS.has(b.id));
+  const workshopConsumablesCost = minorBom.reduce((a, b) => a + (b.total ?? 0), 0);
   const edgingCost = ex.dropEdging ? input.bom.filter((b) => b.group === "edging").reduce((a, b) => a + (b.total ?? 0), 0) : 0;
   const extraCost = ex.add.reduce((a, b) => a + (b.total ?? 0), 0);
   const materialCost = input.grandTotal == null ? 0 : input.grandTotal - edgingCost + extraCost;
@@ -341,6 +349,8 @@ export function buildKisEstimate(input: {
     materialCost: materialCost,
     workdays: estimatedDays,
     shoppingList,
+    /** sudah termasuk di materialCost; rinciannya hanya di SME */
+    workshopConsumablesCost,
     estimatedMaterialCost: materialCost,
     priceBasis: `HET TACO ${TACO_HET_DATE} (PVC Board ${TACO_PVC_HET_DATE}) — HPP sebelum margin workshop`,
     sheetCount: totalSheets,

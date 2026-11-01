@@ -325,15 +325,17 @@ export const TACO_GLUE = {
 export type GlueType = keyof typeof TACO_GLUE;
 export const GLUE_GALON_KG = 2.5;
 export const GLUE_BLEK_KG = 10;
-/** Konsumsi lem kontak HPL: ± 1 kg per 4 m² bidang (dua sisi dioles). */
-export const GLUE_M2_PER_KG = 4;
+/** Standar workshop: 1 kg lem per 1 lembar HPL 1220×2440 (≈2,98 m²) → 1 blek = ± 10 lembar. */
+export const GLUE_M2_PER_KG = (1220 * 2440) / 1e6;
+/** Mulai butuh 3 galon (> 5 kg) → rekomendasi 1 blek: per kg lebih irit & ada cadangan. */
+export const GLUE_BLEK_FROM_GALON = 3;
 
 /** Kombinasi blek + galon termurah yang menutup kebutuhan kg. */
 export function glueOrder(kg: number, type: GlueType) {
   const g = TACO_GLUE[type];
   let blek = Math.floor(kg / GLUE_BLEK_KG);
-  let galon = Math.ceil(Math.max(0, kg - blek * GLUE_BLEK_KG) / GLUE_GALON_KG - 1e-9);
-  if (galon * g.galon.harga > g.blek.harga) {
+  let galon = Math.max(0, Math.ceil((kg - blek * GLUE_BLEK_KG) / GLUE_GALON_KG - 1e-9));
+  if (galon >= GLUE_BLEK_FROM_GALON || galon * g.galon.harga > g.blek.harga) {
     blek += 1;
     galon = 0;
   }

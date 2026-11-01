@@ -160,6 +160,11 @@ export function calculateHardware(
 ): BomItem[] {
   const map = new Map<string, BomItem>();
   let screws = 0;
+  // Engsel TACO dijual per SET isi 2 pcs → kumpulkan pcs dulu, lalu bulatkan ke set.
+  const hingePcs = new Map<string, { pcs: number; trace: string[] }>();
+  let cabinets = 0;
+  let wallCabinets = 0;
+  let shelfPins = 0;
   for (const mod of modules) {
     const tpl = findTemplate(mod.templateId);
     const clearance = tpl?.door_clearance_mm ?? 3;
@@ -184,12 +189,13 @@ export function calculateHardware(
         });
         const override = mod.hingeOverride ?? overrides[`hinge:${mod.id}`] ?? null;
         const perDoor = override ?? rule.count;
-        addHw(
-          map,
-          mod.hingeId ?? "engsel-sendok",
-          perDoor * mod.doors * factor,
-          `${mod.name}: ${override !== null ? `override user ${override} engsel/pintu` : rule.reason} × ${mod.doors} pintu × ${factor} modul`,
+        const hid = mod.hingeId ?? "engsel-sendok";
+        const h = hingePcs.get(hid) ?? { pcs: 0, trace: [] };
+        h.pcs += perDoor * mod.doors * factor;
+        h.trace.push(
+          `${mod.name}: ${override !== null ? `override user ${override} engsel/pintu` : rule.reason} × ${mod.doors} pintu × ${factor} modul = ${perDoor * mod.doors * factor} pcs`,
         );
+        hingePcs.set(hid, h);
       }
 
       addHw(
@@ -245,6 +251,9 @@ export function calculateHardware(
         `${mod.name}: ${joints} sambungan struktural × 4 set × ${factor} modul`,
       );
       screws += 40 * factor;
+      cabinets += factor;
+      shelfPins += 4 * mod.shelves * factor;
+      if (mod.kind === "wall_cabinet" || mod.kind === "floating_cabinet") wallCabinets += factor;
     }
     if (mod.kind === "backdrop_panel" && mod.frameGrid) screws += 30 * factor;
     if (mod.adjusterFeet && mod.adjusterFeet > 0) {
@@ -268,9 +277,31 @@ export function calculateHardware(
       );
     }
   }
+  for (const [hid, h] of hingePcs) {
+    const sets = Math.ceil(h.pcs / 2);
+    addHw(map, hid, sets, `${h.trace.join("; ")} → total ${h.pcs} pcs ÷ 2 pcs/set = ${sets} set`);
+  }
   if (screws > 0) {
     const boxes = Math.ceil(screws / 100);
     addHw(map, "sekrup", boxes, `Total ± ${screws} sekrup ÷ 100 per box = ${boxes} box`);
+  }
+  // Perintilan workshop (hanya untuk belanja tukang; tidak dikirim ke KIS).
+  if (cabinets > 0) {
+    const nails = Math.ceil(cabinets / 10);
+    addHw(map, "paku-f30", nails, `${cabinets} modul kabinet ÷ 10 modul per box = ${nails} box`);
+    const pva = Math.ceil(cabinets / 8);
+    addHw(map, "lem-putih", pva, `${cabinets} modul ÷ 8 modul per botol 1 kg = ${pva} botol`);
+    const joinScrews = Math.ceil((cabinets * 6) / 100);
+    addHw(map, "sekrup-sambung", joinScrews, `${cabinets} modul × 6 sekrup sambung antar-kabinet ÷ 100 per box = ${joinScrews} box`);
+  }
+  if (shelfPins > 0) {
+    const packs = Math.ceil(shelfPins / 50);
+    addHw(map, "pin-ambalan", packs, `${shelfPins} pin (4 per ambalan) ÷ 50 per pack = ${packs} pack`);
+  }
+  if (wallCabinets > 0) {
+    const sets = wallCabinets * 4;
+    const packs = Math.ceil(sets / 50);
+    addHw(map, "fischer-s8", packs, `${wallCabinets} kabinet gantung × 4 titik = ${sets} set ÷ 50 per pack = ${packs} pack`);
   }
   return [...map.values()];
 }
@@ -286,7 +317,7 @@ export function calculateHplGlue(parts: Part[], glue: GlueType = "active"): BomI
   const g = TACO_GLUE[glue];
   const kg = area / GLUE_M2_PER_KG;
   const order = glueOrder(kg, glue);
-  const trace = `Bidang HPL ${area.toFixed(2)} m² ÷ ${GLUE_M2_PER_KG} m²/kg = ${kg.toFixed(2)} kg → ${order.blek} blek 10 kg + ${order.galon} galon 2,5 kg (kombinasi termurah)`;
+  const trace = `Bidang HPL ${area.toFixed(2)} m² ≈ ${(area / GLUE_M2_PER_KG).toFixed(1)} lembar HPL × 1 kg = ${kg.toFixed(2)} kg → ${order.blek} blek 10 kg + ${order.galon} galon 2,5 kg (rekomendasi ekonomis, utamakan blek)`;
   const out: BomItem[] = [];
   const add = (pack: "blek" | "galon", qty: number) => {
     if (qty <= 0) return;
@@ -300,7 +331,7 @@ export function calculateHplGlue(parts: Part[], glue: GlueType = "active"): BomI
       unitPrice: p.harga,
       total: p.harga * qty,
       trace: [trace],
-      explanation: "± 1 kg lem per 4 m² bidang HPL. Hanya kemasan workshop (galon / blek).",
+      explanation: "Standar workshop: 1 blek 10 kg = ± 10 lembar HPL (1 kg/lembar). Hanya kemasan workshop (galon / blek).",
     });
   };
   add("blek", order.blek);
