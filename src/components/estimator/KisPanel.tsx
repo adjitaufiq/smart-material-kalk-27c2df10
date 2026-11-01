@@ -44,7 +44,7 @@ export function KisPanel({
       bom,
       grandTotal,
       extras: kis.finishExtras,
-      audit: auditSpec({ results, bom, extras: kis.finishExtras, visual: kis.qcVisual }),
+      audit: auditSpec({ results, bom, extras: kis.finishExtras, visual: kis.qcVisual, ai: kis.qcAi }),
       deepLinkUrl: `${window.location.origin}/project/${project.id}`,
     });
     window.location.href = kisReturnLink(kis.returnUrl, payload);

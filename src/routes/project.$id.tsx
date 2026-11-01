@@ -137,6 +137,7 @@ function ProjectPage() {
               results={results}
               bom={projectBom}
               onChange={(qcVisual) => save({ ...project, kis: { ...project.kis!, qcVisual } })}
+              onAi={(qcAi) => save({ ...project, kis: { ...project.kis!, qcAi, qcVisual: {} } })}
             />
           ) : null}
           {!project.kis ? (

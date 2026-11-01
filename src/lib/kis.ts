@@ -33,6 +33,8 @@ export interface KisLink {
   importedAt: string;
   /** Checklist QC visual SME (terlihat di gambar atau tidak) */
   qcVisual?: import("./kis-audit").VisualQc | undefined;
+  /** Hasil scan AI QC (layer 2) atas foto render luar & dalam */
+  qcAi?: import("./kis-audit").AiQcResult | undefined;
 }
 
 export interface KisImport {
