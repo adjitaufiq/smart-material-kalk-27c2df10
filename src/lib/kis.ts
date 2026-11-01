@@ -103,6 +103,19 @@ export function parseSpecHints(search: Record<string, unknown>): {
     }
   } else if (enc && typeof enc === "object") raw = enc as Record<string, unknown>;
   for (const k of Object.keys(OPTS)) if (raw[k] === undefined && search[k] !== undefined) raw[k] = search[k];
+  // Kontrak KIS: hardware = kode engsel TACO (ET-01/02/06), drawerSlide = id rel.
+  if (raw["hinge"] === undefined) {
+    const h = String(raw["hardware"] ?? search["hardware"] ?? "").toUpperCase().replace(/\s+/g, "");
+    const map: Record<string, string> = { "ET-01": "slowmo", ET01: "slowmo", "ET-02": "slowmo_stainless", ET02: "slowmo_stainless", "ET-06": "biasa", ET06: "biasa" };
+    if (map[h]) raw["hinge"] = map[h];
+  }
+  if (raw["slide"] === undefined) {
+    const s = raw["drawerSlide"] ?? search["drawerSlide"];
+    if (typeof s === "string") {
+      const n = s.toUpperCase().replace(/\s+/g, "");
+      raw["slide"] = n === "BBS008SC" ? "dt_slowmo" : n === "BBS006FE" ? "dt_biasa" : n === "BBS009PO" ? "push" : s.trim().toLowerCase();
+    }
+  }
 
   const spec: QuickSpec = { ...DEFAULT_QUICK_SPEC, accessories: [] };
   let found = false;
