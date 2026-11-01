@@ -7,7 +7,7 @@ const hints = (o: object) => toBase64Url(JSON.stringify(o));
 
 describe("Aturan satuan hardware KIS ⇄ SME", () => {
   it("6 daun pintu standar = 6 set engsel ET-01 × Rp18.000 = Rp108.000", () => {
-    const m = { ...makeModule({ kind: "wall_cabinet", name: "Atas", width_mm: 1800, height_mm: 700, depth_mm: 350 }), doors: 6, drawers: 0, hingeId: "engsel-sendok", hingeOverride: 2 };
+    const m = { ...makeModule({ kind: "wall_cabinet", name: "Atas", width_mm: 1800, height_mm: 700, depth_mm: 350 }), doors: 6, drawers: 0, hingeId: "engsel-sendok", hingeOverride: 2, doorType: "hinged" as const };
     const h = calculateHardware([m]).find((b) => b.id === "engsel-sendok")!;
     expect(h.qty).toBe(6);
     expect(h.total).toBe(108000);
