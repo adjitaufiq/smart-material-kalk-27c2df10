@@ -490,7 +490,7 @@ export interface KisFinishExtras {
   /** Aksesori KIS yang belum ada di master SME, mis. ventilasi, hidrolik. */
   otherAccessories?: { id: string; qty: number }[] | undefined;
   /** HPL aksen KIS (mis. "001 AA" bingkai pintu kaca) — min 1 lembar */
-  hplAccent?: { code: string; name?: string | undefined } | undefined;
+  hplAccent?: { code: string; name?: string | undefined; texture?: string | undefined } | undefined;
   /** "none" = tanpa handle / bevel 45° (KIS) */
   handle?: "none" | "handle" | undefined;
   /** jumlah titik lampu sorot (hasil audit foto) */
