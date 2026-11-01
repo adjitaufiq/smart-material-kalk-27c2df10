@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { ItemWizard } from "@/components/estimator/ItemWizard";
 import { KisPanel } from "@/components/estimator/KisPanel";
 import { KisSurvey } from "@/components/estimator/KisSurvey";
+import { KisAudit } from "@/components/estimator/KisAudit";
 import { surveyComplete, surveyOf } from "@/lib/estimator/kis-survey";
 import { SectionCard, StatusBadge } from "@/components/estimator/shared";
 import { Button } from "@/components/ui/button";
@@ -130,6 +131,14 @@ function ProjectPage() {
             />
           ) : null}
           {project.kis ? <KisSurvey items={project.items} onChange={updateItem} /> : null}
+          {project.kis ? (
+            <KisAudit
+              kis={project.kis}
+              results={results}
+              bom={projectBom}
+              onChange={(qcVisual) => save({ ...project, kis: { ...project.kis!, qcVisual } })}
+            />
+          ) : null}
           {!project.kis ? (
           <SectionCard
             title="Furniture Item"

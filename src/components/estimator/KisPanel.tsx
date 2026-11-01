@@ -5,6 +5,7 @@ import { SectionCard } from "@/components/estimator/shared";
 import { Button } from "@/components/ui/button";
 import { getDrawingBlob } from "@/lib/drawing-blobs";
 import { buildKisEstimate, kisReturnLink } from "@/lib/kis";
+import { auditSpec } from "@/lib/kis-audit";
 import type { BomItem, CalculationResult, Project } from "@/lib/estimator/types";
 
 function useBlob(key: string | undefined, fallback: string) {
@@ -43,6 +44,7 @@ export function KisPanel({
       bom,
       grandTotal,
       extras: kis.finishExtras,
+      audit: auditSpec({ results, bom, extras: kis.finishExtras, visual: kis.qcVisual }),
       deepLinkUrl: `${window.location.origin}/project/${project.id}`,
     });
     window.location.href = kisReturnLink(kis.returnUrl, payload);

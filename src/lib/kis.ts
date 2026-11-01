@@ -31,6 +31,8 @@ export interface KisLink {
   renderBlobKey?: string | undefined;
   interiorBlobKey?: string | undefined;
   importedAt: string;
+  /** Checklist QC visual SME (terlihat di gambar atau tidak) */
+  qcVisual?: import("./kis-audit").VisualQc | undefined;
 }
 
 export interface KisImport {
@@ -295,6 +297,7 @@ export function buildKisEstimate(input: {
   grandTotal: number | null;
   deepLinkUrl: string;
   extras?: KisFinishExtras | undefined;
+  audit?: { type: "kurang" | "lebih"; item: string; note: string }[] | undefined;
 }) {
   const ex = finishExtraLines(input.extras, input.results, input.bom);
   const baseBom = ex.dropEdging ? input.bom.filter((b) => b.group !== "edging") : input.bom;
@@ -370,6 +373,8 @@ export function buildKisEstimate(input: {
       lastCalculatedAt: new Date().toISOString(),
     },
     deepLinkUrl: input.deepLinkUrl,
+    /** Audit spek QC SME: hanya berisi temuan bila ada selisih */
+    audit: input.audit?.length ? { status: "selisih", findings: input.audit } : { status: "verified" },
   };
 }
 
