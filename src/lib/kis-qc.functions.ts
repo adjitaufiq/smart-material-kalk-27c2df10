@@ -6,17 +6,19 @@ const schema = z.object({
   specList: z.array(z.string()).max(300),
 });
 
-const IDS = ["pintu", "laci", "engsel", "rel", "hidrolik", "kaca", "led", "sorot", "list", "handle", "top", "rak-piring", "rak-bumbu", "rak-sayur", "ambalan"] as const;
+const IDS = ["hpl-zona", "dalam-putih", "tusir", "pintu", "laci", "engsel", "rel", "hidrolik", "kaca", "led", "sorot", "list", "handle", "top", "rak-piring", "rak-bumbu", "rak-sayur", "ambalan"] as const;
 
 const SYSTEM = `Kamu auditor QC workshop interior (layer kedua, independen dari desainer KIS).
 Ada 3 foto: render tampak luar (pintu tertutup), tampak dalam depan (pintu & laci terbuka), tampak dalam samping/serong 3/4 (laci ditarik).
 HITUNG jumlah yang benar-benar terlihat untuk tiap id berikut (gabungkan semua foto, jangan dobel hitung objek sama):
-pintu = jumlah daun pintu; laci = jumlah laci; engsel = jumlah engsel (pcs, biasanya 2 per pintu, hitung dari pintu yang terlihat terbuka bila perlu); rel = jumlah set rel laci (1 set per laci); hidrolik = jumlah gas spring/hidrolik pintu angkat (pcs); kaca = jumlah daun pintu kaca; led = jumlah jalur LED strip; sorot = jumlah titik lampu sorot/spot; list = 1 bila ada list profil gold/hitam, 0 bila tidak; handle = jumlah handle/tarikan (0 bila bevel/tanpa handle); top = jumlah lapis top table yang terlihat dari tebal bibir (1 atau 2); rak-piring, rak-bumbu, rak-sayur = jumlah set; ambalan = jumlah papan ambalan/rak dalam.
+pintu = jumlah daun pintu; laci = jumlah laci; engsel = jumlah engsel (pcs, biasanya 2 per pintu, hitung dari pintu yang terlihat terbuka bila perlu); rel = jumlah set rel laci (1 set per laci); hidrolik = jumlah gas spring/hidrolik pintu angkat (pcs); kaca = jumlah daun pintu kaca; led = jumlah jalur LED strip; sorot = jumlah titik lampu sorot/spot; list = 1 bila ada list profil gold/hitam, 0 bila tidak; handle = jumlah handle/tarikan (0 bila bevel/tanpa handle); top = jumlah lapis top table yang terlihat dari tebal bibir (1 atau 2); rak-piring, rak-bumbu, rak-sayur = jumlah set; ambalan = jumlah papan ambalan/rak dalam; hpl-zona = jumlah zona warna/motif HPL berbeda yang terlihat (mis. bodi kayu, top hitam, bingkai aksen putih = 3); dalam-putih = 1 bila bagian dalam kabinet (saat pintu/laci terbuka) putih bersih, 0 bila warna kayu/mentah; tusir = 1 bila tepi panel rapi dicat/tusir tanpa edging PVC tempel terlihat, 0 bila tampak edging PVC.
+pintu = TOTAL daun (swing + angkat). kaca = daun pintu kaca (biasanya pintu angkat/lift-up). engsel hanya untuk pintu swing (pintu kaca angkat tidak pakai engsel sendok). hidrolik = 2 pcs per pintu angkat.
+Di "nonWorkshop" tulis barang non-workshop yang terlihat (sink, kran, kompor, kulkas, dll) — JANGAN masukkan ke "extra".
 Isi qty null bila benar-benar tidak bisa dipastikan. Jangan menebak di luar yang terlihat.
 Di "notes" tulis jenis hardware yang terlihat (mis. jenis rel: double track / tandem / roller; jenis engsel; jenis kaca).
 Di "extra" tulis material/hardware/aksesori lain yang terlihat tetapi TIDAK ada di daftar bahan.
 Pisahkan juga per level: "levels":{"upper":{"pintu":n,"laci":n},"lower":{"pintu":n,"laci":n}} (upper = kabinet atas/gantung, lower = kabinet bawah). null bila tidak jelas.
-Balas HANYA JSON: {"counts":[{"id":"pintu","qty":6,"evidence":"..."}],"levels":{"upper":{"pintu":2,"laci":0},"lower":{"pintu":4,"laci":3}},"notes":["..."],"extra":["..."]}`;
+Balas HANYA JSON: {"counts":[{"id":"pintu","qty":6,"evidence":"..."}],"levels":{"upper":{"pintu":2,"laci":0},"lower":{"pintu":4,"laci":3}},"notes":["..."],"extra":["..."],"nonWorkshop":["sink"]}`;
 
 export const scanKisQc = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => schema.parse(d))
@@ -33,6 +35,7 @@ export const scanKisQc = createServerFn({ method: "POST" })
         counts?: { id?: string; qty?: unknown; evidence?: string }[];
         notes?: unknown[];
         extra?: unknown[];
+        nonWorkshop?: unknown[];
         levels?: Record<string, { pintu?: unknown; laci?: unknown } | undefined>;
       };
       const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.round(v) : null);
@@ -50,6 +53,7 @@ export const scanKisQc = createServerFn({ method: "POST" })
           lower: { doors: num(raw.levels?.["lower"]?.pintu), drawers: num(raw.levels?.["lower"]?.laci) },
         },
         notes: (Array.isArray(raw.notes) ? raw.notes : []).map(String).slice(0, 10),
+        nonWorkshop: (Array.isArray(raw.nonWorkshop) ? raw.nonWorkshop : []).map(String).slice(0, 10),
         extra: (Array.isArray(raw.extra) ? raw.extra : []).map(String).slice(0, 15),
       };
     } catch (e) {
