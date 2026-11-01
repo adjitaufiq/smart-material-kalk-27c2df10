@@ -69,6 +69,19 @@ export interface AuditRow {
 
 const sumQty = (bom: BomItem[], re: RegExp) => bom.filter((b) => re.test(`${b.id} ${b.name}`)).reduce((a, b) => a + b.qty, 0);
 
+/** Zona HPL/TACO Sheet resmi dari KIS. Blockmin putih, duco, dan top granit BUKAN zona HPL. */
+export function hplZones(quick?: QuickSpec | null, ex?: KisFinishExtras): { code: string; usage: string; name?: string | undefined; texture?: string | undefined }[] {
+  const out: { code: string; usage: string; name?: string | undefined; texture?: string | undefined }[] = [];
+  const add = (r: { code: string; name?: string | undefined; texture?: string | undefined } | undefined, usage: string) => {
+    if (r?.code && !out.some((z) => z.code === r.code)) out.push({ code: r.code, usage, name: r.name, texture: r.texture });
+  };
+  if (quick?.outside !== "duco") add(quick?.hplOutside, "kabinet");
+  const granite = /granit/.test(quick?.topMaterial ?? "") || quick?.top === "none";
+  if (!granite) add(quick?.hplTop, "top");
+  add(ex?.hplAccent, "aksen");
+  return out;
+}
+
 /** Kebutuhan menurut spek KIS + hitungan SME. */
 export function specCounts(results: CalculationResult[], bom: BomItem[], ex?: KisFinishExtras, quick?: QuickSpec | null, applied?: AiQcResult): Record<AuditItemId, number> {
   const seen = (id: AuditItemId) => applied?.counts?.find((c) => c.id === id)?.qty ?? null;
@@ -77,9 +90,9 @@ export function specCounts(results: CalculationResult[], bom: BomItem[], ex?: Ki
   const hw = bom.filter((b) => b.group === "hardware");
   const hinge = hw.filter((b) => /engsel(?! hidrolik)|hinge/i.test(b.name) && !/gas spring/i.test(b.name)).reduce((a, b) => a + (/set|pasang/i.test(b.unit) ? b.qty * 2 : b.qty), 0);
   return {
-    "hpl-zona": new Set([quick?.hplOutside?.code, quick?.hplTop?.code, ex?.hplAccent?.code].filter(Boolean)).size,
+    "hpl-zona": hplZones(quick, ex).length,
     "dalam-putih": quick?.inside === "blockmin" || quick?.inside === "tacosheet" ? 1 : 0,
-    tusir: ex?.edge === "tusir" && !bom.some((b) => b.group === "edging") ? 1 : 0,
+    tusir: ex?.edge === "tusir" && !bom.some((b) => b.group === "edging" && b.id !== "tusir") ? 1 : 0,
     pintu: seen("pintu") ?? cnt(/pintu|door/i),
     laci: seen("laci") ?? cnt(/front laci|depan laci|muka laci|drawer front/i),
     engsel: hinge,
@@ -89,7 +102,7 @@ export function specCounts(results: CalculationResult[], bom: BomItem[], ex?: Ki
     led: ex?.lighting === "led" || ex?.lighting === "led_spot" || /led strip/i.test(bom.map((b) => b.name).join("|")) ? 1 : 0,
     sorot: ex?.lighting === "spot" || ex?.lighting === "led_spot" ? Math.max(1, sumQty(bom, /sorot|spot/i)) : sumQty(bom, /sorot|spot/i),
     list: ex?.edge === "list_gold" || ex?.edge === "list_black" ? 1 : 0,
-    handle: sumQty(bom, /handle|tarikan/i),
+    handle: ex?.handle === "none" ? 0 : sumQty(bom, /handle|tarikan/i),
     top: quick?.top === "double" ? 2 : quick?.top === "none" ? 0 : cnt(/top/i) > 0 ? 1 : 0,
     "rak-piring": sumQty(bom, /rak piring|dish/i),
     "rak-bumbu": sumQty(bom, /rak bumbu/i),

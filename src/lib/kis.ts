@@ -69,7 +69,7 @@ export function normBody(v: unknown): unknown {
 }
 
 const OPTS = {
-  outside: ["hpl", "hpl_premium", "duco"],
+  outside: ["hpl", "hpl_premium", "duco", "tacosheet"],
   inside: ["blockmin", "tacosheet", "hpl"],
   hinge: ["slowmo", "slowmo_stainless", "biasa"],
   slide: ["dt_slowmo", "dt_biasa", "dt_eco", "push", "tandem", "roller"],
@@ -137,12 +137,19 @@ export function parseSpecHints(search: Record<string, unknown>): {
     spec.hplTop = gTop;
     found = true;
   }
-  const top = normTop(raw["top"] ?? raw["topTable"]);
+  const topMat = str(raw["topMaterial"]).toLowerCase();
+  if (topMat) {
+    spec.topMaterial = topMat;
+    found = true;
+  }
+  const top = /granit/.test(topMat) ? "none" : normTop(raw["top"] ?? raw["topTable"]);
   if (top) {
     spec.top = top;
     found = true;
   }
-  if (gOut) {
+  const duco = str(raw["ducoHex"]);
+  if (spec.outside === "duco" && /^#?[0-9a-f]{6}$/i.test(duco)) spec.ducoHex = duco.startsWith("#") ? duco : `#${duco}`;
+  if (gOut && spec.outside !== "duco") {
     spec.hplOutside = gOut;
     found = true;
   }
@@ -222,7 +229,9 @@ export function hplRef(v: unknown): HplRef | undefined {
   const g = str(o["group"]) || str(o["category"]);
   const group = GROUPS.find((x) => x === g.toLowerCase());
   const name = str(o["name"]) || str(o["nama"]);
-  return { code, ...(name ? { name } : {}), ...(group ? { group } : {}) };
+  const texture = str(o["texture"]).toLowerCase();
+  const usage = str(o["usage"]);
+  return { code, ...(name ? { name } : {}), ...(group ? { group } : {}), ...(texture ? { texture } : {}), ...(usage ? { usage } : {}) };
 }
 
 /** "double" | "2_lapis" | 2 | "36mm" → double; "none"/"granit" → none */
@@ -481,7 +490,7 @@ export interface KisFinishExtras {
   /** Aksesori KIS yang belum ada di master SME, mis. ventilasi, hidrolik. */
   otherAccessories?: { id: string; qty: number }[] | undefined;
   /** HPL aksen KIS (mis. "001 AA" bingkai pintu kaca) — min 1 lembar */
-  hplAccent?: { code: string; name?: string | undefined } | undefined;
+  hplAccent?: { code: string; name?: string | undefined; texture?: string | undefined } | undefined;
   /** "none" = tanpa handle / bevel 45° (KIS) */
   handle?: "none" | "handle" | undefined;
   /** jumlah titik lampu sorot (hasil audit foto) */
@@ -506,7 +515,7 @@ export function parseFinishExtras(raw: Record<string, unknown>): KisFinishExtras
   const h = raw["handle"];
   if (typeof h === "string" && h.trim()) out.handle = /tanpa|none|bevel|handleless|gola|^no$/i.test(h) ? "none" : "handle";
   const acc = hplRef(raw["hplAccent"]) ?? hplMotifs(raw).accent;
-  if (acc) out.hplAccent = { code: acc.code, ...(acc.name ? { name: acc.name } : {}) };
+  if (acc) out.hplAccent = { code: acc.code, ...(acc.name ? { name: acc.name } : {}), ...(acc.texture ? { texture: acc.texture } : {}) };
   const others: { id: string; qty: number }[] = [];
   if (Array.isArray(raw["accessories"])) {
     for (const a of raw["accessories"]) {

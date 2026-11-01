@@ -201,15 +201,19 @@ export interface ModuleSpec {
 export interface QuickSpec {
   body: "ply" | "pvc" | "pvc_eco" | "hybrid" | "blockboard" | "blockmin_1s" | "blockmin_2s";
   top: "none" | "double";
-  outside: "hpl" | "hpl_premium" | "duco";
+  outside: "hpl" | "hpl_premium" | "duco" | "tacosheet";
+  /** warna cat duco dari KIS (hex), hanya bila outside = duco */
+  ducoHex?: string | undefined;
+  /** material top dari KIS; "granite" = bukan zona HPL */
+  topMaterial?: string | undefined;
   inside: "blockmin" | "tacosheet" | "hpl";
   hinge: "slowmo" | "slowmo_stainless" | "biasa";
   slide: "dt_slowmo" | "dt_biasa" | "dt_eco" | "push" | "tandem" | "roller";
   /** kode HPL TACO dari KIS untuk bidang luar / dalam (mis. "TH 002 AA") — dipakai apa adanya */
-  hplOutside?: { code: string; name?: string | undefined; group?: "white" | "solid" | "woodgrain" | "ultimate" | "long" | undefined } | undefined;
-  hplInside?: { code: string; name?: string | undefined; group?: "white" | "solid" | "woodgrain" | "ultimate" | "long" | undefined } | undefined;
+  hplOutside?: { code: string; name?: string | undefined; group?: "white" | "solid" | "woodgrain" | "ultimate" | "long" | undefined; texture?: string | undefined; usage?: string | undefined } | undefined;
+  hplInside?: { code: string; name?: string | undefined; group?: "white" | "solid" | "woodgrain" | "ultimate" | "long" | undefined; texture?: string | undefined; usage?: string | undefined } | undefined;
   /** kode HPL top table dari KIS (mis. "003 AA"); kosong → ikut hplOutside */
-  hplTop?: { code: string; name?: string | undefined; group?: "white" | "solid" | "woodgrain" | "ultimate" | "long" | undefined } | undefined;
+  hplTop?: { code: string; name?: string | undefined; group?: "white" | "solid" | "woodgrain" | "ultimate" | "long" | undefined; texture?: string | undefined; usage?: string | undefined } | undefined;
   /** lem kuning HPL (default TACO Active) */
   glue?: "active" | "starmax" | undefined;
   accessories: string[];
