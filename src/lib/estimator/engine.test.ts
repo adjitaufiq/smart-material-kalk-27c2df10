@@ -203,7 +203,7 @@ describe("8. swing vs sliding hardware differ", () => {
   const sliding = calculateHardware([cabinet({ doors: 2, doorType: "sliding", height_mm: 2000 })]);
 
   it("uses hinges for swing and tracks for sliding", () => {
-    expect(swing.find((h) => h.id === "engsel-sendok")?.qty).toBe(8); // 4 per pintu @2000 mm
+    expect(swing.find((h) => h.id === "engsel-sendok")?.qty).toBe(4); // 8 pcs = 4 set
     expect(swing.find((h) => h.id === "rel-sliding")).toBeUndefined();
     expect(sliding.find((h) => h.id === "engsel-sendok")).toBeUndefined();
     expect(sliding.find((h) => h.id === "rel-sliding")?.qty).toBe(2);
