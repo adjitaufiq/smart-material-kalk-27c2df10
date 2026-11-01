@@ -35,7 +35,7 @@ export const scanKisQc = createServerFn({ method: "POST" })
       };
       const items = IDS.map((id) => {
         const f = raw.items?.find((i) => i.id === id);
-        const status = f?.status === "ada" || f?.status === "tidak" ? f.status : "tidak_jelas";
+        const status: "ada" | "tidak" | "tidak_jelas" = f?.status === "ada" ? "ada" : f?.status === "tidak" ? "tidak" : "tidak_jelas";
         return { id, status, evidence: String(f?.evidence ?? "").slice(0, 200) };
       });
       const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.round(v) : null);
