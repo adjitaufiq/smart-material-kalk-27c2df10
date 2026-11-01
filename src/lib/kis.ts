@@ -337,16 +337,22 @@ export function buildKisEstimate(input: {
     total: b.total,
     needsConfirmation: b.unitPrice == null,
   }));
-  // Kontrak 1 jalur KIS: shoppingList { name, code, qty, unit, unitPrice, subtotal }.
+  // Kontrak 1 jalur KIS: qty beli selalu bulat ke atas (kecuali kaca per m²); HPL min 1 lembar.
   const shoppingList = fullBom.map((b) => {
     const code = b.id.startsWith("taco:") ? (b.id.slice(b.id.indexOf(":", 5) + 1).split("|")[0] ?? b.id) : b.id;
-    return { name: b.name, code, qty: b.qty, unit: b.unit, unitPrice: b.unitPrice, subtotal: b.total, needsConfirmation: b.unitPrice == null };
+    const decimalOk = b.unit === "m²";
+    let qty = decimalOk ? Math.round(b.qty * 100) / 100 : Math.ceil(b.qty - 1e-9);
+    if (b.id.startsWith("hpl-") && qty < 1) qty = 1;
+    const waste = decimalOk ? 0 : Math.round((qty - b.qty) * 100) / 100;
+    const subtotal = b.unitPrice == null ? null : Math.round(qty * b.unitPrice);
+    return { name: b.name, code, qty, unit: b.unit, unitPrice: b.unitPrice, subtotal, needsConfirmation: b.unitPrice == null, ...(waste > 0 ? { waste } : {}) };
   });
+  const shopCost = shoppingList.reduce((a, s) => a + (s.subtotal ?? 0), 0) + workshopConsumablesCost;
   return {
     projectId: input.kisProjectId,
     estimateId: input.estimateId,
     status: lowest ? STATUS[lowest] : "draft",
-    materialCost: materialCost,
+    materialCost: input.grandTotal == null ? materialCost : shopCost,
     workdays: estimatedDays,
     shoppingList,
     /** sudah termasuk di materialCost; rinciannya hanya di SME */
