@@ -130,9 +130,9 @@ export function parseSpecHints(search: Record<string, unknown>): {
     }
   }
   const motifs = hplMotifs(raw);
-  const gOut = hplRef(raw["hplOutside"]) ?? motifs.outside;
-  const gIn = hplRef(raw["hplInside"]);
-  const gTop = hplRef(raw["hplTop"]) ?? motifs.top;
+  const gOut = withHplInfo(hplRef(raw["hplOutside"]) ?? motifs.outside, raw);
+  const gIn = withHplInfo(hplRef(raw["hplInside"]), raw);
+  const gTop = withHplInfo(hplRef(raw["hplTop"]) ?? motifs.top, raw);
   if (gTop) {
     spec.hplTop = gTop;
     found = true;
@@ -242,6 +242,17 @@ export function normTop(v: unknown): QuickSpec["top"] | undefined {
   if (/double|dobel|2[\s_-]*lapis|36/.test(t)) return "double";
   if (/none|tanpa|granit|solid surface/.test(t)) return "none";
   return undefined;
+}
+
+/** Lengkapi kode HPL dengan nama/tekstur resmi dari kamus KIS `hplInfo` (kode tetap apa adanya). */
+export function withHplInfo(ref: HplRef | undefined, raw: Record<string, unknown>): HplRef | undefined {
+  if (!ref) return ref;
+  const info = raw["hplInfo"];
+  if (!info || typeof info !== "object") return ref;
+  const key = Object.keys(info).find((k) => k.replace(/\s+/g, "").toUpperCase() === ref.code.replace(/\s+/g, "").toUpperCase());
+  const e = key ? hplRef({ code: ref.code, ...((info as Record<string, unknown>)[key] as object) }) : undefined;
+  if (!e) return ref;
+  return { ...ref, ...(ref.name ? {} : e.name ? { name: e.name } : {}), ...(ref.texture ? {} : e.texture ? { texture: e.texture } : {}) };
 }
 
 /** Array motif HPL KIS: [{ code, usage }] — usage "top" | "aksen"/"accent" | lainnya = luar. */
@@ -507,14 +518,25 @@ const EXTRA_ACC: Record<string, { name: string; unit: string; qty: number; price
 export function parseFinishExtras(raw: Record<string, unknown>): KisFinishExtras | undefined {
   const pick = <T extends string>(v: unknown, ok: readonly T[]) => (typeof v === "string" && (ok as readonly string[]).includes(v) ? (v as T) : undefined);
   const alias = (v: unknown, map: Record<string, string>) => (typeof v === "string" ? (map[v.trim().toLowerCase()] ?? v.trim().toLowerCase()) : v);
+  const obj = (v: unknown) => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : undefined);
+  // Skema bertingkat KIS: finishExtras { glassDoors, gasSprings, ledRun, spotlights }
+  const fe = obj(raw["finishExtras"]) ?? {};
+  const glassDoors = obj(fe["glassDoors"]);
+  const ledRun = obj(fe["ledRun"]);
+  const spots = obj(fe["spotlights"]);
+  const gas = obj(fe["gasSprings"]);
+  const spotQty = Number(spots?.["qty"]);
+  let lightingRaw = raw["lighting"];
+  if (lightingRaw === undefined && (ledRun || spotQty > 0)) lightingRaw = ledRun ? (spotQty > 0 ? "led_spot" : "led") : "spot";
   const out: KisFinishExtras = {
-    glass: pick(alias(raw["glass"], { buram: "fluted", frosted: "fluted", moru: "fluted", riben: "dark", gelap: "dark", bening: "clear" }), ["dark", "clear", "fluted"] as const),
+    glass: pick(alias(raw["glass"] ?? glassDoors?.["type"], { buram: "fluted", frosted: "fluted", moru: "fluted", riben: "dark", gelap: "dark", bening: "clear" }), ["dark", "clear", "fluted"] as const),
     edge: pick(alias(raw["edge"] ?? raw["edging"], { tusiran: "tusir", gold: "list_gold", black: "list_black", hitam: "list_black", pvc: "edging" }), ["list_gold", "list_black", "edging", "tusir"] as const),
-    lighting: pick(alias(raw["lighting"], { led_strip: "led", "led-strip": "led", sorot: "spot", "led+spot": "led_spot" }), ["led", "spot", "led_spot"] as const),
+    lighting: pick(alias(lightingRaw, { led_strip: "led", "led-strip": "led", sorot: "spot", "led+spot": "led_spot" }), ["led", "spot", "led_spot"] as const),
   };
+  if (spotQty > 0) out.spotQty = spotQty;
   const h = raw["handle"];
   if (typeof h === "string" && h.trim()) out.handle = /tanpa|none|bevel|handleless|gola|^no$/i.test(h) ? "none" : "handle";
-  const acc = hplRef(raw["hplAccent"]) ?? hplMotifs(raw).accent;
+  const acc = withHplInfo(hplRef(raw["hplAccent"]) ?? hplMotifs(raw).accent, raw);
   if (acc) out.hplAccent = { code: acc.code, ...(acc.name ? { name: acc.name } : {}), ...(acc.texture ? { texture: acc.texture } : {}) };
   const others: { id: string; qty: number }[] = [];
   if (Array.isArray(raw["accessories"])) {
@@ -526,6 +548,12 @@ export function parseFinishExtras(raw: Record<string, unknown>): KisFinishExtras
       const q = a && typeof a === "object" ? Number((a as { qty?: unknown }).qty) : NaN;
       others.push({ id: norm, qty: q > 0 ? q : (EXTRA_ACC[norm]?.qty ?? 1) });
     }
+  }
+  const gasQty = Number(gas?.["qty"]);
+  if (gasQty > 0) {
+    const g = others.find((o) => o.id === "hidrolik");
+    if (g) g.qty = gasQty;
+    else others.push({ id: "hidrolik", qty: gasQty });
   }
   if (others.length) out.otherAccessories = others;
   return out.glass || out.edge || out.lighting || out.otherAccessories || out.hplAccent || out.handle ? out : undefined;

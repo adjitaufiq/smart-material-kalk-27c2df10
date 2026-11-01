@@ -25,3 +25,30 @@ describe("zona HPL KIS", () => {
     expect(hplZones({ ...base, top: "double", outside: "duco" }, ex).map((m) => m.usage)).toEqual(["top", "aksen"]);
   });
 });
+
+import { parseKisSearch as _pks, toBase64Url as _b64 } from "./kis";
+describe("KIS payload bertingkat finishExtras + hplInfo (Adji v2)", () => {
+  const payload = {
+    body: "blockmin_2s", hardware: "ET-01", drawerSlide: "double_slowmo", edge: "edging", handle: "none",
+    topMaterial: "granite", top: "none", hplOutside: "TH 003 AA", hplAccent: "TH 1205 FC",
+    hplMotifs: [{ code: "TH 003 AA", usage: "kabinet" }, { code: "TH 1205 FC", usage: "aksen" }],
+    hplInfo: { "TH 003 AA": { name: "Solid Black", texture: "Solid Matte" }, "TH 1205 FC": { name: "Scandinavia Walnut", texture: "Woodgrain" } },
+    accessories: [{ id: "gas-spring", qty: 4 }],
+    finishExtras: { glassDoors: { type: "fluted", qty: null }, gasSprings: { doors: 2, qty: 4, unit: "pcs" }, ledRun: { meters: null }, spotlights: { qty: 0 } },
+  };
+  const r = _pks({ projectId: "adji", specHints: _b64(JSON.stringify(payload)) })!;
+  it("2 motif dengan nama resmi, top granit tanpa HPL", () => {
+    expect(r.specHint?.hplOutside).toMatchObject({ code: "TH 003 AA", name: "Solid Black" });
+    expect(r.link.finishExtras?.hplAccent).toMatchObject({ code: "TH 1205 FC", name: "Scandinavia Walnut" });
+    expect(r.specHint?.top).toBe("none");
+    expect(r.specHint?.hplTop).toBeUndefined();
+  });
+  it("kaca fluted, LED tanpa spot, gas spring 4 pcs, handle 0", () => {
+    const f = r.link.finishExtras!;
+    expect(f.glass).toBe("fluted");
+    expect(f.lighting).toBe("led");
+    expect(f.spotQty).toBeUndefined();
+    expect(f.handle).toBe("none");
+    expect(f.otherAccessories?.find((o) => o.id === "hidrolik")?.qty).toBe(4);
+  });
+});
