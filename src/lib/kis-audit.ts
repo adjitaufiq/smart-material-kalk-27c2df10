@@ -82,50 +82,63 @@ export function hplZones(quick?: QuickSpec | null, ex?: KisFinishExtras): { code
   return out;
 }
 
-/** Kebutuhan menurut spek KIS + hitungan SME. */
-export function specCounts(results: CalculationResult[], bom: BomItem[], ex?: KisFinishExtras, quick?: QuickSpec | null, applied?: AiQcResult): Record<AuditItemId, number> {
+/** Kuantitas fisik: baseline dari scan foto (bukan template SME). Null = menunggu scan/terapkan. */
+export const PHYSICAL: ReadonlySet<AuditItemId> = new Set(["pintu", "laci", "engsel", "rel", "hidrolik", "kaca", "ambalan"]);
+const NON_WORKSHOP_RE = /granit|batu|marmer|sink|bak cuci|kran|keran|faucet|kompor|stove|hood|backsplash|keramik|cermin|cutlery|tray bawaan|kulkas|oven/i;
+export const isNonWorkshop = (s: string) => NON_WORKSHOP_RE.test(s);
+
+/**
+ * Spek audit. Material & finishing = 100% KIS. Kuantitas fisik (pintu, laci, ambalan, pintu kaca)
+ * = hasil scan foto yang sudah diterapkan; hardware turunan pakai rumus:
+ * engsel = (pintu − pintu angkat) × 2 pcs, rel = laci set, gas spring = 2 pcs × pintu angkat.
+ */
+export function specCounts(results: CalculationResult[], bom: BomItem[], ex?: KisFinishExtras, quick?: QuickSpec | null, applied?: AiQcResult): Record<AuditItemId, number | null> {
+  void results;
   const seen = (id: AuditItemId) => applied?.counts?.find((c) => c.id === id)?.qty ?? null;
-  const parts = results.flatMap((r) => r.parts);
-  const cnt = (re: RegExp) => parts.filter((p) => re.test(p.part_name)).reduce((a, p) => a + p.qty, 0);
-  const hw = bom.filter((b) => b.group === "hardware");
-  const hinge = hw.filter((b) => /engsel(?! hidrolik)|hinge/i.test(b.name) && !/gas spring/i.test(b.name)).reduce((a, b) => a + (/set|pasang/i.test(b.unit) ? b.qty * 2 : b.qty), 0);
+  const doors = seen("pintu");
+  const lift = seen("kaca");
+  const drawers = seen("laci");
+  const kisGas = ex?.otherAccessories?.find((o) => /hidrolik|gas/i.test(o.id))?.qty ?? null;
+  const granite = /granit/.test(quick?.topMaterial ?? "");
   return {
     "hpl-zona": hplZones(quick, ex).length,
     "dalam-putih": quick?.inside === "blockmin" || quick?.inside === "tacosheet" ? 1 : 0,
     tusir: ex?.edge === "tusir" && !bom.some((b) => b.group === "edging" && b.id !== "tusir") ? 1 : 0,
-    pintu: seen("pintu") ?? cnt(/pintu|door/i),
-    laci: seen("laci") ?? cnt(/front laci|depan laci|muka laci|drawer front/i),
-    engsel: hinge,
-    rel: hw.filter((b) => /rel|slide|tandem/i.test(b.name)).reduce((a, b) => a + b.qty, 0),
-    hidrolik: sumQty(bom, /gas spring|hidrolik/i),
-    kaca: seen("kaca") != null && ex?.glass ? seen("kaca")! : ex?.glass ? Math.max(1, Math.round(sumQty(bom, /fitting-pintu|fitting pintu kaca/i)) || 0) : sumQty(bom, /^kaca/i) > 0 ? 1 : 0,
-    led: ex?.lighting === "led" || ex?.lighting === "led_spot" || /led strip/i.test(bom.map((b) => b.name).join("|")) ? 1 : 0,
-    sorot: ex?.lighting === "spot" || ex?.lighting === "led_spot" ? Math.max(1, sumQty(bom, /sorot|spot/i)) : sumQty(bom, /sorot|spot/i),
     list: ex?.edge === "list_gold" || ex?.edge === "list_black" ? 1 : 0,
     handle: ex?.handle === "none" ? 0 : sumQty(bom, /handle|tarikan/i),
-    top: quick?.top === "double" ? 2 : quick?.top === "none" ? 0 : cnt(/top/i) > 0 ? 1 : 0,
+    // granit = top non-workshop: cukup ada (1). HPL double = 2 lapis.
+    top: granite ? 1 : quick?.top === "double" ? 2 : quick?.top === "none" ? 0 : 1,
+    pintu: doors,
+    laci: drawers,
+    kaca: lift,
+    engsel: doors != null ? Math.max(0, doors - (lift ?? 0)) * 2 : null,
+    rel: drawers,
+    hidrolik: lift != null ? lift * 2 : applied ? kisGas : null,
+    ambalan: seen("ambalan"),
+    led: ex?.lighting === "led" || ex?.lighting === "led_spot" || /led strip/i.test(bom.map((b) => b.name).join("|")) ? 1 : 0,
+    sorot: ex?.spotQty ?? (ex?.lighting === "spot" || ex?.lighting === "led_spot" ? Math.max(1, sumQty(bom, /sorot|spot/i)) : sumQty(bom, /sorot|spot/i)),
     "rak-piring": sumQty(bom, /rak piring|dish/i),
     "rak-bumbu": sumQty(bom, /rak bumbu/i),
     "rak-sayur": sumQty(bom, /rak sayur/i),
-    ambalan: cnt(/ambalan|shelf|rak dalam/i),
   };
 }
 
 /** Item yang cukup dicek ada/tidak (jumlah di gambar tidak harus sama persis). */
-const PRESENCE: ReadonlySet<AuditItemId> = new Set(["led", "list", "top", "dalam-putih", "tusir"]);
+const PRESENCE: ReadonlySet<AuditItemId> = new Set(["led", "list", "dalam-putih", "tusir"]);
 
 export function auditTable(input: { results: CalculationResult[]; bom: BomItem[]; extras?: KisFinishExtras | undefined; quick?: QuickSpec | null | undefined; ai?: AiQcResult | undefined; applied?: boolean | undefined }): AuditRow[] {
   const spec = specCounts(input.results, input.bom, input.extras, input.quick, input.applied ? input.ai : undefined);
+  const granite = /granit/.test(input.quick?.topMaterial ?? "");
   return AUDIT_ITEMS.map((it) => {
     const c = input.ai?.counts?.find((x) => x.id === it.id);
     const seen = c?.qty ?? null;
     const sp = spec[it.id];
     let status: AuditRow["status"] = "tidak_jelas";
-    if (seen != null) {
-      if (PRESENCE.has(it.id) && it.id !== "top") status = (seen > 0) === (sp > 0) ? "pass" : seen > 0 ? "kurang" : "lebih";
+    if (seen != null && sp != null) {
+      if (PRESENCE.has(it.id) || (it.id === "top" && granite)) status = (seen > 0) === (sp > 0) ? "pass" : seen > 0 ? "kurang" : "lebih";
       else status = seen === sp ? "pass" : seen > sp ? "kurang" : "lebih";
     }
-    return { id: it.id, label: it.label, unit: it.unit, spec: sp, seen, status, evidence: c?.evidence ?? "", group: it.group };
+    return { id: it.id, label: it.id === "top" && granite ? "Top table (granit — non-workshop)" : it.label, unit: it.unit, spec: sp, seen, status, evidence: c?.evidence ?? "", group: it.group };
   });
 }
 
@@ -139,17 +152,18 @@ export function auditSpec(input: {
   applied?: boolean | undefined;
 }): AuditFinding[] {
   const out: AuditFinding[] = [];
-  const spec = specCounts(input.results, input.bom, input.extras, input.quick, input.applied ? input.ai : undefined);
-  if (spec.pintu > 0 && spec.engsel === 0) out.push({ type: "kurang", item: "Engsel", note: `${spec.pintu} daun pintu tanpa engsel di daftar bahan` });
-  if (spec.laci > 0 && spec.rel === 0) out.push({ type: "kurang", item: "Rel laci", note: `${spec.laci} laci tanpa rel di daftar bahan` });
-  if (spec.engsel > 0 && spec.pintu === 0) out.push({ type: "lebih", item: "Engsel", note: "Engsel ada tapi modul tidak punya pintu" });
-  if (spec.rel > 0 && spec.laci === 0) out.push({ type: "lebih", item: "Rel laci", note: "Rel laci ada tapi modul tidak punya laci" });
   for (const r of auditTable(input)) {
-    if (r.status === "kurang") out.push({ type: "kurang", item: r.label, note: `Gambar ${r.seen} ${r.unit}, spek/BOM ${r.spec ?? 0}` });
-    if (r.status === "lebih") out.push({ type: "lebih", item: r.label, note: `Spek/BOM ${r.spec ?? 0} ${r.unit}, gambar ${r.seen}` });
+    if (r.status === "kurang") out.push({ type: "kurang", item: r.label, note: `Gambar ${r.seen} ${r.unit}, spek ${r.spec ?? 0}` });
+    if (r.status === "lebih") out.push({ type: "lebih", item: r.label, note: `Spek ${r.spec ?? 0} ${r.unit}, gambar ${r.seen}` });
   }
-  for (const x of input.ai?.extra ?? []) out.push({ type: "kurang", item: x, note: "Terlihat di gambar (AI), tidak ada di daftar bahan" });
+  for (const x of input.ai?.extra ?? []) if (!isNonWorkshop(x)) out.push({ type: "kurang", item: x, note: "Terlihat di gambar (AI), tidak ada di daftar bahan" });
   return out;
+}
+
+/** Item AI "extra" yang termasuk pekerjaan luar (granit, sink, kran, dll). */
+export function nonWorkshopNotes(ai: AiQcResult | undefined): string[] {
+  const s = new Set([...(ai?.nonWorkshop ?? []), ...(ai?.extra ?? []).filter(isNonWorkshop)]);
+  return [...s];
 }
 
 export const SHOP_CATEGORIES = [
