@@ -3,28 +3,41 @@
  * Hanya melapor jika ada selisih antara gambar/visual, struktur modul, dan daftar bahan.
  */
 import { WORKSHOP_MINOR_IDS, type KisFinishExtras } from "./kis";
-import type { BomItem, CalculationResult } from "./estimator/types";
+import type { BomItem, CalculationResult, QuickSpec } from "./estimator/types";
 
-/** Item yang dicek QC dari foto render / tampak dalam. */
-export const VISUAL_CHECKS = [
-  { id: "lampu", label: "Lampu LED / sorot" },
-  { id: "kaca", label: "Pintu kaca" },
-  { id: "list", label: "List profil gold/hitam" },
-  { id: "pintu-angkat", label: "Pintu angkat (gas spring)" },
-  { id: "rak-sayur", label: "Rak sayur" },
-  { id: "rak-bumbu", label: "Rak bumbu" },
-  { id: "rak-piring", label: "Rak piring" },
+/** Item audit QC: dihitung AI dari 3 foto lalu dibandingkan dengan spek/BOM. */
+export const AUDIT_ITEMS = [
+  { id: "pintu", label: "Daun pintu", unit: "daun" },
+  { id: "laci", label: "Laci", unit: "laci" },
+  { id: "engsel", label: "Engsel", unit: "pcs" },
+  { id: "rel", label: "Rel laci", unit: "set" },
+  { id: "hidrolik", label: "Hidrolik / gas spring", unit: "pcs" },
+  { id: "kaca", label: "Pintu kaca", unit: "daun" },
+  { id: "led", label: "Lampu LED strip", unit: "jalur" },
+  { id: "sorot", label: "Lampu sorot / spot", unit: "titik" },
+  { id: "list", label: "List profil gold/hitam", unit: "ada" },
+  { id: "handle", label: "Handle pintu/laci", unit: "pcs" },
+  { id: "top", label: "Top table", unit: "lapis" },
+  { id: "rak-piring", label: "Rak piring", unit: "set" },
+  { id: "rak-bumbu", label: "Rak bumbu", unit: "set" },
+  { id: "rak-sayur", label: "Rak sayur", unit: "set" },
+  { id: "ambalan", label: "Ambalan / rak dalam", unit: "lembar" },
 ] as const;
-export type VisualCheckId = (typeof VISUAL_CHECKS)[number]["id"];
-/** true = terlihat di gambar, false = tidak ada, undefined = belum dicek */
-export type VisualQc = Partial<Record<VisualCheckId, boolean>>;
+export type AuditItemId = (typeof AUDIT_ITEMS)[number]["id"];
+/** Legacy (checklist manual lama). */
+export type VisualCheckId = string;
+export type VisualQc = Partial<Record<string, boolean>>;
 
 export interface AiQcResult {
   scannedAt: string;
-  items: { id: VisualCheckId; status: "ada" | "tidak" | "tidak_jelas"; evidence: string }[];
+  counts?: { id: AuditItemId; qty: number | null; evidence: string }[];
+  /** legacy */
+  items?: { id: string; status: string; evidence: string }[];
   doors: number | null;
   drawers: number | null;
   extra: string[];
+  /** catatan jenis hardware, mis. "rel terlihat double track" */
+  notes?: string[];
 }
 
 export interface AuditFinding {
@@ -33,50 +46,80 @@ export interface AuditFinding {
   note: string;
 }
 
-const has = (bom: BomItem[], re: RegExp) => bom.some((b) => re.test(`${b.id} ${b.name}`));
+export interface AuditRow {
+  id: AuditItemId;
+  label: string;
+  unit: string;
+  spec: number | null;
+  seen: number | null;
+  status: "pass" | "kurang" | "lebih" | "tidak_jelas";
+  evidence: string;
+}
 
-/** Apa yang sudah ada di spek/BOM untuk tiap item visual. */
-function inSpec(id: VisualCheckId, bom: BomItem[], ex: KisFinishExtras | undefined): boolean {
-  switch (id) {
-    case "lampu": return !!ex?.lighting || has(bom, /led|lampu/i);
-    case "kaca": return !!ex?.glass || has(bom, /kaca/i);
-    case "list": return ex?.edge === "list_gold" || ex?.edge === "list_black";
-    case "pintu-angkat": return has(bom, /gas spring|hidrolik/i);
-    case "rak-sayur": return has(bom, /rak sayur/i);
-    case "rak-bumbu": return has(bom, /rak bumbu/i);
-    case "rak-piring": return has(bom, /rak piring|dish/i);
-  }
+const sumQty = (bom: BomItem[], re: RegExp) => bom.filter((b) => re.test(`${b.id} ${b.name}`)).reduce((a, b) => a + b.qty, 0);
+
+/** Kebutuhan menurut spek KIS + hitungan SME. */
+export function specCounts(results: CalculationResult[], bom: BomItem[], ex?: KisFinishExtras, quick?: QuickSpec | null): Record<AuditItemId, number> {
+  const parts = results.flatMap((r) => r.parts);
+  const cnt = (re: RegExp) => parts.filter((p) => re.test(p.part_name)).reduce((a, p) => a + p.qty, 0);
+  const hw = bom.filter((b) => b.group === "hardware");
+  const hinge = hw.filter((b) => /engsel(?! hidrolik)|hinge/i.test(b.name) && !/gas spring/i.test(b.name)).reduce((a, b) => a + (/set|pasang/i.test(b.unit) ? b.qty * 2 : b.qty), 0);
+  return {
+    pintu: cnt(/pintu|door/i),
+    laci: cnt(/front laci|depan laci|muka laci|drawer front/i),
+    engsel: hinge,
+    rel: hw.filter((b) => /rel|slide|tandem/i.test(b.name)).reduce((a, b) => a + b.qty, 0),
+    hidrolik: sumQty(bom, /gas spring|hidrolik/i),
+    kaca: ex?.glass ? Math.max(1, Math.round(sumQty(bom, /fitting-pintu|fitting pintu kaca/i)) || 0) : sumQty(bom, /^kaca/i) > 0 ? 1 : 0,
+    led: ex?.lighting === "led" || ex?.lighting === "led_spot" || /led strip/i.test(bom.map((b) => b.name).join("|")) ? 1 : 0,
+    sorot: ex?.lighting === "spot" || ex?.lighting === "led_spot" ? Math.max(1, sumQty(bom, /sorot|spot/i)) : sumQty(bom, /sorot|spot/i),
+    list: ex?.edge === "list_gold" || ex?.edge === "list_black" ? 1 : 0,
+    handle: sumQty(bom, /handle|tarikan/i),
+    top: quick?.top === "double" ? 2 : quick?.top === "none" ? 0 : cnt(/top/i) > 0 ? 1 : 0,
+    "rak-piring": sumQty(bom, /rak piring|dish/i),
+    "rak-bumbu": sumQty(bom, /rak bumbu/i),
+    "rak-sayur": sumQty(bom, /rak sayur/i),
+    ambalan: cnt(/ambalan|shelf|rak dalam/i),
+  };
+}
+
+/** Item yang cukup dicek ada/tidak (jumlah di gambar tidak harus sama persis). */
+const PRESENCE: ReadonlySet<AuditItemId> = new Set(["led", "list", "kaca", "top"]);
+
+export function auditTable(input: { results: CalculationResult[]; bom: BomItem[]; extras?: KisFinishExtras | undefined; quick?: QuickSpec | null | undefined; ai?: AiQcResult | undefined }): AuditRow[] {
+  const spec = specCounts(input.results, input.bom, input.extras, input.quick);
+  return AUDIT_ITEMS.map((it) => {
+    const c = input.ai?.counts?.find((x) => x.id === it.id);
+    const seen = c?.qty ?? null;
+    const sp = spec[it.id];
+    let status: AuditRow["status"] = "tidak_jelas";
+    if (seen != null) {
+      if (PRESENCE.has(it.id) && it.id !== "top") status = (seen > 0) === (sp > 0) ? "pass" : seen > 0 ? "kurang" : "lebih";
+      else status = seen === sp ? "pass" : seen > sp ? "kurang" : "lebih";
+    }
+    return { id: it.id, label: it.label, unit: it.unit, spec: sp, seen, status, evidence: c?.evidence ?? "" };
+  });
 }
 
 export function auditSpec(input: {
   results: CalculationResult[];
   bom: BomItem[];
   extras?: KisFinishExtras | undefined;
+  quick?: QuickSpec | null | undefined;
   visual?: VisualQc | undefined;
   ai?: AiQcResult | undefined;
 }): AuditFinding[] {
   const out: AuditFinding[] = [];
-  const parts = input.results.flatMap((r) => r.parts);
-  const doors = parts.filter((p) => /pintu|door/i.test(p.part_name)).reduce((a, p) => a + p.qty, 0);
-  const drawers = parts.filter((p) => /front laci|depan laci|muka laci|drawer front/i.test(p.part_name)).reduce((a, p) => a + p.qty, 0);
-  const hinge = input.bom.some((b) => b.group === "hardware" && /engsel|hinge|fitting/i.test(b.name));
-  const slide = input.bom.some((b) => b.group === "hardware" && /rel|slide|tandem/i.test(b.name));
-  if (doors > 0 && !hinge) out.push({ type: "kurang", item: "Engsel", note: `${doors} daun pintu tanpa engsel di daftar bahan` });
-  if (drawers > 0 && !slide) out.push({ type: "kurang", item: "Rel laci", note: `${drawers} laci tanpa rel di daftar bahan` });
-  if (hinge && doors === 0) out.push({ type: "lebih", item: "Engsel", note: "Engsel ada tapi modul tidak punya pintu" });
-  if (slide && drawers === 0) out.push({ type: "lebih", item: "Rel laci", note: "Rel laci ada tapi modul tidak punya laci" });
-  const ai = input.ai;
-  if (ai?.doors != null && ai.doors !== doors) out.push({ type: ai.doors > doors ? "kurang" : "lebih", item: "Daun pintu", note: `AI melihat ${ai.doors} pintu di gambar, modul punya ${doors}` });
-  if (ai?.drawers != null && ai.drawers !== drawers) out.push({ type: ai.drawers > drawers ? "kurang" : "lebih", item: "Laci", note: `AI melihat ${ai.drawers} laci di gambar, modul punya ${drawers}` });
-  for (const x of ai?.extra ?? []) out.push({ type: "kurang", item: x, note: "Terlihat di gambar (AI), tidak ada di daftar bahan" });
-  for (const c of VISUAL_CHECKS) {
-    const st = ai?.items.find((i) => i.id === c.id)?.status;
-    const seen = input.visual?.[c.id] ?? (st === "ada" ? true : st === "tidak" ? false : undefined);
-    if (seen === undefined) continue;
-    const spec = inSpec(c.id, input.bom, input.extras);
-    if (seen && !spec) out.push({ type: "kurang", item: c.label, note: "Terlihat di gambar, belum ada di spek KIS" });
-    if (!seen && spec) out.push({ type: "lebih", item: c.label, note: "Ada di spek KIS, tidak terlihat di gambar" });
+  const spec = specCounts(input.results, input.bom, input.extras, input.quick);
+  if (spec.pintu > 0 && spec.engsel === 0) out.push({ type: "kurang", item: "Engsel", note: `${spec.pintu} daun pintu tanpa engsel di daftar bahan` });
+  if (spec.laci > 0 && spec.rel === 0) out.push({ type: "kurang", item: "Rel laci", note: `${spec.laci} laci tanpa rel di daftar bahan` });
+  if (spec.engsel > 0 && spec.pintu === 0) out.push({ type: "lebih", item: "Engsel", note: "Engsel ada tapi modul tidak punya pintu" });
+  if (spec.rel > 0 && spec.laci === 0) out.push({ type: "lebih", item: "Rel laci", note: "Rel laci ada tapi modul tidak punya laci" });
+  for (const r of auditTable(input)) {
+    if (r.status === "kurang") out.push({ type: "kurang", item: r.label, note: `Gambar ${r.seen} ${r.unit}, spek/BOM ${r.spec ?? 0}` });
+    if (r.status === "lebih") out.push({ type: "lebih", item: r.label, note: `Spek/BOM ${r.spec ?? 0} ${r.unit}, gambar ${r.seen}` });
   }
+  for (const x of input.ai?.extra ?? []) out.push({ type: "kurang", item: x, note: "Terlihat di gambar (AI), tidak ada di daftar bahan" });
   return out;
 }
 
