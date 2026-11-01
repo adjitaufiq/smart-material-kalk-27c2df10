@@ -82,7 +82,8 @@ export const QUICK_QUESTIONS: {
 ];
 
 export const QUICK_ACCESSORIES = [
-  { id: "rak-piring", label: "Rak piring & gelas" },
+  { id: "rak-piring", label: "Rak piring & gelas (laci bawah)" },
+  { id: "rak-piring-atas", label: "Rak piring gantung (kabinet atas)" },
   { id: "rak-sayur", label: "Rak sayur tarik" },
   { id: "rak-bumbu", label: "Rak bumbu / botol tarik" },
   { id: "tray-sendok", label: "Tray sendok laci" },
