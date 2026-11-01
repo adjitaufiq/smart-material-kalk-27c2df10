@@ -8,7 +8,7 @@ import { scanKisQc } from "@/lib/kis-qc.functions";
 import { SectionCard } from "@/components/estimator/shared";
 import { Button } from "@/components/ui/button";
 import type { KisLink } from "@/lib/kis";
-import { auditSpec, shoppingBreakdown, VISUAL_CHECKS, type AiQcResult, type VisualQc } from "@/lib/kis-audit";
+import { auditSpec, auditTable, shoppingBreakdown, type AiQcResult } from "@/lib/kis-audit";
 
 async function toDataUrl(key: string | undefined, url: string | undefined) {
   const cached = key ? await getDrawingBlob(key) : null;
@@ -26,7 +26,7 @@ async function toDataUrl(key: string | undefined, url: string | undefined) {
     return null;
   }
 }
-import type { BomItem, CalculationResult } from "@/lib/estimator/types";
+import type { BomItem, CalculationResult, QuickSpec } from "@/lib/estimator/types";
 
 const rp = (n: number) => `Rp ${n.toLocaleString("id-ID")}`;
 
@@ -34,18 +34,18 @@ export function KisAudit({
   kis,
   results,
   bom,
-  onChange,
+  quick,
   onAi,
 }: {
   kis: KisLink;
   results: CalculationResult[];
   bom: BomItem[];
-  onChange: (v: VisualQc) => void;
+  quick?: QuickSpec | null | undefined;
   onAi: (r: AiQcResult) => void;
 }) {
-  const visual = kis.qcVisual ?? {};
   const ai = kis.qcAi;
-  const findings = auditSpec({ results, bom, extras: kis.finishExtras, visual, ai });
+  const findings = auditSpec({ results, bom, extras: kis.finishExtras, quick, ai });
+  const rows = auditTable({ results, bom, extras: kis.finishExtras, quick, ai });
   const scan = useServerFn(scanKisQc);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -62,7 +62,7 @@ export function KisAudit({
       if (files.length === 0) throw new Error("Foto render dari KIS tidak tersedia. Buka ulang proyek dari KIS.");
       const r = await scan({ data: { files, specList: bom.map((b) => `${b.name} (${b.qty} ${b.unit})`) } });
       if (!r.ok) throw new Error(r.error);
-      onAi({ scannedAt: new Date().toISOString(), items: r.items, doors: r.doors, drawers: r.drawers, extra: r.extra });
+      onAi({ scannedAt: new Date().toISOString(), counts: r.counts, doors: r.doors, drawers: r.drawers, notes: r.notes, extra: r.extra });
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Scan AI QC gagal.");
     } finally {
@@ -70,48 +70,53 @@ export function KisAudit({
     }
   };
   const shop = shoppingBreakdown(bom);
-  const set = (id: keyof VisualQc, v: boolean) => onChange({ ...visual, [id]: visual[id] === v ? undefined : v });
 
   return (
     <>
       <SectionCard title="Audit Spek Bahan (QC)" description="Cocokkan foto render & tampak dalam dengan spek KIS">
         <Button className="w-full" onClick={runScan} disabled={busy}>
           {busy ? <Loader2 className="size-4 animate-spin" /> : <ScanSearch className="size-4" />}
-          {ai ? "Scan ulang AI QC (luar, dalam depan & samping)" : "Jalankan AI QC (luar, dalam depan & samping)"}
+          {ai ? "Scan ulang AI Audit (3 foto)" : "Jalankan AI Audit (3 foto)"}
         </Button>
         {err ? <p className="mt-2 text-sm text-destructive">{err}</p> : null}
         {ai ? (
-          <p className="mt-2 text-xs text-muted-foreground">
-            Discan {new Date(ai.scannedAt).toLocaleString("id-ID")} · AI lihat {ai.doors ?? "?"} pintu, {ai.drawers ?? "?"} laci. Tombol Ada/Tidak hanya untuk koreksi.
-          </p>
+          <p className="mt-2 text-xs text-muted-foreground">Discan {new Date(ai.scannedAt).toLocaleString("id-ID")}</p>
+        ) : (
+          <p className="mt-2 text-xs text-muted-foreground">Tekan tombol di atas: AI menghitung semua item dari 3 foto lalu dibandingkan dengan spek.</p>
+        )}
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-xs text-muted-foreground">
+                <th className="py-1 pr-2 font-medium">Item</th>
+                <th className="px-1 text-center font-medium">Spek</th>
+                <th className="px-1 text-center font-medium">Gambar</th>
+                <th className="pl-1 text-right font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id} className="border-b align-top last:border-0">
+                  <td className="py-1.5 pr-2">
+                    {r.label}
+                    {r.evidence ? <span className="block text-xs text-muted-foreground">{r.evidence}</span> : null}
+                  </td>
+                  <td className="px-1 text-center">{r.spec ?? "—"}</td>
+                  <td className="px-1 text-center">{r.seen ?? "?"}</td>
+                  <td className={`pl-1 text-right text-xs font-semibold ${r.status === "pass" ? "text-primary" : r.status === "tidak_jelas" ? "text-muted-foreground" : "text-destructive"}`}>
+                    {r.status === "pass" ? "PASS" : r.status === "kurang" ? "GAP: kurang" : r.status === "lebih" ? "GAP: lebih" : ai ? "Tidak jelas" : "Belum scan"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {ai?.notes?.length ? (
+          <ul className="mt-2 list-disc pl-4 text-xs text-muted-foreground">
+            {ai.notes.map((n, i) => <li key={i}>{n}</li>)}
+          </ul>
         ) : null}
-        <ul className="mt-3 space-y-2">
-          {VISUAL_CHECKS.map((c) => {
-            const a = ai?.items.find((i) => i.id === c.id);
-            return (
-            <li key={c.id} className="flex items-center justify-between gap-2 text-sm">
-              <span>
-                {c.label}
-                {a ? (
-                  <span className="block text-xs text-muted-foreground">
-                    AI: {a.status === "ada" ? "terlihat" : a.status === "tidak" ? "tidak ada" : "tidak jelas"}
-                    {a.evidence ? ` — ${a.evidence}` : ""}
-                  </span>
-                ) : null}
-              </span>
-              <span className="flex gap-1">
-                <Button size="sm" variant={visual[c.id] === true ? "default" : "outline"} onClick={() => set(c.id, true)}>
-                  Ada
-                </Button>
-                <Button size="sm" variant={visual[c.id] === false ? "default" : "outline"} onClick={() => set(c.id, false)}>
-                  Tidak
-                </Button>
-              </span>
-            </li>
-            );
-          })}
-        </ul>
-        {findings.length === 0 ? (
+        {!ai ? null : findings.length === 0 ? (
           <p className="mt-3 flex items-center gap-2 rounded-md border p-2 text-sm text-primary">
             <CheckCircle2 className="size-4" /> Audit spek lolos — tidak ada selisih.
           </p>

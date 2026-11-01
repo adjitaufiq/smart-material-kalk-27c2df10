@@ -136,7 +136,7 @@ function ProjectPage() {
               kis={project.kis}
               results={results}
               bom={projectBom}
-              onChange={(qcVisual) => save({ ...project, kis: { ...project.kis!, qcVisual } })}
+              quick={project.items[0]?.quickSpecHint}
               onAi={(qcAi) => save({ ...project, kis: { ...project.kis!, qcAi, qcVisual: {} } })}
             />
           ) : null}
