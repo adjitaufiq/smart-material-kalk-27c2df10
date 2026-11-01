@@ -69,7 +69,7 @@ export function normBody(v: unknown): unknown {
 }
 
 const OPTS = {
-  outside: ["hpl", "hpl_premium", "duco"],
+  outside: ["hpl", "hpl_premium", "duco", "tacosheet"],
   inside: ["blockmin", "tacosheet", "hpl"],
   hinge: ["slowmo", "slowmo_stainless", "biasa"],
   slide: ["dt_slowmo", "dt_biasa", "dt_eco", "push", "tandem", "roller"],
@@ -137,12 +137,19 @@ export function parseSpecHints(search: Record<string, unknown>): {
     spec.hplTop = gTop;
     found = true;
   }
-  const top = normTop(raw["top"] ?? raw["topTable"]);
+  const topMat = str(raw["topMaterial"]).toLowerCase();
+  if (topMat) {
+    spec.topMaterial = topMat;
+    found = true;
+  }
+  const top = /granit/.test(topMat) ? "none" : normTop(raw["top"] ?? raw["topTable"]);
   if (top) {
     spec.top = top;
     found = true;
   }
-  if (gOut) {
+  const duco = str(raw["ducoHex"]);
+  if (spec.outside === "duco" && /^#?[0-9a-f]{6}$/i.test(duco)) spec.ducoHex = duco.startsWith("#") ? duco : `#${duco}`;
+  if (gOut && spec.outside !== "duco") {
     spec.hplOutside = gOut;
     found = true;
   }
@@ -222,7 +229,9 @@ export function hplRef(v: unknown): HplRef | undefined {
   const g = str(o["group"]) || str(o["category"]);
   const group = GROUPS.find((x) => x === g.toLowerCase());
   const name = str(o["name"]) || str(o["nama"]);
-  return { code, ...(name ? { name } : {}), ...(group ? { group } : {}) };
+  const texture = str(o["texture"]).toLowerCase();
+  const usage = str(o["usage"]);
+  return { code, ...(name ? { name } : {}), ...(group ? { group } : {}), ...(texture ? { texture } : {}), ...(usage ? { usage } : {}) };
 }
 
 /** "double" | "2_lapis" | 2 | "36mm" → double; "none"/"granit" → none */

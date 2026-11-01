@@ -39,6 +39,7 @@ export const QUICK_QUESTIONS: {
       { value: "hpl", label: "HPL standar / motif kayu" },
       { value: "hpl_premium", label: "HPL premium / high gloss" },
       { value: "duco", label: "Cat duco" },
+      { value: "tacosheet", label: "TACO Sheet (PVC)" },
     ],
   },
   {
