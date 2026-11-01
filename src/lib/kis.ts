@@ -397,10 +397,11 @@ export interface KisFinishExtras {
   otherAccessories?: { id: string; qty: number }[] | undefined;
 }
 
+const GLASS_PRICE = { dark: 175000, clear: 140000, fluted: 295000 } as const;
 const GLASS_NAME = { dark: "Kaca Riben / Gelap 5 mm", clear: "Kaca Bening 5 mm", fluted: "Kaca Fluted / Moru 5 mm" } as const;
-const EXTRA_ACC: Record<string, { name: string; unit: string; qty: number }> = {
-  ventilasi: { name: "Ventilasi Kisi-kisi Aluminium", unit: "pcs", qty: 2 },
-  hidrolik: { name: "Engsel Hidrolik / Gas Spring Pintu Angkat", unit: "pcs", qty: 2 },
+const EXTRA_ACC: Record<string, { name: string; unit: string; qty: number; price: number }> = {
+  ventilasi: { name: "Ventilasi Kisi-kisi Aluminium", unit: "pcs", qty: 2, price: 25000 },
+  hidrolik: { name: "Engsel Hidrolik / Gas Spring Pintu Angkat", unit: "pcs", qty: 2, price: 20000 },
 };
 
 export function parseFinishExtras(raw: Record<string, unknown>): KisFinishExtras | undefined {
@@ -436,15 +437,17 @@ export function finishExtraLines(extras: KisFinishExtras | undefined, results: C
     const doors = parts.filter((p) => UPPER.test(p.module_name) && /pintu|door/i.test(p.part_name));
     const m2 = Math.round(doors.reduce((a, p) => a + (p.length_mm * p.width_mm * p.qty) / 1e6, 0) * 100) / 100;
     const frame = Math.ceil(doors.reduce((a, p) => a + (2 * (p.length_mm + p.width_mm) * p.qty) / 1000, 0));
-    add.push(line(`kaca-${extras.glass}`, "finishing", GLASS_NAME[extras.glass], m2, "m²", null, `Luas daun pintu kabinet atas (${doors.length} jenis daun)`));
-    add.push(line("frame-alu-kaca", "hardware", "Frame / Profil Aluminium Pintu Kaca", frame, "m'", null, "Keliling daun pintu kabinet atas"));
+    add.push(line(`kaca-${extras.glass}`, "finishing", GLASS_NAME[extras.glass], m2, "m²", GLASS_PRICE[extras.glass], `Luas daun pintu kabinet atas (${doors.length} jenis daun)`));
+    add.push(line("frame-alu-kaca", "hardware", "Frame / Profil Aluminium Pintu Kaca (batang 3 m)", Math.ceil(frame / 3), "batang", 195000, `Keliling daun pintu kabinet atas ${frame} m'`));
+    add.push(line("fitting-pintu-kaca", "hardware", "Fitting / Engsel Pintu Frame Aluminium", doors.reduce((a, p) => a + p.qty, 0), "set", 43000, "1 set per daun pintu kaca"));
   }
   let dropEdging = false;
   if (extras.edge === "list_gold" || extras.edge === "list_black" || extras.edge === "tusir") {
     const meters = Math.ceil(results.reduce((a, r) => a + r.edgingMeters.reduce((b, e) => b + e.meters, 0), 0));
     dropEdging = true;
     const name = extras.edge === "list_gold" ? "Profil List Gold / T-Profile Aluminium Gold" : extras.edge === "list_black" ? "Profil List Hitam / T-Profile Aluminium Black" : "Tusir (cat tepi panel)";
-    add.push(line(extras.edge, "edging", name, meters, "m'", null, "Pengganti edging PVC — panjang tepi sama dengan hitungan edging"));
+    if (extras.edge === "tusir") add.push(line("tusir", "edging", name, 1, "paket", 25000, `Pengganti edging PVC — tepi ${meters} m'`));
+    else add.push(line(extras.edge, "edging", name + " (batang 3 m)", Math.ceil(meters / 3), "batang", 48000, `Pengganti edging PVC — tepi ${meters} m'`));
   }
   if (extras.lighting) {
     const hasLed = bom.some((b) => b.id === "led-strip");
@@ -454,13 +457,13 @@ export function finishExtraLines(extras: KisFinishExtras | undefined, results: C
       add.push(line("led-strip", "elektrik", "LED Strip 12V Warm White", m, "m'", 45000, "Panjang bawah kabinet atas"));
     }
     if (extras.lighting === "spot" || extras.lighting === "led_spot")
-      add.push(line("lampu-spot", "elektrik", "Lampu Spot LED Kabinet", 1, "set", null, "Jumlah titik spot perlu konfirmasi"));
+      add.push(line("lampu-spot", "elektrik", "Lampu Spot LED Kabinet", 1, "titik", 30000, "Jumlah titik spot perlu konfirmasi"));
     if (!bom.some((b) => b.id === "driver-led")) add.push(line("driver-led", "elektrik", "Trafo / Adaptor LED 12V", 1, "pcs", 165000, "1 trafo per sistem lampu"));
-    add.push(line("kabel-saklar", "elektrik", "Kabel & Sakelar Sensor Lampu", 1, "set", null, "Paket instalasi lampu kabinet"));
+    add.push(line("kabel-saklar", "elektrik", "Kabel & Sakelar Sensor Lampu", 1, "set", 75000, "Paket instalasi lampu kabinet"));
   }
   for (const a of extras.otherAccessories ?? []) {
     const m = EXTRA_ACC[a.id];
-    add.push(line(a.id, "hardware", m?.name ?? a.id.replace(/-/g, " "), a.qty, m?.unit ?? "pcs", null, "Aksesori dipilih di KIS"));
+    add.push(line(a.id, "hardware", m?.name ?? a.id.replace(/-/g, " "), a.qty, m?.unit ?? "pcs", m?.price ?? null, "Aksesori dipilih di KIS"));
   }
   return { add, dropEdging };
 }
