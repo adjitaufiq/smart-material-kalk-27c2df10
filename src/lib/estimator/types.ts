@@ -208,6 +208,8 @@ export interface QuickSpec {
   /** kode HPL TACO dari KIS untuk bidang luar / dalam (mis. "TH 002 AA") — dipakai apa adanya */
   hplOutside?: { code: string; name?: string | undefined; group?: "white" | "solid" | "woodgrain" | "ultimate" | "long" | undefined } | undefined;
   hplInside?: { code: string; name?: string | undefined; group?: "white" | "solid" | "woodgrain" | "ultimate" | "long" | undefined } | undefined;
+  /** kode HPL top table dari KIS (mis. "003 AA"); kosong → ikut hplOutside */
+  hplTop?: { code: string; name?: string | undefined; group?: "white" | "solid" | "woodgrain" | "ultimate" | "long" | undefined } | undefined;
   /** lem kuning HPL (default TACO Active) */
   glue?: "active" | "starmax" | undefined;
   accessories: string[];
