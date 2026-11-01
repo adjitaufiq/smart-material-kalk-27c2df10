@@ -61,7 +61,6 @@ export function KisAudit({
       if (files.length === 0) throw new Error("Foto render dari KIS tidak tersedia. Buka ulang proyek dari KIS.");
       const r = await scan({ data: { files, specList: bom.map((b) => `${b.name} (${b.qty} ${b.unit})`) } });
       if (!r.ok) throw new Error(r.error);
-      onChange({});
       onAi({ scannedAt: new Date().toISOString(), items: r.items, doors: r.doors, drawers: r.drawers, extra: r.extra });
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Scan AI QC gagal.");
