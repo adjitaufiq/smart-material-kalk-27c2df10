@@ -5,7 +5,7 @@
  */
 import { defaultSelection, itemsFromSelections, type PresetItem } from "./estimator/presets";
 import { DEFAULT_QUICK_SPEC } from "./estimator/quick-spec";
-import { TACO_HET_DATE, TACO_PVC_HET_DATE } from "./estimator/taco-pricing";
+import { TACO_HET_DATE, TACO_PVC_HET_DATE, tacoHplPrice } from "./estimator/taco-pricing";
 import type { BomItem, CalculationResult, CalculationStatus, QuickSpec } from "./estimator/types";
 
 export const KIS_ORIGIN = "https://kerjaku-design-forge.lovable.app";
@@ -112,8 +112,19 @@ export function parseSpecHints(search: Record<string, unknown>): {
       found = true;
     }
   }
-  const gOut = hplRef(raw["hplOutside"]);
+  const motifs = hplMotifs(raw);
+  const gOut = hplRef(raw["hplOutside"]) ?? motifs.outside;
   const gIn = hplRef(raw["hplInside"]);
+  const gTop = hplRef(raw["hplTop"]) ?? motifs.top;
+  if (gTop) {
+    spec.hplTop = gTop;
+    found = true;
+  }
+  const top = normTop(raw["top"] ?? raw["topTable"]);
+  if (top) {
+    spec.top = top;
+    found = true;
+  }
   if (gOut) {
     spec.hplOutside = gOut;
     found = true;
@@ -197,11 +208,40 @@ export function hplRef(v: unknown): HplRef | undefined {
   return { code, ...(name ? { name } : {}), ...(group ? { group } : {}) };
 }
 
+/** "double" | "2_lapis" | 2 | "36mm" → double; "none"/"granit" → none */
+export function normTop(v: unknown): QuickSpec["top"] | undefined {
+  if (v === 2) return "double";
+  if (typeof v !== "string") return undefined;
+  const t = v.toLowerCase();
+  if (/double|dobel|2[\s_-]*lapis|36/.test(t)) return "double";
+  if (/none|tanpa|granit|solid surface/.test(t)) return "none";
+  return undefined;
+}
+
+/** Array motif HPL KIS: [{ code, usage }] — usage "top" | "aksen"/"accent" | lainnya = luar. */
+export function hplMotifs(raw: Record<string, unknown>): { outside?: HplRef; top?: HplRef; accent?: HplRef } {
+  const arr = raw["hplMotifs"] ?? raw["motifs"] ?? raw["hplCodes"];
+  const out: { outside?: HplRef; top?: HplRef; accent?: HplRef } = {};
+  if (!Array.isArray(arr)) return out;
+  for (const m of arr) {
+    const ref = hplRef(m);
+    if (!ref) continue;
+    const o = m && typeof m === "object" ? (m as Record<string, unknown>) : {};
+    const use = `${str(o["usage"])} ${str(o["area"])} ${str(o["role"])} ${str(o["untuk"])} ${str(o["for"])}`.toLowerCase();
+    if (/top|meja/.test(use)) out.top ??= ref;
+    else if (/aksen|accent|bingkai|frame|list/.test(use)) out.accent ??= ref;
+    else out.outside ??= ref;
+  }
+  return out;
+}
+
 function moduleSpec(r: Record<string, unknown>): Partial<QuickSpec> | undefined {
   const f = r["finish"] && typeof r["finish"] === "object" ? (r["finish"] as Record<string, unknown>) : {};
   const out: Partial<QuickSpec> = {};
   const outside = hplRef(f["outside"] ?? f["hplOutside"] ?? r["hplOutside"] ?? r["hplCode"] ?? (typeof r["finish"] === "string" ? r["finish"] : undefined));
   const inside = hplRef(f["inside"] ?? f["hplInside"] ?? r["hplInside"]);
+  const topRef = hplRef(f["top"] ?? f["hplTop"] ?? r["hplTop"]);
+  if (topRef) out.hplTop = topRef;
   if (outside) out.hplOutside = outside;
   if (inside) {
     out.hplInside = inside;
@@ -423,6 +463,8 @@ export interface KisFinishExtras {
   lighting?: "led" | "spot" | "led_spot" | undefined;
   /** Aksesori KIS yang belum ada di master SME, mis. ventilasi, hidrolik. */
   otherAccessories?: { id: string; qty: number }[] | undefined;
+  /** HPL aksen KIS (mis. "001 AA" bingkai pintu kaca) — min 1 lembar */
+  hplAccent?: { code: string; name?: string | undefined } | undefined;
 }
 
 const GLASS_PRICE = { dark: 175000, clear: 140000, fluted: 295000 } as const;
@@ -434,22 +476,27 @@ const EXTRA_ACC: Record<string, { name: string; unit: string; qty: number; price
 
 export function parseFinishExtras(raw: Record<string, unknown>): KisFinishExtras | undefined {
   const pick = <T extends string>(v: unknown, ok: readonly T[]) => (typeof v === "string" && (ok as readonly string[]).includes(v) ? (v as T) : undefined);
+  const alias = (v: unknown, map: Record<string, string>) => (typeof v === "string" ? (map[v.trim().toLowerCase()] ?? v.trim().toLowerCase()) : v);
   const out: KisFinishExtras = {
-    glass: pick(raw["glass"], ["dark", "clear", "fluted"] as const),
-    edge: pick(raw["edge"], ["list_gold", "list_black", "edging", "tusir"] as const),
-    lighting: pick(raw["lighting"], ["led", "spot", "led_spot"] as const),
+    glass: pick(alias(raw["glass"], { buram: "fluted", frosted: "fluted", moru: "fluted", riben: "dark", gelap: "dark", bening: "clear" }), ["dark", "clear", "fluted"] as const),
+    edge: pick(alias(raw["edge"] ?? raw["edging"], { tusiran: "tusir", gold: "list_gold", black: "list_black", hitam: "list_black", pvc: "edging" }), ["list_gold", "list_black", "edging", "tusir"] as const),
+    lighting: pick(alias(raw["lighting"], { led_strip: "led", "led-strip": "led", sorot: "spot", "led+spot": "led_spot" }), ["led", "spot", "led_spot"] as const),
   };
+  const acc = hplRef(raw["hplAccent"]) ?? hplMotifs(raw).accent;
+  if (acc) out.hplAccent = { code: acc.code, ...(acc.name ? { name: acc.name } : {}) };
   const others: { id: string; qty: number }[] = [];
   if (Array.isArray(raw["accessories"])) {
     for (const a of raw["accessories"]) {
       const id = typeof a === "string" ? a : a && typeof a === "object" ? (a as { id?: unknown }).id : null;
       if (typeof id !== "string" || ACC_MAP[id] || !id.trim()) continue;
+      const norm = /gas|hidrolik|hydraulic/i.test(id) ? "hidrolik" : /ventil/i.test(id) ? "ventilasi" : id;
+      if (others.some((o) => o.id === norm)) continue;
       const q = a && typeof a === "object" ? Number((a as { qty?: unknown }).qty) : NaN;
-      others.push({ id, qty: q > 0 ? q : (EXTRA_ACC[id]?.qty ?? 1) });
+      others.push({ id: norm, qty: q > 0 ? q : (EXTRA_ACC[norm]?.qty ?? 1) });
     }
   }
   if (others.length) out.otherAccessories = others;
-  return out.glass || out.edge || out.lighting || out.otherAccessories ? out : undefined;
+  return out.glass || out.edge || out.lighting || out.otherAccessories || out.hplAccent ? out : undefined;
 }
 
 const UPPER = /atas|upper|wall|gantung/i;
@@ -483,15 +530,26 @@ export function finishExtraLines(extras: KisFinishExtras | undefined, results: C
       const bottoms = parts.filter((p) => UPPER.test(p.module_name) && /bawah|bottom|alas/i.test(p.part_name));
       const m = Math.ceil(bottoms.reduce((a, p) => a + (p.length_mm * p.qty) / 1000, 0));
       add.push(line("led-strip", "elektrik", "LED Strip 12V Warm White", m, "m'", 45000, "Panjang bawah kabinet atas"));
+      if (!bom.some((b) => b.id === "profil-alu")) add.push(line("profil-alu", "elektrik", "Profil Aluminium LED + Diffuser", m, "m'", 55000, "Sepanjang LED strip"));
     }
     if (extras.lighting === "spot" || extras.lighting === "led_spot")
       add.push(line("lampu-spot", "elektrik", "Lampu Spot LED Kabinet", 1, "titik", 30000, "Jumlah titik spot perlu konfirmasi"));
     if (!bom.some((b) => b.id === "driver-led")) add.push(line("driver-led", "elektrik", "Trafo / Adaptor LED 12V", 1, "pcs", 165000, "1 trafo per sistem lampu"));
     add.push(line("kabel-saklar", "elektrik", "Kabel & Sakelar Sensor Lampu", 1, "set", 75000, "Paket instalasi lampu kabinet"));
   }
+  if (extras.hplAccent) {
+    const p = tacoHplPrice(extras.hplAccent.code);
+    add.push(line(`hpl-accent-${slug(extras.hplAccent.code)}`, "finishing", `TACO ${extras.hplAccent.code} — HPL aksen${extras.hplAccent.name ? ` (${extras.hplAccent.name})` : ""}`, 1, "lembar", p.harga, "Motif aksen dari KIS — minimal 1 lembar utuh"));
+  }
   for (const a of extras.otherAccessories ?? []) {
     const m = EXTRA_ACC[a.id];
     add.push(line(a.id, "hardware", m?.name ?? a.id.replace(/-/g, " "), a.qty, m?.unit ?? "pcs", m?.price ?? null, "Aksesori dipilih di KIS"));
   }
   return { add, dropEdging };
+}
+
+/** BOM proyek KIS lengkap (1 jalur): BOM hitungan + bahan ekstra spek KIS; edging PVC dibuang bila KIS pilih tusir/list. */
+export function kisProjectBom(bom: BomItem[], results: CalculationResult[], extras: KisFinishExtras | undefined): BomItem[] {
+  const ex = finishExtraLines(extras, results, bom);
+  return [...(ex.dropEdging ? bom.filter((b) => b.group !== "edging") : bom), ...ex.add];
 }
