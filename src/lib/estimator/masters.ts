@@ -529,7 +529,7 @@ export const HARDWARE_MASTER: HardwareMaster[] = [
     model: "RB-20",
     unit: "set",
     pack_size: 1,
-    harga: 850000,
+    harga: 680000, // rata-rata online Nov 2026 (Winston OK004C, Vitco SC29023)
     rule_default: "Dipilih user",
     aktif: true,
   },
@@ -541,7 +541,19 @@ export const HARDWARE_MASTER: HardwareMaster[] = [
     model: "RS-60",
     unit: "set",
     pack_size: 1,
-    harga: 550000,
+    harga: 550000, // rata-rata online Nov 2026 (chrome + rel slow motion)
+    rule_default: "Dipilih user",
+    aktif: true,
+  },
+  {
+    id: "rak-piring-atas",
+    kategori: "aksesori",
+    brand: "TACO",
+    nama: "Rak Piring Gantung Stainless (kabinet atas)",
+    model: "HW-010SS",
+    unit: "set",
+    pack_size: 1,
+    harga: 220000, // rata-rata online Nov 2026 (TACO HW-010SS 60–80 cm)
     rule_default: "Dipilih user",
     aktif: true,
   },
