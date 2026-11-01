@@ -34,6 +34,7 @@ export function KisPanel({
   const before = useBlob(kis.beforeBlobKey, kis.beforeUrl);
   const render = useBlob(kis.renderBlobKey, kis.renderUrl);
   const interior = useBlob(kis.interiorBlobKey, kis.interiorUrl ?? "");
+  const interiorSide = useBlob(kis.interiorSideBlobKey, kis.interiorSideUrl ?? "");
   const positions = Object.entries(kis.accessoryPositions ?? {});
 
   const send = () => {
@@ -52,9 +53,9 @@ export function KisPanel({
 
   return (
     <SectionCard title="Dari Kerjaku Interior Studio" description={kis.clientName || "Data klien & visual"}>
-      {before || render || interior ? (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {[["Sebelum", before], ["Render 3D", render], ...(kis.interiorUrl ? [["Tampak Dalam", interior]] : [])].map(([label, src]) => (
+      {before || render || interior || interiorSide ? (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {[["Sebelum", before], ["Tampak Luar", render], ...(kis.interiorUrl ? [["Tampak Dalam Depan", interior]] : []), ...(kis.interiorSideUrl ? [["Tampak Dalam Samping", interiorSide]] : [])].map(([label, src]) => (
             <figure key={label}>
               {src ? (
                 <img src={src} alt={label} className="aspect-[4/3] w-full rounded-md border object-cover" />
