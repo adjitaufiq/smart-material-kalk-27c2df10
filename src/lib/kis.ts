@@ -69,6 +69,7 @@ const OPTS = {
 const ACC_MAP: Record<string, string> = {
   "rak-piring": "rak-piring",
   "rak-gelas": "rak-piring",
+  "rak-piring-atas": "rak-piring-atas",
   "rak-sayur": "rak-sayur",
   "rak-bumbu": "rak-bumbu",
   "tray-sendok": "tray-sendok",
