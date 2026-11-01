@@ -1,9 +1,31 @@
-import { CheckCircle2, AlertTriangle } from "lucide-react";
+import { CheckCircle2, AlertTriangle, ScanSearch, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+
+import { getDrawingBlob } from "@/lib/drawing-blobs";
+import { scanKisQc } from "@/lib/kis-qc.functions";
 
 import { SectionCard } from "@/components/estimator/shared";
 import { Button } from "@/components/ui/button";
 import type { KisLink } from "@/lib/kis";
-import { auditSpec, shoppingBreakdown, VISUAL_CHECKS, type VisualQc } from "@/lib/kis-audit";
+import { auditSpec, shoppingBreakdown, VISUAL_CHECKS, type AiQcResult, type VisualQc } from "@/lib/kis-audit";
+
+async function toDataUrl(key: string | undefined, url: string | undefined) {
+  const cached = key ? await getDrawingBlob(key) : null;
+  if (cached) return cached;
+  if (!url) return null;
+  try {
+    const blob = await (await fetch(url)).blob();
+    return await new Promise<string>((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(String(r.result));
+      r.onerror = rej;
+      r.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
 import type { BomItem, CalculationResult } from "@/lib/estimator/types";
 
 const rp = (n: number) => `Rp ${n.toLocaleString("id-ID")}`;
@@ -13,24 +35,70 @@ export function KisAudit({
   results,
   bom,
   onChange,
+  onAi,
 }: {
   kis: KisLink;
   results: CalculationResult[];
   bom: BomItem[];
   onChange: (v: VisualQc) => void;
+  onAi: (r: AiQcResult) => void;
 }) {
   const visual = kis.qcVisual ?? {};
-  const findings = auditSpec({ results, bom, extras: kis.finishExtras, visual });
+  const ai = kis.qcAi;
+  const findings = auditSpec({ results, bom, extras: kis.finishExtras, visual, ai });
+  const scan = useServerFn(scanKisQc);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const runScan = async () => {
+    setBusy(true);
+    setErr(null);
+    try {
+      const imgs = [
+        ["render-luar", await toDataUrl(kis.renderBlobKey, kis.renderUrl)],
+        ["tampak-dalam", await toDataUrl(kis.interiorBlobKey, kis.interiorUrl)],
+      ] as const;
+      const files = imgs.flatMap(([name, d]) => (d && d.startsWith("data:") ? [{ name, mime: d.slice(5, d.indexOf(";")), dataUrl: d }] : []));
+      if (files.length === 0) throw new Error("Foto render dari KIS tidak tersedia. Buka ulang proyek dari KIS.");
+      const r = await scan({ data: { files, specList: bom.map((b) => `${b.name} (${b.qty} ${b.unit})`) } });
+      if (!r.ok) throw new Error(r.error);
+      onChange({});
+      onAi({ scannedAt: new Date().toISOString(), items: r.items, doors: r.doors, drawers: r.drawers, extra: r.extra });
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Scan AI QC gagal.");
+    } finally {
+      setBusy(false);
+    }
+  };
   const shop = shoppingBreakdown(bom);
   const set = (id: keyof VisualQc, v: boolean) => onChange({ ...visual, [id]: visual[id] === v ? undefined : v });
 
   return (
     <>
       <SectionCard title="Audit Spek Bahan (QC)" description="Cocokkan foto render & tampak dalam dengan spek KIS">
-        <ul className="space-y-2">
-          {VISUAL_CHECKS.map((c) => (
+        <Button className="w-full" onClick={runScan} disabled={busy}>
+          {busy ? <Loader2 className="size-4 animate-spin" /> : <ScanSearch className="size-4" />}
+          {ai ? "Scan ulang AI QC (render luar & dalam)" : "Jalankan AI QC (render luar & dalam)"}
+        </Button>
+        {err ? <p className="mt-2 text-sm text-destructive">{err}</p> : null}
+        {ai ? (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Discan {new Date(ai.scannedAt).toLocaleString("id-ID")} · AI lihat {ai.doors ?? "?"} pintu, {ai.drawers ?? "?"} laci. Tombol Ada/Tidak hanya untuk koreksi.
+          </p>
+        ) : null}
+        <ul className="mt-3 space-y-2">
+          {VISUAL_CHECKS.map((c) => {
+            const a = ai?.items.find((i) => i.id === c.id);
+            return (
             <li key={c.id} className="flex items-center justify-between gap-2 text-sm">
-              <span>{c.label}</span>
+              <span>
+                {c.label}
+                {a ? (
+                  <span className="block text-xs text-muted-foreground">
+                    AI: {a.status === "ada" ? "terlihat" : a.status === "tidak" ? "tidak ada" : "tidak jelas"}
+                    {a.evidence ? ` — ${a.evidence}` : ""}
+                  </span>
+                ) : null}
+              </span>
               <span className="flex gap-1">
                 <Button size="sm" variant={visual[c.id] === true ? "default" : "outline"} onClick={() => set(c.id, true)}>
                   Ada
@@ -40,7 +108,8 @@ export function KisAudit({
                 </Button>
               </span>
             </li>
-          ))}
+            );
+          })}
         </ul>
         {findings.length === 0 ? (
           <p className="mt-3 flex items-center gap-2 rounded-md border p-2 text-sm text-primary">
