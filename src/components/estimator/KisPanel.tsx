@@ -42,6 +42,7 @@ export function KisPanel({
       results,
       bom,
       grandTotal,
+      extras: kis.finishExtras,
       deepLinkUrl: `${window.location.origin}/project/${project.id}`,
     });
     window.location.href = kisReturnLink(kis.returnUrl, payload);
