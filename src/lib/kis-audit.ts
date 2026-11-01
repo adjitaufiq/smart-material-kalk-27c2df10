@@ -36,6 +36,8 @@ export interface AiQcResult {
   doors: number | null;
   drawers: number | null;
   extra: string[];
+  /** jumlah pintu/laci per level dari foto — dipakai menyusun modul sebelum hitung */
+  levels?: { upper: { doors: number | null; drawers: number | null }; lower: { doors: number | null; drawers: number | null } } | undefined;
   /** catatan jenis hardware, mis. "rel terlihat double track" */
   notes?: string[];
 }
@@ -154,4 +156,25 @@ export function shoppingBreakdown(bom: BomItem[]) {
     return { category: c, rows, total: rows.reduce((a, r) => a + (r.subtotal ?? 0), 0) };
   });
   return { categories, total: categories.reduce((a, c) => a + c.total, 0), missingPrice: bom.filter((b) => b.unitPrice == null).length };
+}
+
+/** Terapkan jumlah pintu/laci hasil scan ke item KIS (Atas/Bawah). Item dobel per level tidak diisi (tidak menebak pembagian). */
+export function applyQcToItems<T extends { name: string; briefing?: { doors: number | null; drawers: number | null } | null | undefined }>(items: T[], ai: AiQcResult | undefined): { items: T[]; skipped: string[] } {
+  const skipped: string[] = [];
+  if (!ai?.levels) return { items, skipped };
+  const lvl = (n: string) => (/atas|upper/i.test(n) ? "upper" : /bawah|lower/i.test(n) ? "lower" : null);
+  const count = (l: string) => items.filter((i) => lvl(i.name) === l).length;
+  return {
+    skipped,
+    items: items.map((it) => {
+      const l = lvl(it.name);
+      if (!l || !it.briefing) return it;
+      if (count(l) > 1) {
+        skipped.push(it.name);
+        return it;
+      }
+      const v = ai.levels![l];
+      return { ...it, briefing: { ...it.briefing, doors: v.doors ?? it.briefing.doors, drawers: v.drawers ?? it.briefing.drawers } };
+    }),
+  };
 }

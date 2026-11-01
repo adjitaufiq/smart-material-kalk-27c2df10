@@ -36,12 +36,16 @@ export function KisAudit({
   bom,
   quick,
   onAi,
+  surveyDone,
+  onCalculate,
 }: {
   kis: KisLink;
   results: CalculationResult[];
   bom: BomItem[];
   quick?: QuickSpec | null | undefined;
   onAi: (r: AiQcResult) => void;
+  surveyDone: boolean;
+  onCalculate: () => void;
 }) {
   const ai = kis.qcAi;
   const findings = auditSpec({ results, bom, extras: kis.finishExtras, quick, ai });
@@ -62,7 +66,7 @@ export function KisAudit({
       if (files.length === 0) throw new Error("Foto render dari KIS tidak tersedia. Buka ulang proyek dari KIS.");
       const r = await scan({ data: { files, specList: bom.map((b) => `${b.name} (${b.qty} ${b.unit})`) } });
       if (!r.ok) throw new Error(r.error);
-      onAi({ scannedAt: new Date().toISOString(), counts: r.counts, doors: r.doors, drawers: r.drawers, notes: r.notes, extra: r.extra });
+      onAi({ scannedAt: new Date().toISOString(), counts: r.counts, doors: r.doors, drawers: r.drawers, levels: r.levels, notes: r.notes, extra: r.extra });
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Scan AI QC gagal.");
     } finally {
@@ -136,6 +140,18 @@ export function KisAudit({
         )}
       </SectionCard>
 
+      <SectionCard title="Hitung Estimasi Material" description="Urutan wajib: isi meteran → scan AI Audit → hitung">
+        <ol className="mb-3 space-y-1 text-sm">
+          <li>{surveyDone ? "✓" : "1."} Meteran lapangan {surveyDone ? "lengkap" : "belum lengkap"}</li>
+          <li>{ai ? "✓" : "2."} Scan AI Audit {ai ? "sudah" : "belum"} (jumlah pintu & laci dari foto dipakai untuk engsel & rel)</li>
+          <li>{kis.calculatedAt ? "✓" : "3."} {kis.calculatedAt ? `Dihitung ${new Date(kis.calculatedAt).toLocaleString("id-ID")}` : "Belum dihitung"}</li>
+        </ol>
+        <Button className="w-full" onClick={onCalculate} disabled={!surveyDone || !ai}>
+          {kis.calculatedAt ? "Hitung ulang" : "Hitung Estimasi Material"}
+        </Button>
+      </SectionCard>
+
+      {kis.calculatedAt ? (
       <SectionCard title="Rincian Belanja Bahan" description="Kebutuhan × harga acuan sistem">
         <div className="space-y-4">
           {shop.categories.map((c) => (
@@ -165,6 +181,7 @@ export function KisAudit({
           ) : null}
         </div>
       </SectionCard>
+      ) : null}
     </>
   );
 }

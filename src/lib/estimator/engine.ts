@@ -144,7 +144,7 @@ function addHw(
   map.set(hardwareId, {
     id: hardwareId,
     group,
-    name: `${master.nama}${master.brand ? ` (${master.brand})` : ""}`,
+    name: `${master.nama}${master.brand && master.brand !== "-" ? ` (${master.brand})` : ""}`,
     qty,
     unit: master.unit,
     unitPrice: master.harga,

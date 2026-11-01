@@ -15,7 +15,8 @@ pintu = jumlah daun pintu; laci = jumlah laci; engsel = jumlah engsel (pcs, bias
 Isi qty null bila benar-benar tidak bisa dipastikan. Jangan menebak di luar yang terlihat.
 Di "notes" tulis jenis hardware yang terlihat (mis. jenis rel: double track / tandem / roller; jenis engsel; jenis kaca).
 Di "extra" tulis material/hardware/aksesori lain yang terlihat tetapi TIDAK ada di daftar bahan.
-Balas HANYA JSON: {"counts":[{"id":"pintu","qty":6,"evidence":"..."}],"notes":["..."],"extra":["..."]}`;
+Pisahkan juga per level: "levels":{"upper":{"pintu":n,"laci":n},"lower":{"pintu":n,"laci":n}} (upper = kabinet atas/gantung, lower = kabinet bawah). null bila tidak jelas.
+Balas HANYA JSON: {"counts":[{"id":"pintu","qty":6,"evidence":"..."}],"levels":{"upper":{"pintu":2,"laci":0},"lower":{"pintu":4,"laci":3}},"notes":["..."],"extra":["..."]}`;
 
 export const scanKisQc = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => schema.parse(d))
@@ -32,6 +33,7 @@ export const scanKisQc = createServerFn({ method: "POST" })
         counts?: { id?: string; qty?: unknown; evidence?: string }[];
         notes?: unknown[];
         extra?: unknown[];
+        levels?: Record<string, { pintu?: unknown; laci?: unknown } | undefined>;
       };
       const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.round(v) : null);
       const counts = IDS.map((id) => {
@@ -43,6 +45,10 @@ export const scanKisQc = createServerFn({ method: "POST" })
         counts,
         doors: counts[0]!.qty,
         drawers: counts[1]!.qty,
+        levels: {
+          upper: { doors: num(raw.levels?.["upper"]?.pintu), drawers: num(raw.levels?.["upper"]?.laci) },
+          lower: { doors: num(raw.levels?.["lower"]?.pintu), drawers: num(raw.levels?.["lower"]?.laci) },
+        },
         notes: (Array.isArray(raw.notes) ? raw.notes : []).map(String).slice(0, 10),
         extra: (Array.isArray(raw.extra) ? raw.extra : []).map(String).slice(0, 15),
       };

@@ -141,6 +141,7 @@ export const QUICK_TOP_PREFIX = "Top Table Kitchen";
 export function applyQuickSpec(modules: ModuleSpec[], spec: QuickSpec): ModuleSpec[] {
   const base = modules.filter((m) => m.name !== QUICK_TOP_PREFIX);
   const kisOut = spec.hplOutside?.code ? tacoHplId(spec.hplOutside.code, spec.hplOutside.group, spec.hplOutside.name) : null;
+  const kisTop = spec.hplTop?.code ? tacoHplId(spec.hplTop.code, spec.hplTop.group, spec.hplTop.name) : null;
   const kisIn = spec.hplInside?.code ? tacoHplId(spec.hplInside.code, spec.hplInside.group, spec.hplInside.name) : null;
   // Tanpa kode dari KIS: HPL TACO "kode belum dipilih" (harga kosong → perlu konfirmasi), bukan motif tebakan.
   const outsideHpl = spec.outside === "duco" ? null : (kisOut ?? TACO_HPL_PENDING);
@@ -198,7 +199,7 @@ export function applyQuickSpec(modules: ModuleSpec[], spec: QuickSpec): ModuleSp
       bodyMaterialId: isPvcBody(spec) || spec.body === "hybrid" ? PVC_ID(spec) : BOARD_ID[spec.body] ?? "ply18",
       finish: {
         ...top.finish,
-        bodyOutside: { hplId: outsideHpl ?? TACO_HPL_PENDING },
+        bodyOutside: { hplId: kisTop ?? outsideHpl ?? TACO_HPL_PENDING },
         bodyInside: { hplId: null },
       },
     });
