@@ -7,7 +7,9 @@ import { ItemWizard } from "@/components/estimator/ItemWizard";
 import { KisPanel } from "@/components/estimator/KisPanel";
 import { KisSurvey } from "@/components/estimator/KisSurvey";
 import { KisAudit } from "@/components/estimator/KisAudit";
-import { surveyComplete, surveyOf } from "@/lib/estimator/kis-survey";
+import { applySurvey, surveyComplete, surveyOf } from "@/lib/estimator/kis-survey";
+import { kisProjectBom } from "@/lib/kis";
+import { applyQcToItems } from "@/lib/kis-audit";
 import { SectionCard, StatusBadge } from "@/components/estimator/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -85,11 +87,24 @@ function ProjectPage() {
   }
 
   const activeItem = project.items.find((i) => i.id === activeItemId) ?? null;
-  const projectBom = mergeProjectBom(results);
+  const baseBom = mergeProjectBom(results);
+  // Proyek KIS: 1 jalur — BOM hitungan + bahan ekstra spek KIS (kaca, lampu, tusir, HPL aksen, hidrolik).
+  const projectBom = project.kis ? kisProjectBom(baseBom, results, project.kis.finishExtras) : baseBom;
   const projectCost = summarizeCost(projectBom);
 
   const updateItem = (item: FurnitureItem) =>
-    save({ ...project, items: project.items.map((i) => (i.id === item.id ? item : i)) });
+    save({
+      ...project,
+      items: project.items.map((i) => (i.id === item.id ? item : i)),
+      ...(project.kis ? { kis: { ...project.kis, calculatedAt: undefined } } : {}),
+    });
+  const surveyDone = project.items.length > 0 && project.items.every((i) => surveyComplete(surveyOf(i)));
+  const calculateKis = () => {
+    if (!project.kis) return;
+    const { items, skipped } = applyQcToItems(project.items, project.kis.qcAi);
+    save({ ...project, items: items.map((i) => applySurvey(i, surveyOf(i))), kis: { ...project.kis, calculatedAt: new Date().toISOString() } });
+    if (skipped.length) toast.warning(`Jumlah pintu/laci belum bisa dibagi otomatis untuk: ${skipped.join(", ")}`);
+  };
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
@@ -125,10 +140,10 @@ function ProjectPage() {
             <KisPanel
               project={project}
               results={results}
-              bom={projectBom}
-              grandTotal={projectCost.grandTotal}
+              bom={baseBom}
+              grandTotal={summarizeCost(baseBom).grandTotal}
               onKis={(kis) => save({ ...project, kis })}
-              ready={project.items.length > 0 && project.items.every((i) => surveyComplete(surveyOf(i)))}
+              ready={surveyDone && !!project.kis.calculatedAt}
             />
           ) : null}
           {project.kis ? <KisSurvey items={project.items} onChange={updateItem} /> : null}
@@ -138,7 +153,9 @@ function ProjectPage() {
               results={results}
               bom={projectBom}
               quick={project.items[0]?.quickSpecHint}
-              onAi={(qcAi) => save({ ...project, kis: { ...project.kis!, qcAi, qcVisual: {} } })}
+              onAi={(qcAi) => save({ ...project, kis: { ...project.kis!, qcAi, qcVisual: {}, calculatedAt: undefined } })}
+              surveyDone={surveyDone}
+              onCalculate={calculateKis}
             />
           ) : null}
           {!project.kis ? (
@@ -186,7 +203,7 @@ function ProjectPage() {
           </SectionCard>
           ) : null}
 
-          {projectBom.length > 0 ? (
+          {projectBom.length > 0 && (!project.kis || project.kis.calculatedAt) ? (
             <SectionCard
               title="Rekap Project"
               description="Gabungan kebutuhan seluruh furniture item."
