@@ -21,6 +21,8 @@ export interface KisLink {
   beforeUrl: string;
   renderUrl: string;
   interiorUrl?: string | undefined;
+  /** Foto tampak dalam samping/serong 3/4 (laci ditarik) */
+  interiorSideUrl?: string | undefined;
   returnUrl: string;
   /** Posisi aksesori dari KIS, mis. { "rak-sayur": "kabinet ke-2 dari kiri" } */
   accessoryPositions?: Record<string, string> | undefined;
@@ -30,6 +32,7 @@ export interface KisLink {
   beforeBlobKey?: string | undefined;
   renderBlobKey?: string | undefined;
   interiorBlobKey?: string | undefined;
+  interiorSideBlobKey?: string | undefined;
   importedAt: string;
   /** Checklist QC visual SME (terlihat di gambar atau tidak) */
   qcVisual?: import("./kis-audit").VisualQc | undefined;
@@ -263,6 +266,7 @@ export function parseKisSearch(search: Record<string, unknown>): KisImport | nul
       beforeUrl: str(search["beforeUrl"]),
       renderUrl: str(search["renderUrl"]),
       interiorUrl: str(search["interiorUrl"]),
+      interiorSideUrl: str(search["interiorSideUrl"]) || str(raw["interiorSideUrl"]) || undefined,
       accessoryPositions: Object.keys(hints.positions).length ? hints.positions : undefined,
       finishExtras: parseFinishExtras(raw),
       returnUrl: safeReturnUrl(str(search["returnUrl"])),

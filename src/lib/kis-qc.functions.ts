@@ -9,7 +9,7 @@ const schema = z.object({
 const IDS = ["lampu", "kaca", "list", "pintu-angkat", "rak-sayur", "rak-bumbu", "rak-piring"] as const;
 
 const SYSTEM = `Kamu auditor QC workshop interior (layer kedua, independen dari desainer).
-Periksa foto render tampak luar & tampak dalam furniture. Laporkan HANYA yang benar-benar terlihat; jangan menebak.
+Periksa foto render tampak luar, tampak dalam depan (pintu & laci terbuka) dan tampak dalam samping/serong 3/4 (laci ditarik). Gunakan foto samping untuk menilai sisi kabinet dan rel laci. Laporkan HANYA yang benar-benar terlihat; jangan menebak.
 Item yang wajib dinilai (id): lampu (LED strip/lampu sorot), kaca (pintu/panel kaca), list (list profil gold/hitam), pintu-angkat (pintu lipat/angkat ke atas, gas spring), rak-sayur, rak-bumbu, rak-piring.
 Nilai tiap item: "ada" (jelas terlihat), "tidak" (jelas tidak ada), "tidak_jelas" (tidak bisa dipastikan dari foto).
 Hitung juga jumlah daun pintu dan laci yang terlihat bila bisa dihitung (null bila tidak).

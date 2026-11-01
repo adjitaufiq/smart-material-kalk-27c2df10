@@ -55,7 +55,8 @@ export function KisAudit({
     try {
       const imgs = [
         ["render-luar", await toDataUrl(kis.renderBlobKey, kis.renderUrl)],
-        ["tampak-dalam", await toDataUrl(kis.interiorBlobKey, kis.interiorUrl)],
+        ["tampak-dalam-depan", await toDataUrl(kis.interiorBlobKey, kis.interiorUrl)],
+        ["tampak-dalam-samping", await toDataUrl(kis.interiorSideBlobKey, kis.interiorSideUrl)],
       ] as const;
       const files = imgs.flatMap(([name, d]) => (d && d.startsWith("data:") ? [{ name, mime: d.slice(5, d.indexOf(";")), dataUrl: d }] : []));
       if (files.length === 0) throw new Error("Foto render dari KIS tidak tersedia. Buka ulang proyek dari KIS.");
@@ -76,7 +77,7 @@ export function KisAudit({
       <SectionCard title="Audit Spek Bahan (QC)" description="Cocokkan foto render & tampak dalam dengan spek KIS">
         <Button className="w-full" onClick={runScan} disabled={busy}>
           {busy ? <Loader2 className="size-4 animate-spin" /> : <ScanSearch className="size-4" />}
-          {ai ? "Scan ulang AI QC (render luar & dalam)" : "Jalankan AI QC (render luar & dalam)"}
+          {ai ? "Scan ulang AI QC (luar, dalam depan & samping)" : "Jalankan AI QC (luar, dalam depan & samping)"}
         </Button>
         {err ? <p className="mt-2 text-sm text-destructive">{err}</p> : null}
         {ai ? (

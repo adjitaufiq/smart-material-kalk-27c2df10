@@ -59,10 +59,11 @@ function ImportPage() {
               : undefined,
         })),
       });
-      const [before, render, interior] = await Promise.all([
+      const [before, render, interior, interiorSide] = await Promise.all([
         fetchAsDataUrl(data.link.beforeUrl),
         fetchAsDataUrl(data.link.renderUrl),
         fetchAsDataUrl(data.link.interiorUrl ?? ""),
+        fetchAsDataUrl(data.link.interiorSideUrl ?? ""),
       ]);
       const link = { ...data.link };
       if (before) {
@@ -76,6 +77,10 @@ function ImportPage() {
       if (interior) {
         link.interiorBlobKey = `kis-interior-${project.id}`;
         await putDrawingBlob(link.interiorBlobKey, interior);
+      }
+      if (interiorSide) {
+        link.interiorSideBlobKey = `kis-interior-side-${project.id}`;
+        await putDrawingBlob(link.interiorSideBlobKey, interiorSide);
       }
       upsertProject({ ...project, kis: link });
       void navigate({ to: "/project/$id", params: { id: project.id }, replace: true });
