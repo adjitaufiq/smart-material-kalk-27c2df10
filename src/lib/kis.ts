@@ -480,6 +480,10 @@ export interface KisFinishExtras {
   otherAccessories?: { id: string; qty: number }[] | undefined;
   /** HPL aksen KIS (mis. "001 AA" bingkai pintu kaca) — min 1 lembar */
   hplAccent?: { code: string; name?: string | undefined } | undefined;
+  /** "none" = tanpa handle / bevel 45° (KIS) */
+  handle?: "none" | "handle" | undefined;
+  /** jumlah titik lampu sorot (hasil audit foto) */
+  spotQty?: number | undefined;
 }
 
 const GLASS_PRICE = { dark: 175000, clear: 140000, fluted: 295000 } as const;
@@ -497,6 +501,8 @@ export function parseFinishExtras(raw: Record<string, unknown>): KisFinishExtras
     edge: pick(alias(raw["edge"] ?? raw["edging"], { tusiran: "tusir", gold: "list_gold", black: "list_black", hitam: "list_black", pvc: "edging" }), ["list_gold", "list_black", "edging", "tusir"] as const),
     lighting: pick(alias(raw["lighting"], { led_strip: "led", "led-strip": "led", sorot: "spot", "led+spot": "led_spot" }), ["led", "spot", "led_spot"] as const),
   };
+  const h = raw["handle"];
+  if (typeof h === "string" && h.trim()) out.handle = /tanpa|none|bevel|handleless|gola|no/i.test(h) ? "none" : "handle";
   const acc = hplRef(raw["hplAccent"]) ?? hplMotifs(raw).accent;
   if (acc) out.hplAccent = { code: acc.code, ...(acc.name ? { name: acc.name } : {}) };
   const others: { id: string; qty: number }[] = [];
@@ -511,7 +517,7 @@ export function parseFinishExtras(raw: Record<string, unknown>): KisFinishExtras
     }
   }
   if (others.length) out.otherAccessories = others;
-  return out.glass || out.edge || out.lighting || out.otherAccessories || out.hplAccent ? out : undefined;
+  return out.glass || out.edge || out.lighting || out.otherAccessories || out.hplAccent || out.handle ? out : undefined;
 }
 
 const UPPER = /atas|upper|wall|gantung/i;
@@ -548,7 +554,7 @@ export function finishExtraLines(extras: KisFinishExtras | undefined, results: C
       if (!bom.some((b) => b.id === "profil-alu")) add.push(line("profil-alu", "elektrik", "Profil Aluminium LED + Diffuser", m, "m'", 55000, "Sepanjang LED strip"));
     }
     if (extras.lighting === "spot" || extras.lighting === "led_spot")
-      add.push(line("lampu-spot", "elektrik", "Lampu Spot LED Kabinet", 1, "titik", 30000, "Jumlah titik spot perlu konfirmasi"));
+      add.push(line("lampu-spot", "elektrik", "Lampu Sorot / Downlight LED", extras.spotQty ?? 1, "titik", 30000, extras.spotQty ? "Jumlah titik dari audit foto" : "Jumlah titik spot perlu konfirmasi"));
     if (!bom.some((b) => b.id === "driver-led")) add.push(line("driver-led", "elektrik", "Trafo / Adaptor LED 12V", 1, "pcs", 165000, "1 trafo per sistem lampu"));
     add.push(line("kabel-saklar", "elektrik", "Kabel & Sakelar Sensor Lampu", 1, "set", 75000, "Paket instalasi lampu kabinet"));
   }
