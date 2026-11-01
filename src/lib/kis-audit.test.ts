@@ -6,13 +6,22 @@ const b = (id: string, group: BomItem["group"], name: string, qty = 1, unit = "p
 const ai = (counts: { id: never | string; qty: number | null }[]) => ({ scannedAt: "", doors: null, drawers: null, extra: [], counts: counts.map((c) => ({ ...c, evidence: "" })) }) as never;
 
 describe("AI audit spek vs gambar", () => {
-  it("engsel set 2 pcs: 4 set = 8 pcs, gambar 8 = PASS", () => {
-    const r = auditTable({ results: [], bom: [b("e", "hardware", "Engsel TACO ET-01", 4, "set")], ai: ai([{ id: "engsel", qty: 8 }]) });
-    expect(r.find((x) => x.id === "engsel")?.status).toBe("pass");
+  it("sebelum Terapkan: pintu/laci/engsel/gas spring menunggu scan, bukan template 4/0/8", () => {
+    const r = auditTable({ results: [], bom: [b("e", "hardware", "Engsel TACO ET-01", 4, "set")], ai: ai([{ id: "pintu", qty: 10 }]) });
+    for (const id of ["pintu", "laci", "engsel", "rel", "hidrolik"]) expect(r.find((x) => x.id === id)?.spec).toBeNull();
+    expect(auditSpec({ results: [], bom: [], ai: ai([{ id: "pintu", qty: 10 }, { id: "hidrolik", qty: 4 }]) })).toEqual([]);
   });
-  it("hidrolik terlihat 2, BOM 0 = GAP kurang", () => {
-    const f = auditSpec({ results: [], bom: [], ai: ai([{ id: "hidrolik", qty: 2 }]) });
-    expect(f).toContainEqual(expect.objectContaining({ type: "kurang", item: "Hidrolik / gas spring" }));
+  it("Adji setelah Terapkan: 10 pintu, 2 kaca angkat, 3 laci, 9 ambalan = PASS semua", () => {
+    const a = ai([{ id: "pintu", qty: 10 }, { id: "kaca", qty: 2 }, { id: "laci", qty: 3 }, { id: "engsel", qty: 16 }, { id: "rel", qty: 3 }, { id: "hidrolik", qty: 4 }, { id: "ambalan", qty: 9 }]);
+    const r = auditTable({ results: [], bom: [], ai: a, applied: true });
+    expect(r.find((x) => x.id === "hidrolik")?.spec).toBe(4);
+    expect(r.find((x) => x.id === "engsel")?.spec).toBe(16);
+    expect(r.find((x) => x.id === "rel")?.spec).toBe(3);
+    expect(r.filter((x) => ["pintu", "laci", "engsel", "rel", "hidrolik", "kaca", "ambalan"].includes(x.id)).every((x) => x.status === "pass")).toBe(true);
+  });
+  it("granit, sink, backsplash dari AI bukan GAP workshop", () => {
+    const a = { ...(ai([]) as object), extra: ["Top granit", "Sink", "Backsplash keramik", "Cutlery tray"] } as never;
+    expect(auditSpec({ results: [], bom: [], ai: a })).toEqual([]);
   });
   it("rak sayur di BOM tapi gambar 0 = GAP lebih", () => {
     const f = auditSpec({ results: [], bom: [b("rak-sayur", "hardware", "Rak Sayur RS-60")], ai: ai([{ id: "rak-sayur", qty: 0 }]) });
