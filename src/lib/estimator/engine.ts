@@ -796,6 +796,16 @@ export const STATUS_LABEL: Record<CalculationStatus, string> = {
   bom_siap_belanja: "BOM Siap Belanja",
 };
 
+/**
+ * Nesting gabungan semua item project (workshop memotong bahan sekali untuk semua kabinet).
+ * Hanya bila semua item mode "potong"; selain itu null (pakai jumlah per item).
+ */
+export function projectSheets(results: CalculationResult[]): { sheets: SheetResult[]; hplSheets: SheetResult[]; parts: Part[] } | null {
+  if (results.length < 2 || results.some((r) => r.sheets.some((s) => s.mode !== "potong"))) return null;
+  const parts = results.flatMap((r) => r.parts);
+  return { sheets: calculateSheets(parts, "potong", 0).results, hplSheets: calculateHpl(parts).results, parts };
+}
+
 export function mergeProjectBom(results: CalculationResult[]): BomItem[] {
   const map = new Map<string, BomItem>();
   for (const r of results) {
@@ -808,6 +818,26 @@ export function mergeProjectBom(results: CalculationResult[]): BomItem[] {
       } else {
         map.set(item.id, { ...item, trace: [...item.trace] });
       }
+    }
+  }
+  const joint = projectSheets(results);
+  if (joint) {
+    // Lembar bodi & HPL: sisa potongan satu item dipakai item lain → hitung ulang dari nesting gabungan.
+    for (const [prefix, list] of [["mat-", joint.sheets], ["hpl-", joint.hplSheets]] as const) {
+      for (const s of list) {
+        const b = map.get(`${prefix}${s.materialId}`);
+        if (!b || b.qty === s.sheets) continue;
+        b.trace.push(`Nesting gabungan project: ${b.qty} → ${s.sheets} lembar (sisa potongan dipakai lintas item)`);
+        b.qty = s.sheets;
+        b.total = b.unitPrice !== null ? b.unitPrice * s.sheets : null;
+      }
+    }
+    // Lem kuning: hitung ulang dari total bidang HPL project (bukan jumlah galon per item).
+    const glueKeys = [...map.keys()].filter((k) => /^lem-(active|starmax)-(galon|blek)$/.test(k));
+    if (glueKeys.length) {
+      const type = (glueKeys[0]!.split("-")[1] ?? "active") as GlueType;
+      for (const k of glueKeys) map.delete(k);
+      for (const g of calculateHplGlue(joint.parts, type)) map.set(g.id, g);
     }
   }
   return [...map.values()];

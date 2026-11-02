@@ -270,7 +270,7 @@ export function generateParts(mod: ModuleSpec): Part[] {
           }),
         );
       }
-      // Dasar laci 3 mm: nesting bersama back panel 3 mm.
+      // Dasar laci 3 mm (nesting bersama punggung 3 mm) — lebih murah daripada memakan lembar bodi.
       const bottomMat = findMaterial("ply3") ?? findMaterial("ply4");
       if (bottomMat) {
         parts.push(
