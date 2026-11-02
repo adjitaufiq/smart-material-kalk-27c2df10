@@ -25,5 +25,7 @@ describe("KIS hanya terima bahan utama", () => {
     expect(p.shoppingList.map((s) => s.code)).toEqual(["engsel-sendok"]);
     expect(p.workshopConsumablesCost).toBe(28000);
     expect(p.materialCost).toBe(64000);
+    expect(p.workshopConsumables).toEqual([{ name: "Paku", qty: 1, unit: "box", unitPrice: 28000, subtotal: 28000 }]);
+    expect(p.projectId).toBe("k");
   });
 });
