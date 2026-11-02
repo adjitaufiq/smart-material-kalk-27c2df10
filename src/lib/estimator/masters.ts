@@ -241,7 +241,7 @@ MATERIAL_MASTER.push(
     aktif: true,
   },
   ...([
-    ["ply3", "Triplek 3 mm", "plywood", 3, 76000, "length"],
+    ["ply3", "Triplek 3 mm", "plywood", 3, 76000, "none"],
     ["ply6", "Triplek 6 mm", "plywood", 6, 98000, "length"],
     ["blockboard15", "Blockboard 15 mm", "blockboard", 15, 210000, "length"],
     ["blockmin15", "Blockmin Putih 1 Sisi 15mm", "plywood", 15, 269000, "length"],
