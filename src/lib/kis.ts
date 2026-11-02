@@ -443,6 +443,13 @@ export function buildKisEstimate(input: {
     shoppingList,
     /** sudah termasuk di materialCost; rinciannya hanya di SME */
     workshopConsumablesCost,
+    workshopConsumables: minorBom.map((b) => ({
+      name: b.name,
+      qty: b.unit === "m²" ? Math.round(b.qty * 100) / 100 : Math.ceil(b.qty - 1e-9),
+      unit: b.unit,
+      unitPrice: b.unitPrice,
+      subtotal: b.total == null ? null : Math.round(b.total),
+    })),
     estimatedMaterialCost: materialCost,
     priceBasis: `HET TACO ${TACO_HET_DATE} (PVC Board ${TACO_PVC_HET_DATE}) — HPP sebelum margin workshop`,
     sheetCount: totalSheets,
