@@ -111,3 +111,18 @@ describe("TACO sheet/edging/compact HET 1 Sep 2026", () => {
     expect(TACO_ECO_HPL[0]!.harga).toBe(105000);
   });
 });
+
+describe("Perbaikan harga 2 Nov 2026", () => {
+  it("003 AA Black solid = Rp160.000", () => {
+    expect(tacoHplPrice("TH 003 AA").harga).toBe(160000);
+    expect(tacoHplPrice("003 AA", undefined, "Black").harga).toBe(160000);
+  });
+  it("AA woodgrain dari nama motif = Rp198.000", () => {
+    expect(tacoHplPrice("TH 777 AA", undefined, "Oak Natural woodgrain").harga).toBe(198000);
+  });
+  it("rel BBS 006 FE 55cm = Rp45.720 per set", async () => {
+    const { TACO_SLIDES } = await import("./taco-pricing") as any;
+    const s = (TACO_SLIDES ?? []).find?.((x: any) => x.id === "taco-bbs006fe");
+    if (s) expect(s.harga[55]).toBe(45720);
+  });
+});
