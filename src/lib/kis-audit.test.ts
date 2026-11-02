@@ -34,3 +34,19 @@ describe("AI audit spek vs gambar", () => {
     expect(shopCategory(b("paku-f30", "hardware", "Paku F30"))).toBe("Perintilan Workshop");
   });
 });
+
+import { parseFinishExtras } from "./kis";
+import { auditSpec as _as, auditTable as _at } from "./kis-audit";
+describe("sinkron KIS: LED eksak & kaki adjuster", () => {
+  const ex = parseFinishExtras({ finishExtras: { ledRun: { qty: 2 }, spotlights: { qty: 2 } } })!;
+  it("ledRun.qty 2 terbaca", () => expect(ex.ledQty).toBe(2));
+  it("LED spek 2 vs gambar 1 = GAP, 2 vs 2 = PASS", () => {
+    const mk = (n: number) => ({ scannedAt: "", counts: [{ id: "led" as const, qty: n, evidence: "" }], doors: null, drawers: null, extra: [] });
+    expect(_at({ results: [], bom: [], extras: ex, ai: mk(1) }).find((r) => r.id === "led")?.status).toBe("lebih");
+    expect(_at({ results: [], bom: [], extras: ex, ai: mk(2) }).find((r) => r.id === "led")?.status).toBe("pass");
+  });
+  it("kaki adjuster bukan temuan gap", () => {
+    const f = _as({ results: [], bom: [], extras: ex, ai: { scannedAt: "", counts: [], doors: null, drawers: null, extra: ["Kaki adjuster plastik hitam"] } });
+    expect(f.some((x) => /adjuster/i.test(x.item))).toBe(false);
+  });
+});
