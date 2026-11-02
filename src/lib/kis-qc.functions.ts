@@ -62,8 +62,8 @@ export const scanKisQc = createServerFn({ method: "POST" })
       return {
         ok: true as const,
         counts,
-        doors: counts[0]!.qty,
-        drawers: counts[1]!.qty,
+        doors: q("pintu"),
+        drawers: q("laci"),
         levels: {
           upper: { doors: num(raw.levels?.["upper"]?.pintu), drawers: num(raw.levels?.["upper"]?.laci) },
           lower: { doors: num(raw.levels?.["lower"]?.pintu), drawers: num(raw.levels?.["lower"]?.laci) },
