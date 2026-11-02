@@ -292,7 +292,7 @@ export const TACO_SLIDES: SlideSeries[] = [
     id: "taco-bbs006fe",
     kode: "BBS 006 FE",
     nama: "Rel Laci Double Track TACO",
-    harga: { 30: 28600, 35: 33500, 40: 39300, 45: 43100, 50: 47900 },
+    harga: { 30: 28600, 35: 33500, 40: 39300, 45: 43100, 50: 47900, 55: 45720 },
     rule: "1 set per laci",
   },
   {
