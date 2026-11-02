@@ -270,8 +270,8 @@ export function generateParts(mod: ModuleSpec): Part[] {
           }),
         );
       }
-      // Dasar laci 3 mm: nesting bersama back panel 3 mm.
-      const bottomMat = findMaterial("ply3") ?? findMaterial("ply4");
+      // Workshop: dasar laci dari sisa potongan bodi (lembar 3 mm khusus punggung kabinet).
+      const bottomMat = body;
       if (bottomMat) {
         parts.push(
           build(mod, {
