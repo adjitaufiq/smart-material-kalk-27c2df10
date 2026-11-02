@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { materialLabel } from "@/lib/estimator/terminology";
+import { projectSheets } from "@/lib/estimator/engine";
 import type { CalculationResult, SheetResult } from "@/lib/estimator/types";
 
 /** Gabungkan hasil nesting semua item per material (lembar dinomori ulang). */
@@ -70,8 +71,9 @@ function MapList({ data, label }: { data: ReturnType<typeof merge>; label: strin
 
 /** Panduan potong 1 setel: lembar bodi + lembar HPL pelapisnya. */
 export function SheetMapDialog({ results }: { results: CalculationResult[] }) {
-  const body = merge(results.flatMap((r) => r.sheets));
-  const hpl = merge(results.flatMap((r) => r.hplSheets));
+  const joint = projectSheets(results);
+  const body = merge(joint ? joint.sheets : results.flatMap((r) => r.sheets));
+  const hpl = merge(joint ? joint.hplSheets : results.flatMap((r) => r.hplSheets));
   return (
     <Dialog>
       <DialogTrigger asChild>
