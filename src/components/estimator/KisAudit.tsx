@@ -149,8 +149,9 @@ export function KisAudit({
           </div>
         ) : null}
         {ai && !applied ? (
-          <Button className="mt-3 w-full" variant="secondary" onClick={onApply}>
-            Terapkan Hasil Audit ({gaps} gap) — pintu, laci, engsel, hidrolik, sorot, handle
+          <Button className="mt-3 h-auto w-full flex-col gap-0.5 whitespace-normal py-2.5 text-center" variant="secondary" onClick={onApply}>
+            <span className="font-semibold">Terapkan Hasil Audit ({gaps} gap)</span>
+            <span className="text-xs font-normal opacity-80">pintu, laci, engsel, hidrolik, sorot, handle</span>
           </Button>
         ) : null}
         {!ai ? null : findings.length === 0 ? (

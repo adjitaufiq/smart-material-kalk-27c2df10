@@ -605,7 +605,7 @@ export function finishExtraLines(extras: KisFinishExtras | undefined, results: C
     add.push(line("kabel-saklar", "elektrik", "Kabel & Sakelar Sensor Lampu", 1, "set", 75000, "Paket instalasi lampu kabinet"));
   }
   if (extras.hplAccent) {
-    const p = tacoHplPrice(extras.hplAccent.code);
+    const p = tacoHplPrice(extras.hplAccent.code, undefined, `${extras.hplAccent.name ?? ""} ${extras.hplAccent.texture ?? ""}`);
     add.push(line(`hpl-accent-${slug(extras.hplAccent.code)}`, "finishing", `TACO ${extras.hplAccent.code} — HPL aksen${extras.hplAccent.name ? ` (${extras.hplAccent.name})` : ""}`, 1, "lembar", p.harga, "Motif aksen dari KIS — minimal 1 lembar utuh"));
   }
   for (const a of extras.otherAccessories ?? []) {
