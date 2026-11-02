@@ -13,6 +13,7 @@ const SYSTEM = `Kamu auditor QC workshop interior (layer kedua, independen dari 
 Ada 3 foto: render tampak luar (pintu tertutup), tampak dalam depan (pintu & laci terbuka), tampak dalam samping/serong 3/4 (laci ditarik).
 HITUNG jumlah yang benar-benar terlihat untuk tiap id berikut (gabungkan semua foto, jangan dobel hitung objek sama):
 pintu = jumlah daun pintu; laci = jumlah laci; engsel = jumlah engsel (pcs, biasanya 2 per pintu, hitung dari pintu yang terlihat terbuka bila perlu); rel = jumlah set rel laci (1 set per laci); hidrolik = jumlah gas spring/hidrolik pintu angkat (pcs); kaca = jumlah daun pintu kaca; led = jumlah jalur LED strip; sorot = jumlah titik lampu sorot/spot; list = 1 bila ada list profil gold/hitam, 0 bila tidak; handle = jumlah handle/tarikan (0 bila bevel/tanpa handle); top = jumlah lapis top table yang terlihat dari tebal bibir (1 atau 2); rak-piring, rak-bumbu, rak-sayur = jumlah set; ambalan = jumlah papan ambalan/rak dalam; hpl-zona = jumlah zona motif HPL/TACO Sheet dari daftar "Zona motif KIS" yang BENAR-BENAR terlihat sesuai nama resmi + tekstur (woodgrain/solid/stone/pattern) di area pemakaiannya (kabinet/kabinet_atas/top/aksen). Jangan menebak kode dari foto. Bagian dalam Blockmin putih, cat duco, dan top granit BUKAN zona HPL — jangan dihitung. Di evidence sebut zona mana yang cocok/tidak; dalam-putih = 1 bila bagian dalam kabinet (saat pintu/laci terbuka) putih bersih, 0 bila warna kayu/mentah; tusir = 1 bila tepi panel rapi dicat/tusir tanpa edging PVC tempel terlihat, 0 bila tampak edging PVC.
+CARA HITUNG PINTU (SOP workshop, wajib): hitung daun pintu dari FOTO 1 (tampak luar, pintu tertutup) dengan menghitung garis nat/celah antar-daun per baris kabinet atas dan bawah. Foto 2 & 3 (terbuka) HANYA untuk memastikan arah bukaan (swing ke samping / angkat ke atas / laci ditarik) — JANGAN menghitung biji engsel dari foto terbuka karena sering tertutup daun lain. Daun pintu kaca dihitung terpisah di "kaca" dan TETAP termasuk dalam "pintu".
 pintu = TOTAL daun (swing + angkat). kaca = daun pintu kaca (biasanya pintu angkat/lift-up). engsel hanya untuk pintu swing (pintu kaca angkat tidak pakai engsel sendok). hidrolik = 2 pcs per pintu angkat.
 Di "nonWorkshop" tulis barang non-workshop yang terlihat (sink, kran, kompor, kulkas, top granit/solid surface, backsplash keramik/subway tile, cutlery tray bawaan, dll) — JANGAN masukkan ke "extra".
 ATURAN SPEK KIS (mutlak, menang atas tampilan foto): motif HPL bertanda workshop (isWorkshopHpl) tetap HPL TACO walau bercorak marmer/granit/batu. Bila zona menyebut "top table: HPL WORKSHOP", top = HPL (hitung lapis dari bibir; bila tebal ±36mm = 2) dan JANGAN tulis granit/marmer/batu di nonWorkshop/extra. Bila bingkai pintu kaca "kayu multiplek lapis HPL", JANGAN laporkan frame/profil aluminium di extra.
@@ -45,11 +46,24 @@ export const scanKisQc = createServerFn({ method: "POST" })
         const f = raw.counts?.find((i) => i.id === id);
         return { id, qty: num(f?.qty), evidence: String(f?.evidence ?? "").slice(0, 200) };
       });
+      // Hardware turunan dari jumlah daun (bukan hitung biji engsel di foto terbuka):
+      // engsel = daun swing × 2 pcs, rel = 1 set per laci, hidrolik = 2 pcs per pintu angkat.
+      const q = (id: string) => counts.find((c) => c.id === id)?.qty ?? null;
+      const doorsN = q("pintu");
+      const liftN = q("kaca") ?? 0;
+      const drawersN = q("laci");
+      const derive = (id: string, v: number | null, why: string) => {
+        const c = counts.find((x) => x.id === id);
+        if (c && v != null) { c.qty = v; c.evidence = `${why}${c.evidence ? ` · foto: ${c.evidence}` : ""}`.slice(0, 200); }
+      };
+      if (doorsN != null) derive("engsel", Math.max(0, doorsN - liftN) * 2, `${Math.max(0, doorsN - liftN)} daun swing × 2 pcs`);
+      if (drawersN != null) derive("rel", drawersN, `${drawersN} laci × 1 set`);
+      if (q("kaca") != null) derive("hidrolik", liftN * 2, `${liftN} pintu angkat × 2 pcs`);
       return {
         ok: true as const,
         counts,
-        doors: counts[0]!.qty,
-        drawers: counts[1]!.qty,
+        doors: q("pintu"),
+        drawers: q("laci"),
         levels: {
           upper: { doors: num(raw.levels?.["upper"]?.pintu), drawers: num(raw.levels?.["upper"]?.laci) },
           lower: { doors: num(raw.levels?.["lower"]?.pintu), drawers: num(raw.levels?.["lower"]?.laci) },

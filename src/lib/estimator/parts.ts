@@ -130,7 +130,8 @@ export function generateParts(mod: ModuleSpec): Part[] {
         width_mm: D,
         materialId: mod.bodyMaterialId,
         faceA: inside,
-        faceB: outside,
+        // Atas kabinet gantung menempel plafon/tak terlihat: tanpa HPL luar.
+        faceB: mod.kind === "wall_cabinet" ? null : outside,
         edge: { top: true },
         derivation: between
           ? `Top = lebar ${W} - 2 × tebal ${t} = ${tbLength} mm`
@@ -143,7 +144,8 @@ export function generateParts(mod: ModuleSpec): Part[] {
         width_mm: D,
         materialId: mod.bodyMaterialId,
         faceA: inside,
-        faceB: outside,
+        // Alas kabinet bawah tertutup plinth: tanpa HPL luar. Alas kabinet atas terlihat: HPL.
+        faceB: mod.kind === "base_cabinet" ? null : outside,
         edge: { top: true },
         derivation: between
           ? `Bottom = lebar ${W} - 2 × tebal ${t} = ${tbLength} mm`
@@ -158,8 +160,9 @@ export function generateParts(mod: ModuleSpec): Part[] {
           qty: 2,
           length_mm: iw,
           width_mm: 100,
-          materialId: "ply18",
-          derivation: `Cleat 45° dipotong dari 1 strip ${iw} × 200 mm → 2 bilah ${iw} × 100 mm (1 di dinding, 1 di kabinet)`,
+          // Workshop: cleat dari sisa potongan bodi, tidak beli lembar baru.
+          materialId: mod.bodyMaterialId,
+          derivation: `Cleat 45° dari sisa potongan bodi: 1 strip ${iw} × 200 mm → 2 bilah ${iw} × 100 mm (1 di dinding, 1 di kabinet)`,
         }),
       );
     }
@@ -242,7 +245,8 @@ export function generateParts(mod: ModuleSpec): Part[] {
               : `Front laci = (${H} - ${tpl.door_clearance_mm} × ${mod.drawers + 1}) / ${mod.drawers}`,
         }),
       );
-      const boxMat = findMaterial("ply12") ?? body;
+      // Workshop: kotak laci dari bahan bodi (nesting di lembar bodi), bukan lembar 12 mm baru.
+      const boxMat = body;
       const boxSideH = Math.max(frontH - 40, 80);
       const boxDepth = Math.max(D - 50, 100);
       const boxInner = bayWidth - 26 - 2 * (boxMat?.ketebalan_mm ?? 12); // 13 mm rel tiap sisi
@@ -266,7 +270,8 @@ export function generateParts(mod: ModuleSpec): Part[] {
           }),
         );
       }
-      const bottomMat = findMaterial("ply4");
+      // Dasar laci 3 mm: nesting bersama back panel 3 mm.
+      const bottomMat = findMaterial("ply3") ?? findMaterial("ply4");
       if (bottomMat) {
         parts.push(
           build(mod, {
@@ -467,13 +472,46 @@ export function generateParts(mod: ModuleSpec): Part[] {
   return parts;
 }
 
+/** Jenis kabinet yang dipasang berjajar: dinding samping antar-modul dipakai bersama (1 partisi). */
+const RUN_KINDS = new Set(["base_cabinet", "wall_cabinet", "wardrobe", "tall_cabinet"]);
+
+/**
+ * Gabungkan part semua modul. Modul berjajar (jenis, tinggi & dalam sama, berurutan)
+ * memakai partisi bersama: n unit = n + 1 dinding, bukan 2n. HPL luar hanya pada
+ * 2 dinding ujung deretan; partisi tengah ikut finishing dalam.
+ */
 export function generatePartsForModules(modules: ModuleSpec[]): Part[] {
   const out: Part[] = [];
-  for (const mod of modules) {
+  const key = (m: ModuleSpec | undefined) =>
+    m && RUN_KINDS.has(m.kind) ? `${m.kind}|${m.height_mm}|${m.depth_mm}|${m.bodyMaterialId}` : null;
+  modules.forEach((mod, i) => {
+    const k = key(mod);
+    const joinPrev = k !== null && key(modules[i - 1]) === k;
+    const joinNext = k !== null && key(modules[i + 1]) === k;
     const base = generateParts(mod);
     for (const part of base) {
+      if (k !== null && part.part_name === "Side Panel") {
+        const q = mod.qty;
+        const sides = q + 1 - (joinPrev ? 1 : 0);
+        const ends = (joinPrev ? 0 : 1) + (joinNext ? 0 : 1);
+        const exposed = Math.min(ends, sides);
+        const shared = sides - exposed;
+        const inside = mod.finish.bodyInside.hplId;
+        if (exposed > 0)
+          out.push({ ...part, qty: exposed, part_name: "Side Panel (ujung)", derivation: `${part.derivation}; dinding ujung deretan` });
+        if (shared > 0)
+          out.push({
+            ...part,
+            id: `${part.id}-s`,
+            qty: shared,
+            part_name: "Partisi Tengah (bersama)",
+            finish_face_b: inside,
+            derivation: `${part.derivation}; partisi dipakai bersama 2 modul (tidak dobel dinding), finishing dalam`,
+          });
+        continue;
+      }
       out.push(mod.qty > 1 ? { ...part, qty: part.qty * mod.qty } : part);
     }
-  }
+  });
   return out;
 }

@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, History, Plus } from "lucide-react";
+import { ArrowLeft, History, Plus, Send } from "lucide-react";
 import { toast } from "sonner";
 
 import { ItemWizard } from "@/components/estimator/ItemWizard";
-import { KisPanel } from "@/components/estimator/KisPanel";
+import { KisPanel, sendToKis } from "@/components/estimator/KisPanel";
+import { SheetMapDialog } from "@/components/estimator/SheetMapDialog";
 import { KisSurvey } from "@/components/estimator/KisSurvey";
 import { KisAudit } from "@/components/estimator/KisAudit";
 import { applySurvey, surveyComplete, surveyOf } from "@/lib/estimator/kis-survey";
@@ -236,6 +237,14 @@ function ProjectPage() {
               <p className="mt-1 text-xs text-muted-foreground">
                 Estimasi material, bukan quotation final.
               </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <SheetMapDialog results={results} />
+                {project.kis?.returnUrl ? (
+                  <Button size="sm" onClick={() => sendToKis(project, results, baseBom, summarizeCost(baseBom).grandTotal)}>
+                    <Send /> Kirim hasil ke KIS
+                  </Button>
+                ) : null}
+              </div>
             </SectionCard>
           ) : null}
 
