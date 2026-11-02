@@ -239,12 +239,21 @@ function ProjectPage() {
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <SheetMapDialog results={results} />
-                {project.kis?.returnUrl ? (
-                  <Button size="sm" onClick={() => sendToKis(project, results, baseBom, summarizeCost(baseBom).grandTotal)}>
-                    <Send /> Kirim hasil ke KIS
-                  </Button>
-                ) : null}
               </div>
+              {project.kis?.returnUrl ? (
+                <div className="mt-3 rounded-md border border-primary/40 bg-primary/5 p-3">
+                  <Button
+                    size="lg"
+                    className="h-auto w-full whitespace-normal py-3"
+                    onClick={() => sendToKis(project, results, baseBom, summarizeCost(baseBom).grandTotal)}
+                  >
+                    <Send /> Finalkan &amp; Kirim ke KIS
+                  </Button>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Wajib diklik: rincian belanja, HPP, dan hari kerja baru masuk ke KIS setelah tombol ini ditekan.
+                  </p>
+                </div>
+              ) : null}
             </SectionCard>
           ) : null}
 
