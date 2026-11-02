@@ -81,7 +81,19 @@ export function parseTacoCode(code: string): { num: string; suffix: string; long
   return { long: !!m[1], num: m[2] ?? "", suffix: m[3] ?? "" };
 }
 
-export function tacoHplPrice(code: string, group?: HplGroup): HplPriceResult {
+/** Kode solid TACO yang sudah dikonfirmasi workshop (mis. 003 AA = Black solid). */
+const KNOWN_SOLID_NUMBERS = new Set(["003"]);
+
+/** Tebak grup dari nama/tekstur resmi motif (KIS hplInfo), bukan dari visual. */
+export function hplGroupFromHint(hint?: string): HplGroup | undefined {
+  const h = (hint ?? "").toLowerCase();
+  if (!h) return undefined;
+  if (/wood|oak|walnut|teak|jati|serat|grain/.test(h)) return "woodgrain";
+  if (/solid|black|hitam|putih|white|grey|gray|abu|polos|plain/.test(h)) return "solid";
+  return undefined;
+}
+
+export function tacoHplPrice(code: string, group?: HplGroup, hint?: string): HplPriceResult {
   const none: HplPriceResult = { harga: null, label: "Kode HPL tidak dikenali", candidates: [], long: false };
   const p = parseTacoCode(code);
   if (!p) return none;
@@ -92,8 +104,9 @@ export function tacoHplPrice(code: string, group?: HplGroup): HplPriceResult {
   }
   const tiers = p.long ? TACO_LONG_HPL_TIERS : TACO_HPL_TIERS;
   let hits = tiers.filter((t) => t.suffixes.includes(p.suffix));
-  if (group && hits.length > 1) {
-    const g = hits.filter((t) => t.group === group);
+  const g0 = group ?? hplGroupFromHint(hint) ?? (KNOWN_SOLID_NUMBERS.has(p.num) ? "solid" : undefined);
+  if (g0 && hits.length > 1) {
+    const g = hits.filter((t) => t.group === g0);
     if (g.length) hits = g;
   }
   if (hits.length === 1) {
