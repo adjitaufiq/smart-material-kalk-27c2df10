@@ -17,6 +17,23 @@ function useBlob(key: string | undefined, fallback: string) {
   return src;
 }
 
+/** Kemas BOM hasil hitung (+ bahan ekstra spek KIS di dalam buildKisEstimate) lalu buka returnUrl KIS. */
+export function sendToKis(project: Project, results: CalculationResult[], bom: BomItem[], grandTotal: number | null) {
+  const kis = project.kis!;
+  if (!kis.returnUrl) return;
+  const payload = buildKisEstimate({
+    kisProjectId: kis.projectId,
+    estimateId: project.id,
+    results,
+    bom,
+    grandTotal,
+    extras: kis.finishExtras,
+    audit: auditSpec({ results, bom, extras: kis.finishExtras, quick: project.items[0]?.quickSpecHint, ai: kis.qcAi, applied: !!kis.qcAi && kis.qcApplied === kis.qcAi.scannedAt }),
+    deepLinkUrl: `${window.location.origin}/project/${project.id}`,
+  });
+  window.location.href = kisReturnLink(kis.returnUrl, payload);
+}
+
 export function KisPanel({
   project,
   results,
@@ -38,19 +55,7 @@ export function KisPanel({
   const interiorSide = useBlob(kis.interiorSideBlobKey, kis.interiorSideUrl ?? "");
   const positions = Object.entries(kis.accessoryPositions ?? {});
 
-  const send = () => {
-    const payload = buildKisEstimate({
-      kisProjectId: kis.projectId,
-      estimateId: project.id,
-      results,
-      bom,
-      grandTotal,
-      extras: kis.finishExtras,
-      audit: auditSpec({ results, bom, extras: kis.finishExtras, quick: project.items[0]?.quickSpecHint, ai: kis.qcAi, applied: !!kis.qcAi && kis.qcApplied === kis.qcAi.scannedAt }),
-      deepLinkUrl: `${window.location.origin}/project/${project.id}`,
-    });
-    window.location.href = kisReturnLink(kis.returnUrl, payload);
-  };
+  const send = () => sendToKis(project, results, bom, grandTotal);
 
   return (
     <SectionCard title="Dari Kerjaku Interior Studio" description={kis.clientName || "Data klien & visual"}>
