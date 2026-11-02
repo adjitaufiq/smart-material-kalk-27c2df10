@@ -171,7 +171,8 @@ export function applyQuickSpec(modules: ModuleSpec[], spec: QuickSpec): ModuleSp
       ...m,
       bodyMaterialId: body,
       doorMaterialId: body,
-      backMaterialId: m.hasBack ? (usePvc ? PVC_ID(spec) : "ply9") : m.backMaterialId,
+      // Workshop: punggung kabinet selalu Triplek 3 mm.
+      backMaterialId: m.hasBack ? "ply3" : m.backMaterialId,
       finish: {
         bodyOutside: { hplId: outsideHpl },
         bodyInside: { hplId: insideHpl },
