@@ -1054,10 +1054,7 @@ export function hingeCountForDoor(input: DoorLeafInput): HingeRuleResult {
   const weight_kg = Math.round(volume_m3 * density * 100) / 100;
   let count = hingeCountForDoorHeight(input.height_mm);
   const reasons = [`tinggi daun ${Math.round(input.height_mm)} mm → ${count} engsel`];
-  if (input.width_mm > 600) {
-    count += 1;
-    reasons.push(`lebar daun ${Math.round(input.width_mm)} mm > 600 mm → +1`);
-  }
+  // Aturan workshop: engsel dibeli per set (2 pcs) per daun swing; lebar daun tidak menambah engsel.
   if (weight_kg > 12) {
     count += 1;
     reasons.push(`berat estimasi ${weight_kg} kg > 12 kg → +1`);
