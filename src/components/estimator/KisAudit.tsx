@@ -126,8 +126,8 @@ export function KisAudit({
                       {r.label} <span className="text-xs text-muted-foreground">({r.unit})</span>
                       {r.evidence ? <span className="block text-xs text-muted-foreground">{r.evidence}</span> : null}
                     </td>
-                    <td className="px-1 text-center">{r.spec ?? (applied ? "?" : "—")}</td>
-                    <td className="px-1 text-center">{r.seen ?? "?"}</td>
+                    <td className="px-1 text-center">{r.spec == null ? (applied ? "?" : "—") : r.id === "engsel" ? `${r.spec / 2} set (${r.spec} pcs)` : r.spec}</td>
+                    <td className="px-1 text-center">{r.seen == null ? "?" : r.id === "engsel" ? `${r.seen / 2} set (${r.seen} pcs)` : r.seen}</td>
                     <td className={`pl-1 text-right text-xs font-semibold ${r.status === "pass" ? "text-primary" : r.status === "tidak_jelas" ? "text-muted-foreground" : "text-destructive"}`}>
                       {r.status === "pass" ? "PASS" : r.status === "kurang" ? "GAP: kurang" : r.status === "lebih" ? "GAP: lebih" : r.spec == null ? (ai ? "Klik Terapkan" : "Menunggu scan") : ai ? "Tidak jelas" : "Belum scan"}
                     </td>

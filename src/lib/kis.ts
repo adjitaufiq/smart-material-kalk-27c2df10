@@ -506,6 +506,8 @@ export interface KisFinishExtras {
   handle?: "none" | "handle" | undefined;
   /** jumlah titik lampu sorot (hasil audit foto) */
   spotQty?: number | undefined;
+  /** jumlah jalur LED strip eksplisit dari KIS (finishExtras.ledRun.qty) */
+  ledQty?: number | undefined;
   /** bingkai pintu kaca: wood_hpl = kayu lapis HPL (tanpa profil aluminium) */
   glassFrame?: "wood_hpl" | "aluminium" | undefined;
 }
@@ -538,6 +540,8 @@ export function parseFinishExtras(raw: Record<string, unknown>): KisFinishExtras
     lighting: pick(alias(lightingRaw, { led_strip: "led", "led-strip": "led", sorot: "spot", "led+spot": "led_spot" }), ["led", "spot", "led_spot"] as const),
   };
   if (spotQty > 0) out.spotQty = spotQty;
+  const ledQty = Number(ledRun?.["qty"]);
+  if (ledRun?.["qty"] != null && Number.isFinite(ledQty) && ledQty >= 0) out.ledQty = Math.round(ledQty);
   const fr = String(glassDoors?.["frame"] ?? raw["glassFrame"] ?? "").toLowerCase();
   if (/wood|kayu|hpl/.test(fr)) out.glassFrame = "wood_hpl";
   else if (/alu/.test(fr)) out.glassFrame = "aluminium";

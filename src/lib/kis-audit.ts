@@ -84,6 +84,9 @@ export function hplZones(quick?: QuickSpec | null, ex?: KisFinishExtras): { code
 
 /** Kuantitas fisik: baseline dari scan foto (bukan template SME). Null = menunggu scan/terapkan. */
 export const PHYSICAL: ReadonlySet<AuditItemId> = new Set(["pintu", "laci", "engsel", "rel", "hidrolik", "kaca", "ambalan"]);
+/** Fitting standar workshop (sudah di BOM/perintilan) — bukan gap desain. */
+const WORKSHOP_STD_RE = /kaki adjuster|adjuster|kaki kabinet|kaki plastik|leveling|sekrup|baut|fischer|fisher|paku|dowel|minifix/i;
+export const isWorkshopStd = (s: string) => WORKSHOP_STD_RE.test(s);
 const NON_WORKSHOP_RE = /granit|batu|marmer|sink|bak cuci|kran|keran|faucet|kompor|stove|hood|backsplash|keramik|cermin|cutlery|tray bawaan|kulkas|oven/i;
 export const isNonWorkshop = (s: string) => NON_WORKSHOP_RE.test(s);
 
@@ -115,7 +118,8 @@ export function specCounts(results: CalculationResult[], bom: BomItem[], ex?: Ki
     rel: drawers,
     hidrolik: lift != null ? lift * 2 : applied ? kisGas : null,
     ambalan: seen("ambalan"),
-    led: ex?.lighting === "led" || ex?.lighting === "led_spot" || /led strip/i.test(bom.map((b) => b.name).join("|")) ? 1 : 0,
+    // jalur LED eksak dari KIS (ledRun.qty); tanpa angka → cek ada/tidak
+    led: ex?.ledQty ?? (ex?.lighting === "led" || ex?.lighting === "led_spot" || /led strip/i.test(bom.map((b) => b.name).join("|")) ? 1 : 0),
     // titik sorot: angka KIS / hasil audit; bila KIS null → menunggu hitung foto (bukan 0)
     sorot: ex?.spotQty ?? (ex?.lighting === "spot" || ex?.lighting === "led_spot" ? null : sumQty(bom, /sorot|spot/i)),
     "rak-piring": sumQty(bom, /rak piring|dish/i),
@@ -136,7 +140,7 @@ export function auditTable(input: { results: CalculationResult[]; bom: BomItem[]
     const sp = spec[it.id];
     let status: AuditRow["status"] = "tidak_jelas";
     if (seen != null && sp != null) {
-      if (PRESENCE.has(it.id) || (it.id === "top" && granite)) status = (seen > 0) === (sp > 0) ? "pass" : seen > 0 ? "kurang" : "lebih";
+      if ((PRESENCE.has(it.id) && !(it.id === "led" && input.extras?.ledQty != null)) || (it.id === "top" && granite)) status = (seen > 0) === (sp > 0) ? "pass" : seen > 0 ? "kurang" : "lebih";
       else status = seen === sp ? "pass" : seen > sp ? "kurang" : "lebih";
     }
     return { id: it.id, label: it.id === "top" && granite ? "Top table (granit — non-workshop)" : it.label, unit: it.unit, spec: sp, seen, status, evidence: c?.evidence ?? "", group: it.group };
@@ -158,7 +162,7 @@ export function auditSpec(input: {
     if (r.status === "lebih") out.push({ type: "lebih", item: r.label, note: `Spek ${r.spec ?? 0} ${r.unit}, gambar ${r.seen}` });
   }
   const woodFrame = input.extras?.glassFrame === "wood_hpl";
-  for (const x of input.ai?.extra ?? []) if (!isNonWorkshop(x) && !(woodFrame && /alumin|frame|bingkai|profil/i.test(x))) out.push({ type: "kurang", item: x, note: "Terlihat di gambar (AI), tidak ada di daftar bahan" });
+  for (const x of input.ai?.extra ?? []) if (!isNonWorkshop(x) && !isWorkshopStd(x) && !(woodFrame && /alumin|frame|bingkai|profil/i.test(x))) out.push({ type: "kurang", item: x, note: "Terlihat di gambar (AI), tidak ada di daftar bahan" });
   return out;
 }
 
