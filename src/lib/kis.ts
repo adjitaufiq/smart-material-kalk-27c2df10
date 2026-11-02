@@ -529,7 +529,9 @@ export function parseFinishExtras(raw: Record<string, unknown>): KisFinishExtras
   const gas = obj(fe["gasSprings"]);
   const spotQty = Number(spots?.["qty"]);
   let lightingRaw = raw["lighting"];
-  if (lightingRaw === undefined && (ledRun || spots)) lightingRaw = ledRun ? (spots ? "led_spot" : "led") : "spot";
+  // spot dianggap ada bila qty > 0 atau null (menunggu foto); qty 0 = tanpa sorot
+  const hasSpot = !!spots && (spots["qty"] == null || spotQty > 0);
+  if (lightingRaw === undefined && (ledRun || hasSpot)) lightingRaw = ledRun ? (hasSpot ? "led_spot" : "led") : "spot";
   const out: KisFinishExtras = {
     glass: pick(alias(raw["glass"] ?? glassDoors?.["type"], { buram: "fluted", frosted: "fluted", moru: "fluted", riben: "dark", gelap: "dark", bening: "clear" }), ["dark", "clear", "fluted"] as const),
     edge: pick(alias(raw["edge"] ?? raw["edging"], { tusiran: "tusir", gold: "list_gold", black: "list_black", hitam: "list_black", pvc: "edging" }), ["list_gold", "list_black", "edging", "tusir"] as const),
