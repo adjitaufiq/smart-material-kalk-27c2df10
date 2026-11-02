@@ -270,8 +270,8 @@ export function generateParts(mod: ModuleSpec): Part[] {
           }),
         );
       }
-      // Workshop: dasar laci dari sisa potongan bodi (lembar 3 mm khusus punggung kabinet).
-      const bottomMat = body;
+      // Dasar laci 3 mm (nesting bersama punggung 3 mm) — lebih murah daripada memakan lembar bodi.
+      const bottomMat = findMaterial("ply3") ?? findMaterial("ply4");
       if (bottomMat) {
         parts.push(
           build(mod, {
