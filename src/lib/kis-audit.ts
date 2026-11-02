@@ -115,7 +115,8 @@ export function specCounts(results: CalculationResult[], bom: BomItem[], ex?: Ki
     rel: drawers,
     hidrolik: lift != null ? lift * 2 : applied ? kisGas : null,
     ambalan: seen("ambalan"),
-    led: ex?.lighting === "led" || ex?.lighting === "led_spot" || /led strip/i.test(bom.map((b) => b.name).join("|")) ? 1 : 0,
+    // jalur LED eksak dari KIS (ledRun.qty); tanpa angka → cek ada/tidak
+    led: ex?.ledQty ?? (ex?.lighting === "led" || ex?.lighting === "led_spot" || /led strip/i.test(bom.map((b) => b.name).join("|")) ? 1 : 0),
     // titik sorot: angka KIS / hasil audit; bila KIS null → menunggu hitung foto (bukan 0)
     sorot: ex?.spotQty ?? (ex?.lighting === "spot" || ex?.lighting === "led_spot" ? null : sumQty(bom, /sorot|spot/i)),
     "rak-piring": sumQty(bom, /rak piring|dish/i),
